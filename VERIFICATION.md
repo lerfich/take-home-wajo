@@ -1,5 +1,10 @@
 # Iteration 1 verification
 
+## Optional Gmail manage access (2026-09-09)
+
+**50 tests passed**, 0 failures/errors, unittest duration 3.725 seconds. New mocked OAuth checks cover both access profiles, refusal to replace a token when the requested scope is missing, private token permissions, and preserving stored scopes while loading/refreshing credentials. The explicit `auth --access manage` profile requests only `gmail.modify`; default authorization remains read-only. Expanded live consent has not yet been performed or verified. No Gmail write/send endpoint is implemented by this change.
+
+
 ## English application and Gmail import follow-up (2026-09-09)
 
 **48 tests passed**, 0 failures/errors, Python 3.14, unittest duration 3.707 seconds. A separate subprocess check on an occupied port returned exit code 2 with an English explanation and no traceback. The existing bind-before-queue-initialization regression passed.

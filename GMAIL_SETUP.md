@@ -1,6 +1,6 @@
 # Test Gmail setup
 
-Status: the user completed OAuth and imported ten synthetic Gmail messages. Local database inspection confirmed ten completed Gmail jobs. This is an integration check, not a classification evaluation. The integration requests only `gmail.readonly` and imports messages from a selected label. Archiving, labeling, drafts and sending remain local simulations. The application never receives your Gmail password.
+Status: the user completed OAuth and imported ten synthetic Gmail messages. Local database inspection confirmed ten completed Gmail jobs. This is an integration check, not a classification evaluation. The default access profile requests `gmail.readonly`; an explicit `manage` profile requests `gmail.modify` for planned mail actions. Import reads messages from a selected label. Archiving, labeling, drafts and sending remain local simulations. The application never receives your Gmail password.
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a separate test project, such as `Wajo test`. Do not enable paid billing, trial credits or a cloud server for this local integration.
 2. Under **APIs & Services → Library**, enable **Gmail API**.
@@ -37,3 +37,19 @@ HTML-only messages and messages without supported text are counted as `manual_re
 Testing-mode OAuth may require reauthorization after token expiry. To disconnect, stop importing and revoke the application's access in Google Account settings. Never include the local `data/` directory, which can contain message copies and tokens, in a submission archive.
 
 References: [Gmail Python quickstart](https://developers.google.com/workspace/gmail/api/quickstart/python), [OAuth consent configuration](https://developers.google.com/workspace/guides/configure-oauth-consent), and [Gmail API quotas](https://developers.google.com/workspace/gmail/api/reference/quota).
+
+## Upgrade access for planned Gmail actions
+
+The same Desktop OAuth client can request read, label/archive, draft and send access:
+
+```sh
+./.venv/bin/python -m mail_agent.gmail auth --access manage
+```
+
+Run from `task/`. In the Google consent screen, select the dedicated test account and approve the requested Gmail access yourself. No new client JSON is needed. If Google requires the scope to be configured in the project, add `https://www.googleapis.com/auth/gmail.modify` under Google Auth Platform's data access configuration and retry.
+
+The new token replaces the old local token only after successful authorization and scope checking. Loading and refreshing credentials preserves the saved scope profile. A rejected consent or missing requested permission does not overwrite the existing token.
+
+As documented in [Google's scope reference](https://developers.google.com/workspace/gmail/api/auth/scopes), `gmail.modify` covers reading, composing and sending, without immediate permanent deletion bypassing Trash. The application never requests `https://mail.google.com/`, mailbox settings or delegation access. OAuth scopes apply to the mailbox, not only the Wajo-Test label; the selected-label boundary is enforced by application code.
+
+Granting access does not implement Gmail writes or enable autonomous sending. The executor remains local, and sending still requires approval of the specific action. Synthetic messages can be prepared locally; live delivery requires an implemented sender and authorization for the intended test destination.

@@ -1,4 +1,4 @@
-"""Optional read-only Gmail connection. Imported messages use LOCAL execution.
+"""Optional Gmail connection with explicit OAuth access profiles. Imported messages use LOCAL execution.
 
 No Gmail write/send endpoints are implemented. OAuth consent is granted by the user.
 Only the explicitly selected test label is imported and passed to Groq.
@@ -12,7 +12,9 @@ from pathlib import Path
 
 from .web import Application
 
-SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+MANAGE_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
+ACCESS_SCOPES = {"readonly": [READONLY_SCOPE], "manage": [MANAGE_SCOPE]}
 
 
 def private_write(path, content):
@@ -27,17 +29,22 @@ def private_write(path, content):
         raise
 
 
-def authorize(credentials_path, token_path):
+def authorize(credentials_path, token_path, access="readonly"):
     from google_auth_oauthlib.flow import InstalledAppFlow
     config = json.loads(credentials_path.read_text())
     installed = config.get("installed", {})
     if (installed.get("auth_uri") != "https://accounts.google.com/o/oauth2/auth"
             or installed.get("token_uri") != "https://oauth2.googleapis.com/token"):
         raise ValueError("Use an official Google Desktop app OAuth client JSON")
-    flow = InstalledAppFlow.from_client_config(config, SCOPES, autogenerate_code_verifier=True)
+    scopes = ACCESS_SCOPES[access]
+    flow = InstalledAppFlow.from_client_config(config, scopes, autogenerate_code_verifier=True)
     credentials = flow.run_local_server(host="127.0.0.1", port=0, open_browser=True,
-        timeout_seconds=180, authorization_prompt_message="Authorize read-only access in your browser.",
-        success_message="Wajo: read-only Gmail access connected. You may close this window.")
+        timeout_seconds=180, prompt="consent",
+        authorization_prompt_message=f"Authorize Gmail {access} access in your browser.",
+        success_message="Wajo: Gmail authorization received. You may close this window.")
+    granted = credentials.granted_scopes
+    if not set(scopes).issubset(set(granted if granted is not None else credentials.scopes or [])):
+        raise ValueError("Required Gmail access was not granted. The existing token was not replaced.")
     private_write(token_path, credentials.to_json())
 
 
@@ -45,7 +52,9 @@ def service(token_path):
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
     from googleapiclient.discovery import build
-    credentials = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+    credentials = Credentials.from_authorized_user_file(str(token_path))
+    if not {READONLY_SCOPE, MANAGE_SCOPE}.intersection(credentials.scopes or []):
+        raise ValueError("Gmail read access is missing; run the auth command again")
     if credentials.expired and credentials.refresh_token:
         credentials.refresh(Request())
         private_write(token_path, credentials.to_json())
@@ -113,7 +122,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--token", type=Path, default=Path("data/gmail-token.json"))
     sub = parser.add_subparsers(dest="command", required=True)
-    auth = sub.add_parser("auth", help="User authorizes read-only Gmail access in browser")
+    auth = sub.add_parser("auth", help="User authorizes the selected Gmail access profile in browser")
+    auth.add_argument("--access", choices=sorted(ACCESS_SCOPES), default="readonly",
+                      help="readonly (default), or manage: read, labels, archive, drafts and send; no permanent deletion")
     auth.add_argument("--credentials", type=Path, default=Path("data/gmail-credentials.json"))
     imp = sub.add_parser("import", help="Queue selected test-label emails for local Groq analysis")
     imp.add_argument("--db", type=Path, default=Path("data/web-groq.sqlite3"))
@@ -124,8 +135,8 @@ def main():
     args = parser.parse_args()
     try:
         if args.command == "auth":
-            authorize(args.credentials, args.token)
-            print("Read-only Gmail OAuth token saved locally.")
+            authorize(args.credentials, args.token, args.access)
+            print(f"Gmail {args.access} OAuth token saved locally. Mail actions are still simulated.")
         else:
             if not 1 <= args.limit <= 50:
                 parser.error("limit must be between 1 and 50")
