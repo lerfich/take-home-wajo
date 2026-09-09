@@ -96,15 +96,15 @@ class GmailExecutionTests(unittest.TestCase):
                     self.executor.apply(binding,"archive")
         self.api.users.return_value.messages.return_value.modify.assert_not_called()
 
-    def test_legacy_import_stays_local_and_live_send_escalates(self):
+    def test_legacy_import_stays_local_and_live_send_stages_draft(self):
         email=Email("legacy","x@example.test","Test","Test")
         self.agent.proposer=Fixed(Proposal("label","Work",label="AI: Work"))
         row=self.agent.ingest(email)
         self.assertEqual(row["transport"],"local_simulation")
         self.agent.proposer=Fixed(Proposal("send","Reply",text="Thanks",recipient="x@example.test"))
         row=self.agent.ingest(self.email)
-        self.assertEqual(row["status"],"escalated")
-        self.assertEqual(self.agent.snapshot()["gmail_operations"],[])
+        self.assertEqual(row["status"],"executing")
+        self.assertEqual(self.agent.snapshot()["gmail_operations"][0]["operation"],"draft:1")
 
     def test_label_and_restart_recovery(self):
         self.agent.proposer=Fixed(Proposal("label","Work",label="AI: Work"))

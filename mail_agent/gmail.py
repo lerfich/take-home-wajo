@@ -1,6 +1,6 @@
 """Optional Gmail connection with explicit OAuth access profiles. Imports use local execution unless --gmail-live is explicitly selected.
 
-The separate executor supports labels/archive/restore; send and drafts are not implemented. OAuth consent is granted by the user.
+The executor supports labels/archive/restore, saved drafts and exact-version approved sends. OAuth consent is granted by the user.
 Only the explicitly selected test label is imported and passed to Groq.
 """
 import argparse
@@ -137,7 +137,7 @@ def main():
     auth.add_argument("--credentials", type=Path, default=Path("data/gmail-credentials.json"))
     imp = sub.add_parser("import", help="Queue selected test-label emails for local Groq analysis")
     imp.add_argument("--db", type=Path, default=Path("data/web-groq.sqlite3"))
-    imp.add_argument("--gmail-live", action="store_true", help="Bind NEW imports to real Gmail labels/archive/restore; existing imports stay unchanged")
+    imp.add_argument("--gmail-live", action="store_true", help="Bind NEW imports to real Gmail operations, including approved replies; existing imports stay unchanged")
     imp.add_argument("--label", default="Wajo-Test")
     imp.add_argument("--limit", type=int, default=10)
     imp.add_argument("--allow-groq", action="store_true", required=True,
@@ -146,14 +146,14 @@ def main():
     try:
         if args.command == "auth":
             authorize(args.credentials, args.token, args.access)
-            print(f"Gmail {args.access} OAuth token saved locally. Mail actions are still simulated.")
+            print(f"Gmail {args.access} OAuth token saved locally. Live execution still requires explicit import and server flags.")
         else:
             if not 1 <= args.limit <= 50:
                 parser.error("limit must be between 1 and 50")
             args.db.parent.mkdir(parents=True, exist_ok=True)
             app = Application(args.db, recover_jobs=False)
             print(json.dumps(import_label(service(args.token), app, args.label, args.limit, args.gmail_live), indent=2))
-            print("Run mail_agent.web with this database" + (" and --gmail-live. New live imports can change Gmail labels and inbox state." if args.gmail_live else ". Newly queued messages use LOCAL simulation."))
+            print("Run mail_agent.web with this database" + (" and --gmail-live. New live imports can change Gmail; reply sending requires exact approval." if args.gmail_live else ". Newly queued messages use LOCAL simulation."))
     except ImportError:
         parser.exit(2, "Install optional requirements-gmail.txt in your virtual environment.\n")
     except (ValueError, FileNotFoundError) as exc:

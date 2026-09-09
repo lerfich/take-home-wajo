@@ -115,8 +115,17 @@ class Application:
         from .gmail import service
         # Build a fresh client inside this thread; Google HTTP clients are not thread safe.
         class LazyExecutor:
+            def __init__(inner):
+                inner.client = None
+            @property
+            def api(inner):
+                if inner.client is None:
+                    inner.client = service(self.gmail_token)
+                return inner.client
+            def inspect(inner, *args, **kwargs):
+                return GmailExecutor(inner.api).inspect(*args, **kwargs)
             def apply(inner, *args, **kwargs):
-                return GmailExecutor(service(self.gmail_token)).apply(*args, **kwargs)
+                return GmailExecutor(inner.api).apply(*args, **kwargs)
         return run_one(self.db_path, LazyExecutor(), operation_id, check_only)
 
     def state(self):
@@ -125,6 +134,7 @@ class Application:
             state = agent.snapshot()
             email_map = {e["id"]: e for e in state["emails"]}
             for action in state["actions"]:
+                action["reply"] = agent.get(action["id"])["reply"]
                 p = Proposal(**json.loads(action["proposal"]))
                 action["proposal"] = asdict(p)
                 action["preference"] = agent.preference(p, Email(**{
@@ -171,7 +181,7 @@ class Application:
                             raise ValueError("The action changed. Refresh the email")
                         if not all(type(data.get(k)) is str for k in ("text", "recipient")):
                             raise ValueError("Reply text and recipient are required")
-                        return agent.revise_send(action_id, data["text"], data["recipient"])
+                        return agent.revise_send(action_id, data["text"], data["recipient"], data.get("subject"))
                     method = agent.approve if route == "/api/approve" else agent.reject
                     return method(action_id, data["revision"], data.get("scope", "general"))
                 raise ValueError("Unknown operation")
@@ -247,7 +257,7 @@ def main():
     parser.add_argument("--db", type=Path, default=Path("data/web.sqlite3"))
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--demo", action="store_true", help="Scripted fixtures, no model calls; use a separate database")
-    parser.add_argument("--gmail-live", action="store_true", help="Execute queued Gmail labels/archive/restore for explicitly live imports")
+    parser.add_argument("--gmail-live", action="store_true", help="Execute queued Gmail operations for explicitly live imports; sends require approval")
     parser.add_argument("--gmail-token", type=Path, default=Path("data/gmail-token.json"))
     args = parser.parse_args()
     if args.demo and args.gmail_live:

@@ -33,6 +33,7 @@ def main():
     edit.add_argument("action_id", type=int)
     edit.add_argument("--text", required=True)
     edit.add_argument("--recipient", required=True)
+    edit.add_argument("--subject", help="Subject for a live Gmail reply")
     args = parser.parse_args()
     if args.command in {"models", "ingest"}:
         try:
@@ -65,7 +66,7 @@ def main():
         elif args.command == "show":
             result = agent.snapshot()
         elif args.command == "edit":
-            result = agent.revise_send(args.action_id, args.text, args.recipient)
+            result = agent.revise_send(args.action_id, args.text, args.recipient, args.subject)
         elif args.command == "correct-archive":
             result = agent.correct_archive(args.action_id, args.scope)
         elif args.command == "archive-rule":

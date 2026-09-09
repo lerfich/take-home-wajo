@@ -2,7 +2,7 @@
 
 Local execution and safety prototype for the Wajo take-home. **Not the finished AI agent.**
 
-Two explicit modes are available: **scripted demo** (offline fixtures) and **Groq** (real model inference). Local simulation remains the default; explicit Gmail live mode supports labels, archive and restore. Neither mode delivers email yet. Initial permissions, versioned approvals, a SQLite audit trail, archive-preference learning and a local web interface are implemented. Small real-model development checks are recorded in `VERIFICATION.md`; they are not final evaluation. Read-only Gmail OAuth/import has been exercised by the user; local database inspection confirms ten imported Gmail jobs completed. Reversible Gmail writes are implemented and have a small live transport check; see GMAIL_SETUP.md.
+Two explicit modes are available: **scripted demo** (offline fixtures) and **Groq** (real model inference). Local simulation remains the default; explicit Gmail live mode supports labels, archive, restore, drafts and approved replies. Live Gmail replies create a draft and send only after exact-version approval; local sends remain simulations. Initial permissions, versioned approvals, a SQLite audit trail, archive-preference learning and a local web interface are implemented. Small real-model development checks are recorded in `VERIFICATION.md`; they are not final evaluation. Read-only Gmail OAuth/import has been exercised by the user; local database inspection confirms ten imported Gmail jobs completed. Reversible Gmail writes are implemented and have a small live transport check; see GMAIL_SETUP.md.
 
 ## Real model via Groq
 
@@ -121,5 +121,7 @@ The default set uses three training fixtures with scripted evaluation-user appro
 - Sending requires approval; archiving initially asks and can use learned permission as described above. `AI: ` labels and drafts use initial permissions.
 - One proposal per incoming event in this first slice; multi-step draft/send workflows are future work.
 - Local SQLite operations execute in one transaction. This does **not** promise atomic or exactly-once Gmail delivery.
-- Optional learned auto-replies, Gmail sending/drafts/polling, period summaries, reminders, Docker and comprehensive final evaluation are not implemented yet. Read-only Gmail import has been exercised; this does not validate Gmail writes. The web interface is a local first slice. Archive learning is limited to the initial semantic categories and has only small development measurements, not established production quality.
+- Optional learned auto-replies, Gmail polling, period summaries, reminders, Docker and comprehensive final evaluation are not implemented yet. Gmail import, reversible writes and one approved synthetic self-send have been exercised; these are small transport checks, not a final evaluation. The web interface is a local first slice. Archive learning is limited to the initial semantic categories and has only small development measurements, not established production quality.
 - The scripted demo requires no credentials. Groq commands need a key. Local databases and `.env` are excluded from Git.
+
+Live reply workflow: review From/To/Subject/Body, save edits as a new verified Gmail draft revision, then explicitly approve sending. Unknown delivery outcomes allow read-only reconciliation and never automatic resend. See [GMAIL_SETUP.md](GMAIL_SETUP.md) for bounds and manual-intervention cases.

@@ -1,6 +1,6 @@
 # Test Gmail setup
 
-Status: the user completed OAuth and imported ten synthetic Gmail messages. Local database inspection confirmed ten completed Gmail jobs. This is an integration check, not a classification evaluation. The default access profile requests `gmail.readonly`; an explicit `manage` profile requests `gmail.modify` for planned mail actions. Import reads messages from a selected label. Optional live labeling, archiving and restoration are implemented; Gmail drafts and sending remain unavailable. The application never receives your Gmail password.
+Status: the user completed OAuth and imported ten synthetic Gmail messages. Local database inspection confirmed ten completed Gmail jobs. This is an integration check, not a classification evaluation. The default access profile requests `gmail.readonly`; an explicit `manage` profile requests `gmail.modify` for planned mail actions. Import reads messages from a selected label. Optional live labeling, archiving and restoration are implemented; Gmail drafts and exact-version approved sending are implemented. The application never receives your Gmail password.
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a separate test project, such as `Wajo test`. Do not enable paid billing, trial credits or a cloud server for this local integration.
 2. Under **APIs & Services → Library**, enable **Gmail API**.
@@ -30,7 +30,7 @@ In Gmail, create the label `Wajo-Test` and apply it only to synthetic messages. 
 
 If a server using this database is already running, it automatically picks up queued messages; do not start another one. An occupied-port error explains how to open the existing server. To change its database or mode, stop it with Ctrl+C first.
 
-The import flag permits sending selected messages' sender, subject and body to Groq. Local copies enter the queue; Gmail originals are unchanged. Reimporting the same IDs does not duplicate actions. Each invocation fetches up to the requested limit. `more_available` indicates another result page; pagination and periodic polling are not implemented, so repeating the same command may only encounter already imported messages.
+The import flag permits sending selected messages' sender, subject and body to Groq. Local copies enter the queue. The default import uses simulation; explicit live imports can change Gmail through approved or otherwise permitted actions. Reimporting the same IDs does not duplicate actions. Each invocation fetches up to the requested limit. `more_available` indicates another result page; pagination and periodic polling are not implemented, so repeating the same command may only encounter already imported messages.
 
 HTML-only messages and messages without supported text are counted as `manual_review`. Attachments are not downloaded. Inline plain-text UTF-8 is supported; more complex encodings need further work.
 
@@ -52,7 +52,7 @@ The new token replaces the old local token only after successful authorization a
 
 As documented in [Google's scope reference](https://developers.google.com/workspace/gmail/api/auth/scopes), `gmail.modify` covers reading, composing and sending, without immediate permanent deletion bypassing Trash. The application never requests `https://mail.google.com/`, mailbox settings or delegation access. OAuth scopes apply to the mailbox, not only the Wajo-Test label; the selected-label boundary is enforced by application code.
 
-Granting access alone does not enable writes. Explicit live import and live server flags enable only labels, archive and restore. Sending remains unavailable in live mode. Synthetic messages can be prepared locally; live delivery requires an implemented sender and authorization for the intended test destination.
+Granting access alone does not enable writes. Explicit live import and live server flags enable Gmail operations. Sending requires approval of the displayed reply version. Synthetic messages can be prepared locally; live delivery requires an implemented sender and authorization for the intended test destination.
 
 ## Execute reversible Gmail actions
 
@@ -76,3 +76,15 @@ Use one server per database; do not run CLI preference mutations concurrently wi
 A second Gmail account is not required: a reviewer can authorize an existing account through Google's OAuth screen. In the current **Testing** project, their address must first be added to **Test users**. They need the configured Desktop client locally, or can create their own project/client following the setup above. Never distribute your authorized-user token. A Connect Gmail button is not implemented yet; authorization uses the CLI.
 
 Testing-mode Gmail authorization expires after seven days, and organization policies may block access. Broad public availability with restricted Gmail scopes has additional verification requirements. See [Google's audience documentation](https://support.google.com/cloud/answer/15549945?hl=en). Local demo/evaluation remains available without Gmail. Current import consent is specifically for synthetic messages sent to Groq; using private mail requires a separate explicit data-sharing decision.
+
+## Draft, review, edit and send
+
+For new live imports, a valid send/draft proposal first creates a Gmail draft. The card shows From, To, Subject, Body and the version number. Missing draft recipients default to the original sender; invalid values require human review. No message is sent while the draft is being saved.
+
+Once the draft is verified, edit its recipient, subject or body inside Wajo and click **Save new revision**. Wait for Gmail verification. Unsaved edits disable the approval button. A changed subject starts a new conversation when it no longer matches the original subject. Only plain text and one recipient are supported; Cc, Bcc, attachments and sending aliases are not supported.
+
+**Approve and send via Gmail** approves exactly the displayed saved version. Approval is persisted with a hash of the outgoing MIME payload. The worker rechecks the account, original test-label membership, policy, approval and draft contents. It supplies the approved MIME payload in drafts.send, so a concurrently modified draft cannot substitute recipients or content. Changes detected before update/send stop the operation rather than overwriting external edits. A rejected send keeps the unsent draft in Gmail. Manually sending it in Gmail is outside Wajo's controls.
+
+A successful send is verified in Sent before the app reports success. A lost response, crash or unconfirmed readback produces **unknown**, with no automatic resend. **Check Gmail status (read only)** uses the returned message ID when available; otherwise it searches by Message-ID and checks at most 50 recent Sent messages for the exact per-version X-Wajo-Reply-Key and matching sender, recipient, subject and body. Gmail can rewrite Message-ID. An absent or ambiguous match never proves that sending failed and never authorizes a retry. Draft creation uncertainty similarly uses a bounded draft scan. If matching is inconclusive or the user removed the marker/content, inspect Gmail manually.
+
+This prevents automatic duplicate attempts within one database, but is not an exactly-once delivery guarantee across Gmail, independent applications or multiple databases. Do not manually send the same draft while Wajo is sending or investigating an unknown result. Keep one server per database; do not run CLI edits concurrently with the live worker.

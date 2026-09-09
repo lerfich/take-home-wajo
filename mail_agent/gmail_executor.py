@@ -1,4 +1,4 @@
-"""Durable, bounded Gmail label operations. No delivery or deletion endpoints."""
+"""Durable Gmail operations with exact reply approval and no mutation retries."""
 import json
 
 from .core import Agent, Proposal, decide, validate
@@ -86,6 +86,11 @@ def run_one(db_path, executor, operation_id=None, check_only=False):
     row = None
     eligible = False
     try:
+        candidate = (agent.db.execute("SELECT * FROM gmail_operations WHERE status='queued' ORDER BY id LIMIT 1").fetchone()
+                     if operation_id is None else agent.db.execute("SELECT * FROM gmail_operations WHERE id=?", (operation_id,)).fetchone())
+        if candidate is not None and candidate["operation"].split(":")[0] in {"draft", "send"}:
+            from .gmail_replies import run_operation
+            return run_operation(agent, executor, candidate, check_only)
         with agent.db:
             agent.db.execute("BEGIN IMMEDIATE")
             if operation_id is None:

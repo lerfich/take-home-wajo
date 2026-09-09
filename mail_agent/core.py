@@ -134,6 +134,16 @@ class Agent:
                 error TEXT NOT NULL DEFAULT '', UNIQUE(action_id, operation));
         """)
 
+        self.db.executescript("""
+            CREATE TABLE IF NOT EXISTS gmail_replies (
+                action_id INTEGER NOT NULL REFERENCES actions(id), revision INTEGER NOT NULL,
+                recipient TEXT NOT NULL, subject TEXT NOT NULL, text TEXT NOT NULL,
+                message_key TEXT NOT NULL UNIQUE, raw TEXT NOT NULL DEFAULT '',
+                thread_id TEXT NOT NULL DEFAULT '', draft_id TEXT NOT NULL DEFAULT '',
+                sent_id TEXT NOT NULL DEFAULT '', approved_hash TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY(action_id,revision));
+        """)
+
     def queue_gmail(self, action_id, operation, approved=False, scope="general"):
         if scope not in {"general", "sender"}:
             raise ValueError("Feedback scope must be general or sender")
@@ -221,6 +231,12 @@ class Agent:
             raise ValueError("Unknown action")
         result = dict(row)
         result["proposal"] = json.loads(result["proposal"])
+        reply = self.db.execute("SELECT recipient,subject,text,draft_id,sent_id FROM gmail_replies WHERE action_id=? AND revision=?",
+                                (action_id, result["revision"])).fetchone()
+        result["reply"] = dict(reply) if reply else None
+        if reply:
+            binding = self.db.execute("SELECT account FROM gmail_bindings WHERE email_id=?", (result["email_id"],)).fetchone()
+            result["reply"]["sender"] = binding["account"] if binding else ""
         return result
 
     def ingest(self, email: Email) -> dict:
@@ -258,7 +274,12 @@ class Agent:
                 self.db.execute("UPDATE actions SET transport='gmail' WHERE id=?", (action_id,))
                 self.db.execute("UPDATE emails SET archived=? WHERE id=?", (int(not binding["initial_inbox"]), email.id))
                 if proposal.action in {"send", "draft"} and decision.status in {"ready", "pending"}:
-                    decision = Decision("escalate", "review_required", "escalated", "Gmail drafts and sending are not implemented yet")
+                    from .gmail_replies import stage
+                    try:
+                        stage(self, action_id)
+                        decision = Decision("ask", "confirmation_required", "executing", "Saving Gmail draft before send approval")
+                    except ValueError:
+                        decision = Decision("escalate", "review_required", "escalated", "Reply needs a valid recipient, subject and body")
                     self.db.execute("UPDATE actions SET autonomy=?,safety=?,status=?,reason=? WHERE id=?",
                                     (decision.autonomy, decision.safety, decision.status, decision.reason, action_id))
             self.log(action_id, "decision", asdict(decision))
@@ -274,6 +295,10 @@ class Agent:
             row = self.get(action_id)
             if row["status"] != "pending" or row["revision"] != revision:
                 raise ValueError("Approval is stale or action is not pending")
+            if row["transport"] == "gmail" and row["proposal"]["action"] in {"send", "draft"}:
+                from .gmail_replies import approve
+                approve(self, action_id, revision)
+                return self.get(action_id)
             proposal = Proposal(**row["proposal"])
             validate(proposal)
             if decide(proposal).status != "pending":
@@ -297,11 +322,15 @@ class Agent:
             self.record_feedback(action_id, False, scope)
         return self.get(action_id)
 
-    def revise_send(self, action_id: int, text: str, recipient: str) -> dict:
+    def revise_send(self, action_id: int, text: str, recipient: str, subject=None) -> dict:
         """A user edit creates a new version; old displayed approvals cannot apply."""
         with self.db:
             self.db.execute("BEGIN IMMEDIATE")
             row = self.get(action_id)
+            if row["transport"] == "gmail":
+                from .gmail_replies import revise
+                revise(self, action_id, text, recipient, subject)
+                return self.get(action_id)
             if row["status"] != "pending" or row["proposal"]["action"] != "send":
                 raise ValueError("Only pending sends can be edited")
             updated = {**row["proposal"], "text": text, "recipient": recipient}
@@ -315,8 +344,8 @@ class Agent:
         return self.get(action_id)
 
     def _execute(self, action_id: int, approved: bool = False, scope="general"):
-        # Internal only. This local executor shares the SQLite transaction;
-        # a future Gmail executor must handle uncertain external outcomes separately.
+        # Internal only. Local changes share this transaction; Gmail changes are
+        # durably queued and verified outside it.
         row = self.get(action_id)
         p = Proposal(**row["proposal"])
         validate(p)

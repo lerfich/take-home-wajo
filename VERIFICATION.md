@@ -1,5 +1,14 @@
 # Iteration 1 verification
 
+## Gmail drafts and approved replies (2026-09-09)
+
+**71 tests passed**, 0 failures/errors, 4.362 seconds. Reply checks cover draft-before-approval, recipient/subject/body revisions, stale/replayed approvals, header injection, blocked risky proposals, external draft edits, missing/forged approval, source scope removal, draft-creation timeout reconciliation, send timeout reconciliation after restart, Message-ID rewriting with exact marker/content matching, and no automatic resend when Sent search is inconclusive.
+
+Live development run: one Gmail draft created, two updates, version 3 approved through the web UI, **one send operation**, Sent readback and self-delivery Inbox membership confirmed. Recipient, subject and body matched the approved payload. The recipient was only the connected test account. Initial draft verification failed because Gmail rewrote Message-ID; the existing draft was reconciled without duplication after fixing matching. The failure is retained in the aggregate [reply report](reports/gmail-replies-2026-09-09.json) and local audit.
+
+Browser checks confirmed the saved version and approval button, editing the subject disabled approval until saved, and UI approval queued the real send. This used a fixed synthetic proposal and real Gmail transport, with **zero model calls**; it is not a live v6 quality evaluation or final independent evaluation. No account address, token or original message content is in the committed report.
+
+
 ## Reversible Gmail execution (2026-09-09)
 
 **59 tests passed**, 0 failures/errors, 3.889 seconds. New checks cover durable queuing, explicit approval, deferred positive feedback, restoration, learned-permission revocation, current account/label/Trash checks, unknown outcome after a write, read-only reconciliation without replay, crash recovery, legacy transport isolation, unsupported live sends, and the background worker.

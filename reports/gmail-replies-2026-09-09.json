@@ -1,0 +1,22 @@
+{
+  "kind": "live_gmail_reply_development_check",
+  "model_calls": 0,
+  "recipient": "connected test account (self-send)",
+  "draft_created": true,
+  "draft_updates": 2,
+  "approved_revision": 3,
+  "send_operations": 1,
+  "gmail_sent_verified": true,
+  "self_delivery_inbox_verified": true,
+  "recipient_subject_body_verified": true,
+  "initial_failure": "Draft readback rejected Gmail-rewritten Message-ID; no duplicate draft was created.",
+  "resolution": "Reconciled original draft read-only, then updated versions 2 and 3. New revisions use an exact X-Wajo-Reply-Key plus full content checks.",
+  "ui_checks": [
+    "unsaved subject edit disables approval",
+    "saved version 3 displayed",
+    "approve and send queues one operation"
+  ],
+  "scope": "Fixed synthetic proposal, real Gmail draft/update/send via core and web approval. Not a model accuracy evaluation.",
+  "sent_subject": "Wajo synthetic delivery verification \u2014 reviewed",
+  "sent_body": "This is a synthetic Wajo delivery verification. The edited draft was reviewed before sending. No action is required."
+}
