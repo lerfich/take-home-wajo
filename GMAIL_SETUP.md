@@ -11,6 +11,26 @@ Status: the user completed OAuth and imported ten synthetic Gmail messages. Loca
 
 ## Authorize and import
 
+### Through the web interface
+
+After configuring the Desktop client and installing the optional dependencies, start the app from `task/`:
+
+```sh
+./.venv/bin/python -m mail_agent.web --db data/web-groq.sqlite3 --gmail-live
+```
+
+Open Wajo and click **Connect Gmail**. If a saved token exists, the panel checks it without starting another sign-in. Otherwise click **Connect with Google**, complete sign-in in the system browser on the computer running Wajo, and return to the panel. Sign-in waits up to three minutes; closing the panel does not cancel it. **Reconnect with Google** renews or upgrades access. If the Google client is missing, expand the setup instructions. Custom local paths are available through `--gmail-credentials` and `--gmail-token`.
+
+The panel shows the verified account, access profile and whether Wajo-Test exists. **Check connection** reads the Gmail profile and labels; it does not import email text or invoke Groq. Failed verification disables sync until access is checked again. Raw provider errors and token contents never enter the panel.
+
+Review the account and action mode, choose a limit from 10 to 50, explicitly allow synthetic message text to be sent to Groq, and click **Sync emails**. Live mode permits real Gmail actions under the existing policy. Without `--gmail-live`, new imports use local simulation and Connect requests read-only access. Sample mode hides Gmail and rejects its connection/sync routes. The server independently validates consent, account, live mode, label and limit.
+
+This first UI version reads one bounded page. It reports queued, already imported, manual review and whether further pages exist. Repeating sync may encounter the same first page; pagination and automatic polling remain future work. Import counts do not measure decision quality. If sync fails midway, already queued messages may still be processed. Check the inbox and connection; repeated IDs do not duplicate imports or upgrade old simulated actions to live ones.
+
+Connection, sign-in and sync are single-flight background operations serialized with Gmail execution. Browser refresh preserves their state; server restart clears connection verification and the last-sync summary. Queued emails and execution state remain in SQLite. Do not run concurrent CLI mutations. Connecting alone does not import emails, change the server's execution mode or approve sending.
+
+### Through the CLI
+
 From `task/`, create a Python 3.11+ environment and install the optional dependencies (already installed on the development machine):
 
 ```sh
@@ -73,7 +93,7 @@ Use one server per database; do not run CLI preference mutations concurrently wi
 
 ## Reviewer sign-in
 
-A second Gmail account is not required: a reviewer can authorize an existing account through Google's OAuth screen. In the current **Testing** project, their address must first be added to **Test users**. They need the configured Desktop client locally, or can create their own project/client following the setup above. Never distribute your authorized-user token. A Connect Gmail button is not implemented yet; authorization uses the CLI.
+A second Gmail account is not required: a reviewer can authorize an existing account through Google's OAuth screen. In the current **Testing** project, their address must first be added to **Test users**. They need the configured Desktop client locally, or can create their own project/client following the setup above. Never distribute your authorized-user token. Connect Gmail is available in the web interface after local client setup; CLI authorization remains available.
 
 Testing-mode Gmail authorization expires after seven days, and organization policies may block access. Broad public availability with restricted Gmail scopes has additional verification requirements. See [Google's audience documentation](https://support.google.com/cloud/answer/15549945?hl=en). Local demo/evaluation remains available without Gmail. Current import consent is specifically for synthetic messages sent to Groq; using private mail requires a separate explicit data-sharing decision.
 

@@ -1,5 +1,14 @@
 # Iteration 1 verification
 
+## Gmail connection and manual sync UI (2026-09-09)
+
+**83 tests passed**, 0 failures/errors, 4.927 seconds. New checks cover CSRF-protected asynchronous routes, no network activity on state reads, explicit Groq consent, account/mode/limit validation, missing labels and access, account changes between checks, single-flight OAuth and executor serialization, sanitized OAuth failures, partial imports, deduplication, sample-mode rejection and simulation-mode access.
+
+Live browser check reused the existing Google authorization: profile, manage access and Wajo-Test verified. Sync returned **0 queued, 10 already imported, 0 manual review**, with more pages available. The database retained 11 completed jobs and zero Gmail operations: **zero model calls and zero sends** in this check. The consent checkbox initially disabled sync; progress, disabled controls and the final result were observed. The modal was visually checked and browser JavaScript errors were empty.
+
+A new Google consent flow and new-message import were covered with mocks in this iteration, not a new live authorization or new live message. One-page manual sync, process-local connection/summary state and required local Desktop-client setup remain limitations. This is an integration check, not Qwen accuracy or independent final evaluation. See the sanitized [UI integration report](reports/gmail-connect-ui-2026-09-09.json).
+
+
 ## Gmail drafts and approved replies (2026-09-09)
 
 **71 tests passed**, 0 failures/errors, 4.362 seconds. Reply checks cover draft-before-approval, recipient/subject/body revisions, stale/replayed approvals, header injection, blocked risky proposals, external draft edits, missing/forged approval, source scope removal, draft-creation timeout reconciliation, send timeout reconciliation after restart, Message-ID rewriting with exact marker/content matching, and no automatic resend when Sent search is inconclusive.

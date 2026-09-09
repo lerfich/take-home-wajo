@@ -91,12 +91,14 @@ def message_fields(message):
     return {"sender": sender, "subject": headers.get("subject") or "(No subject)", "body": body}
 
 
-def import_label(api, app, label, limit, live=False):
+def import_label(api, app, label, limit, live=False, expected_account=None):
     """One bounded polling cycle. Repeated IDs are deduplicated in the local queue."""
     if live and label != "Wajo-Test":
         raise ValueError("Live writes are restricted to the Wajo-Test label")
     profile = api.users().getProfile(userId="me").execute()
     account = profile["emailAddress"].casefold()
+    if expected_account is not None and account != expected_account:
+        raise ValueError("The Gmail account changed. Check the connection before syncing.")
     labels = api.users().labels().list(userId="me").execute().get("labels", [])
     label_id = next((item["id"] for item in labels if item["name"] == label), None)
     if label_id is None:

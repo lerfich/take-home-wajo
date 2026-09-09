@@ -41,6 +41,8 @@ Open [the local app](http://127.0.0.1:8765/). Add a synthetic email; a backgroun
 
 The overview counts actual current state for **all time**; pending actions have no age cutoff. Cards filter the same underlying message list. A time-range/last-visit summary and urgent-delivery notifications are not implemented in this slice. Notifications are recorded and visible within the page/history; no OS delivery is promised.
 
+**Connect Gmail** opens connection settings in the UI. With the local Google Desktop client configured, sign in through Google or verify an existing connection. Review the account, Wajo-Test scope and execution mode, then explicitly permit synthetic email text to be sent to Groq before clicking **Sync emails**. Use `--gmail-live` to enable real actions for new imports; sending still requires exact-version approval. Connection and sync run in the background and report status. Current sync reads one page of up to 50 messages; pagination and automatic polling are not implemented yet. See [GMAIL_SETUP.md](GMAIL_SETUP.md) for setup and limitations.
+
 For an offline UI demo with prewritten decisions, use a separate database:
 
 ```sh
@@ -119,7 +121,7 @@ The default set uses three training fixtures with scripted evaluation-user appro
 ## Boundaries and next iterations
 
 - Sending requires approval; archiving initially asks and can use learned permission as described above. `AI: ` labels and drafts use initial permissions.
-- One proposal per incoming event in this first slice; multi-step draft/send workflows are future work.
+- One model proposal per incoming event; live replies can progress through draft creation, edits and exact-version approved sending.
 - Local SQLite operations execute in one transaction. This does **not** promise atomic or exactly-once Gmail delivery.
 - Optional learned auto-replies, Gmail polling, period summaries, reminders, Docker and comprehensive final evaluation are not implemented yet. Gmail import, reversible writes and one approved synthetic self-send have been exercised; these are small transport checks, not a final evaluation. The web interface is a local first slice. Archive learning is limited to the initial semantic categories and has only small development measurements, not established production quality.
 - The scripted demo requires no credentials. Groq commands need a key. Local databases and `.env` are excluded from Git.

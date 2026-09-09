@@ -6,7 +6,7 @@ One Python application provides an HTTP UI, CLI and shared SQLite-backed policy 
 
 Safe labels and drafts use initial permission without notification, unless notification is relevant. Eligible learned archives execute with notification. Unlearned archives and all sends require approval of a specific stored action revision. Unsupported operations, unresolved human judgment and provider failures stop execution and are handed to the user. Suspected injection blocks mail actions and generates an informational notification; an ordinary approval cannot unblock it.
 
-Payment, permanent deletion, shell commands and bulk mail access are not executable operations. A syntactically valid model response grants no authority. Recipient/text edits invalidate older send approvals. Sending is currently simulated, never delivered through Gmail. SQLite atomicity only applies to local operations; a future Gmail executor needs explicit handling of uncertain delivery outcomes.
+Payment, permanent deletion, shell commands and bulk mail access are not executable operations. A syntactically valid model response grants no authority. Recipient/text edits invalidate older send approvals. Local sends are simulated; explicitly live Gmail replies require approval of the exact saved version. SQLite atomicity only applies to local operations; Gmail delivery handles uncertain outcomes separately as described below.
 
 ## Preference adaptation
 
@@ -24,11 +24,13 @@ The UI is loopback-only, checks Host, Origin and CSRF on writes, serves fixed as
 
 Unit tests exercise policy boundaries and web requests with adversarial proposals. Live development evaluations classify each synthetic email once, then replay that proposal through fresh and learned policies; this isolates the memory effect and avoids doubling inference costs. Training feedback is supplied by the evaluation's scripted user, and test inputs are separate from training examples. These small developer-written sets were used to refine prompts and are not held-out final evaluation. Full measured results, failures and version distinctions are in `VERIFICATION.md`.
 
-The current interface and executor operate locally. Gmail read-only OAuth and selected-label import have been exercised by the user; ten completed Gmail jobs were confirmed in the local database. This establishes an integration check, not classification accuracy. Gmail polling, richer preference groups, follow-up reminders, time-based summaries, urgent notifications, optional learned replies and final independent evaluation remain future work. No claim of completed take-home or universal injection detection is made.
+The application runs locally and supports optional real Gmail execution. OAuth, selected-label import and Gmail execution have small live integration checks, not classification accuracy measurements. Gmail polling, richer preference groups, follow-up reminders, time-based summaries, urgent notifications, optional learned replies and final independent evaluation remain future work. No claim of completed take-home or universal injection detection is made.
 
 The application UI and new generated explanations use English (prompt triage-v6). Original email content and exact evidence retain their language. Historical decisions are preserved. Archive learning is the first adaptation feature; learning labels, drafting preferences, notification preferences and replies requires separate feedback scopes and evaluation. Archive experience never authorizes another action.
 
 ## Reversible Gmail execution
+
+The web connection panel reuses Desktop OAuth with PKCE and a loopback callback. CSRF-protected POST requests initiate a single background connection/check/sync operation; state reads perform no Gmail I/O. The server fixes OAuth access and import transport from its startup mode, requires explicit Groq consent and the displayed account/mode, and rechecks account and scope before import. OAuth/token refresh and imports share the Gmail executor lock, with a fresh client per operation. Raw provider errors and credentials are excluded from public state. Connection verification and sync summaries are process-local; queued emails persist. This first panel reads one bounded page and does not implement polling or pagination.
 
 Explicit live imports atomically store a trusted account/message/test-label binding alongside the queued email. Action transport is persisted, with old actions defaulting to local simulation. The core writes a durable Gmail operation in the same transaction as the decision or approval. A single-server worker revalidates policy and current mailbox scope before using messages.modify for AI labels or INBOX membership. New live send/draft proposals stage a Gmail draft before any send approval.
 

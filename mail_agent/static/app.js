@@ -34,7 +34,7 @@ function render(){
   const demo=state.mode==='scripted';$('#mode').textContent=demo?'Sample cases · no AI':(state.gmail_enabled?'Qwen · Gmail live':'Qwen · Groq');
   $('#new-email').classList.toggle('hidden',demo);$('#load-demo').classList.toggle('hidden',!demo);
   $('#mode-note').textContent=demo?'Sample cases: emails and decisions are predefined; no AI model is called. All mail actions are simulated locally.':state.gmail_enabled?'Gmail live: new live imports can apply AI labels, archive and restore messages in Wajo-Test. Each decision shows its execution mode. Replies are saved as Gmail drafts. Sending requires approval of the displayed version.':'Local mode: simulation actions stay local. Live Gmail actions remain paused until the server is started with --gmail-live.';
-  $('#nav-count').textContent=state.emails.length;renderMail();renderMemory();
+  $('#nav-count').textContent=state.emails.length;renderMail();renderMemory();renderGmail();
 }
 function renderMail(){
   if(!state)return;
@@ -104,4 +104,48 @@ $('#new-email').addEventListener('click',()=>$('#compose').showModal());$('#clos
 $('#compose-form').addEventListener('submit',async e=>{e.preventDefault();$('#submit-email').disabled=true;try{const r=await post('/api/ingest',Object.fromEntries(new FormData(e.target)));if(r){$('#compose').close();e.target.reset();navigate('mail');setFilter('all');notify('Email queued for agent analysis')}}finally{$('#submit-email').disabled=false}});
 $('#load-demo').addEventListener('click',async()=>{if(await post('/api/demo',{}))notify('Sample cases loaded. Loading again does not duplicate actions')});
 $('#rule-form').addEventListener('submit',async e=>{e.preventDefault();const sender=new FormData(e.target).get('sender');if(await post('/api/rule',{sender,keep:true})){e.target.reset();notify('Exception saved')}});
+let gmailContext='';
+function renderGmail(){
+  const g=state.gmail_connection;if(!g)return;
+  $('#gmail-strip').classList.toggle('hidden',state.mode==='scripted');
+  const running=Boolean(g.operation), connected=g.status==='connected';
+  const context=JSON.stringify([g.account,g.live,g.access]);
+  if(context!==gmailContext){$('#gmail-consent').checked=false;gmailContext=context}
+  $('#gmail-summary').textContent=connected?g.account:'Connect your Gmail';
+  $('#gmail-summary-note').textContent=running?({connect:'Waiting for Google sign-in…',check:'Checking your connection…',sync:'Syncing selected emails…'}[g.operation]):connected?'Wajo-Test · '+(g.live?'Gmail actions enabled':'Local simulation'):'Connect an account and sync selected emails.';
+  $('#open-gmail').textContent=connected?'Gmail settings':'Connect Gmail';
+  $('#gmail-title').textContent=connected?'Your Gmail connection':'Connect Gmail';
+  $('#gmail-account').textContent=connected?g.account:g.token_present?'Saved connection · verification needed':'No Gmail account connected';
+  $('#gmail-access').textContent=connected?(g.access==='manage'?'Read and manage access':'Read-only access'):'Check your connection or sign in with Google.';
+  $('#gmail-progress').textContent=running?({connect:'Continue in your system browser. Google sign-in can take up to three minutes.',check:'Verifying access and the Wajo-Test label…',sync:'Reading selected emails and adding new ones to the analysis queue…'}[g.operation]):g.checked_at&&connected?'Connection checked '+new Date(g.checked_at).toLocaleTimeString('en-US'):'';
+  $('#gmail-error').textContent=g.error||'';$('#gmail-error').classList.toggle('hidden',!g.error);
+  $('#gmail-connect').textContent=g.token_present?'Reconnect with Google':'Connect with Google';
+  $('#gmail-connect').disabled=running||!g.client_ready;$('#gmail-status').disabled=running||!g.token_present;
+  if(!g.client_ready&&!g.token_present)$('#gmail-setup').open=true;
+  $('#gmail-mode').textContent=g.live?'Gmail · real actions':'Local simulation';
+  $('#gmail-scope-note').textContent=connected?(g.label_ready?'Wajo-Test found. Only emails in this label will be read.':'Create the Wajo-Test label in Gmail, add synthetic emails, then check the connection again.'):'Verify your account to enable sync.';
+  $('#gmail-effects').textContent=g.live?'New emails may receive AI labels, be archived, or have replies saved as Gmail drafts under your permissions. Sending always requires approval of the exact saved version.':'Agent actions on new imports are simulated locally. Gmail messages will not be changed.';
+  if(connected&&g.live&&g.access!=='manage')$('#gmail-scope-note').textContent='Reconnect with Google to grant access for live mail actions.';
+  $('#gmail-sync').disabled=running||!connected||!g.label_ready||(g.live&&g.access!=='manage')||!$('#gmail-consent').checked;
+  $('#gmail-limit').disabled=running;$('#gmail-consent').disabled=running;
+  const r=g.last_sync;$('#gmail-result').classList.toggle('hidden',!r);
+  if(r)$('#gmail-result').textContent=`Last completed sync · ${new Date(r.completed_at).toLocaleString('en-US')}. ${r.queued} queued for analysis · ${r.already_imported} already imported · ${r.manual_review} need manual review.${r.more_available?' More emails exist beyond this page. Pagination is not available yet.':''} These counts describe import, not the quality of agent decisions.`;
+}
+$('#open-gmail').addEventListener('click',async()=>{
+  $('#gmail-dialog').showModal();
+  if(state.gmail_connection.token_present&&!state.gmail_connection.operation)await post('/api/gmail/status',{});
+});
+$('#close-gmail').addEventListener('click',()=>$('#gmail-dialog').close());
+async function gmailPost(path,data){
+  const result=await post(path,data);
+  if(!result){$('#gmail-error').textContent=$('#error').textContent||'Please wait for the current operation to finish.';$('#gmail-error').classList.remove('hidden')}
+  return result;
+}
+$('#gmail-connect').addEventListener('click',()=>gmailPost('/api/gmail/connect',{}));
+$('#gmail-status').addEventListener('click',()=>gmailPost('/api/gmail/status',{}));
+$('#gmail-consent').addEventListener('change',renderGmail);
+$('#gmail-sync-form').addEventListener('submit',async e=>{
+  e.preventDefault();const g=state.gmail_connection;
+  await gmailPost('/api/gmail/sync',{allow_groq:$('#gmail-consent').checked,account:g.account,live:g.live,limit:Number($('#gmail-limit').value)});
+});
 refresh();setInterval(()=>refresh(),2500);

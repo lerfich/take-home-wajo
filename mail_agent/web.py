@@ -20,7 +20,8 @@ STATIC = Path(__file__).parent / "static"
 
 
 class Application:
-    def __init__(self, db_path, demo=False, recover_jobs=True, gmail_token=None):
+    def __init__(self, db_path, demo=False, recover_jobs=True, gmail_token=None,
+                 connection_token=None, gmail_credentials=None):
         self.db_path = str(db_path)
         self.demo = demo
         self.gmail_token = gmail_token
@@ -30,6 +31,9 @@ class Application:
         self.stop = threading.Event()
         self.wakeup = threading.Event()
         self.lock = threading.Lock()
+        from .gmail_connection import GmailConnection
+        self.gmail_connection = GmailConnection(self, gmail_token or connection_token or Path("data/gmail-token.json"),
+                                                 gmail_credentials or Path("data/gmail-credentials.json"))
         with self.connect() as db:
             db.execute("""CREATE TABLE IF NOT EXISTS incoming_jobs (
                 id TEXT PRIMARY KEY, email TEXT NOT NULL, status TEXT NOT NULL,
@@ -146,10 +150,15 @@ class Application:
         with self.connect() as db:
             state["jobs"] = [dict(row) for row in db.execute("SELECT * FROM incoming_jobs ORDER BY created_at")]
         state.update(mode="scripted" if self.demo else "groq", csrf=self.csrf,
-                     patterns=sorted(PATTERNS), gmail_enabled=bool(self.gmail_token))
+                     patterns=sorted(PATTERNS), gmail_enabled=bool(self.gmail_token),
+                     gmail_connection=self.gmail_connection.snapshot())
         return state
 
     def mutate(self, route, data):
+        connection_routes = {"/api/gmail/connect": "connect", "/api/gmail/status": "check",
+                             "/api/gmail/sync": "sync"}
+        if route in connection_routes:
+            return self.gmail_connection.start(connection_routes[route], data)
         if route == "/api/ingest":
             return self.enqueue(data)
         with self.lock:
@@ -240,12 +249,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send(500, {"error": "Operation failed. Refresh the page and check the email status."})
 
 
-def create_server(db_path, port=8765, demo=False, gmail_token=None):
+def create_server(db_path, port=8765, demo=False, gmail_token=None, connection_token=None, gmail_credentials=None):
     # Bind before touching persistent queue state: a duplicate launch must not
     # requeue a job currently being processed by the existing server.
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     try:
-        server.app = Application(db_path, demo, gmail_token=gmail_token)
+        server.app = Application(db_path, demo, gmail_token=gmail_token,
+                                 connection_token=connection_token, gmail_credentials=gmail_credentials)
     except Exception:
         server.server_close()
         raise
@@ -259,12 +269,15 @@ def main():
     parser.add_argument("--demo", action="store_true", help="Scripted fixtures, no model calls; use a separate database")
     parser.add_argument("--gmail-live", action="store_true", help="Execute queued Gmail operations for explicitly live imports; sends require approval")
     parser.add_argument("--gmail-token", type=Path, default=Path("data/gmail-token.json"))
+    parser.add_argument("--gmail-credentials", type=Path, default=Path("data/gmail-credentials.json"),
+                        help="Local Google Desktop client JSON for Connect Gmail")
     args = parser.parse_args()
     if args.demo and args.gmail_live:
         parser.error("--demo cannot be combined with --gmail-live")
     args.db.parent.mkdir(parents=True, exist_ok=True)
     try:
-        server = create_server(args.db, args.port, args.demo, args.gmail_token if args.gmail_live else None)
+        server = create_server(args.db, args.port, args.demo, args.gmail_token if args.gmail_live else None,
+                               args.gmail_token, args.gmail_credentials)
     except OSError as exc:
         if exc.errno == errno.EADDRINUSE:
             parser.exit(2, f"Port {args.port} is already in use. If Wajo is running, open "

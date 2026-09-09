@@ -108,6 +108,30 @@ class WebTests(unittest.TestCase):
         with self.assertRaises(HTTPError):
             self.post("/api/ingest", {"sender": "x@example.test", "subject": "hello", "body": "test"})
 
+    def test_gmail_routes_require_csrf_and_return_async_status(self):
+        from unittest.mock import MagicMock
+        from mail_agent.gmail import READONLY_SCOPE
+        connection = self.server.app.gmail_connection
+        connection.token_path = Path(self.directory.name) / "token.json"
+        connection.token_path.write_text(json.dumps({"scopes": [READONLY_SCOPE], "token": "PRIVATE"}))
+        self.server.app.demo = False
+        api = MagicMock()
+        api.users.return_value.getProfile.return_value.execute.return_value = {"emailAddress": "owner@example.test"}
+        api.users.return_value.labels.return_value.list.return_value.execute.return_value = {"labels": []}
+        with patch("mail_agent.gmail.service", return_value=api) as service:
+            for route in ["status", "connect", "sync"]:
+                with self.assertRaises(HTTPError) as error:
+                    self.post("/api/gmail/" + route, {}, **{"X-CSRF-Token": "wrong"})
+                self.assertEqual(error.exception.code, 403)
+            service.assert_not_called()
+            self.assertEqual(self.post("/api/gmail/status", {}), {"started": "check"})
+            connection.thread.join(3)
+            state = self.get()
+        self.assertEqual(state["gmail_connection"]["status"], "connected")
+        self.assertNotIn("PRIVATE", json.dumps(state))
+        with self.assertRaises(HTTPError):
+            self.get("/api/gmail/connect")
+
     def test_background_processing_and_diagnostics(self):
         self.server.app.demo = False
         class FakeProvider:

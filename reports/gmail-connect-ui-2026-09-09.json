@@ -1,0 +1,39 @@
+{
+  "date": "2026-09-09",
+  "kind": "development_integration_check",
+  "tests": {
+    "passed": 83,
+    "failures": 0,
+    "errors": 0,
+    "duration_seconds": 4.927
+  },
+  "browser": {
+    "connection_panel_visually_checked": true,
+    "javascript_errors": 0,
+    "sync_disabled_without_consent": true,
+    "single_flight_progress_visible": true
+  },
+  "live_gmail": {
+    "existing_token_verified": true,
+    "access": "manage",
+    "test_label_found": true,
+    "sync": {
+      "queued": 0,
+      "already_imported": 10,
+      "manual_review": 0,
+      "more_available": true
+    },
+    "jobs_before": 11,
+    "jobs_after": 11,
+    "gmail_operations_after": 0,
+    "model_calls": 0,
+    "send_operations": 0
+  },
+  "oauth_new_consent": "mocked tests only; existing live authorization reused",
+  "new_message_sync": "mocked Gmail tests; no new live message imported in this check",
+  "limitations": [
+    "One bounded page per sync; no pagination or automatic polling.",
+    "Connection verification and last-sync summary reset on server restart.",
+    "Not a model quality or independent final evaluation."
+  ]
+}
