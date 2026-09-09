@@ -53,15 +53,15 @@ class Application:
 
     def enqueue(self, payload, event_id=None):
         if self.demo:
-            raise ValueError("Произвольные письма доступны в режиме Groq; демо использует заданные сценарии")
+            raise ValueError("Custom emails require Groq mode; sample mode uses predefined cases")
         if type(payload) is not dict or set(payload) != {"sender", "subject", "body"}:
-            raise ValueError("Нужны отправитель, тема и текст")
+            raise ValueError("Sender, subject and body are required")
         if not all(type(v) is str and v.strip() for v in payload.values()):
-            raise ValueError("Заполните все поля письма")
+            raise ValueError("Complete all email fields")
         if "@" not in payload["sender"] or any(c in payload["sender"] for c in "\r\n,;"):
-            raise ValueError("Укажите один email отправителя")
+            raise ValueError("Enter one sender email address")
         if len(json.dumps(payload)) > 24000:
-            raise ValueError("Письмо слишком длинное для текущей версии")
+            raise ValueError("Email exceeds the current size limit")
         email = Email(event_id or uuid.uuid4().hex, **payload)
         with self.connect() as db:
             db.execute("INSERT OR IGNORE INTO incoming_jobs(id,email,status,created_at) VALUES(?,?,'queued',?)",
@@ -91,7 +91,7 @@ class Application:
                 diagnostics = provider.calls
             except Exception:
                 status = "error"
-                diagnostics = [{"status": "error", "error": "Обработка недоступна. Проверьте локальную настройку Groq."}]
+                diagnostics = [{"status": "error", "error": "Processing unavailable. Check the local Groq configuration."}]
             with self.connect() as db:
                 db.execute("UPDATE incoming_jobs SET status=?,diagnostics=? WHERE id=?",
                            (status, json.dumps(diagnostics, ensure_ascii=False), row["id"]))
@@ -126,25 +126,25 @@ class Application:
                     return [agent.ingest(email) for email, _ in CASES]
                 if route == "/api/rule":
                     if type(data.get("keep", True)) is not bool:
-                        raise ValueError("Некорректное правило")
+                        raise ValueError("Invalid rule")
                     return agent.set_archive_rule(data.get("sender", "*"), data.get("pattern", "*"), data.get("keep", True))
                 if route in {"/api/approve", "/api/reject", "/api/correct", "/api/edit"}:
                     if type(data.get("action_id")) is not int:
-                        raise ValueError("Некорректный ID действия")
+                        raise ValueError("Invalid action ID")
                     action_id = data["action_id"]
                     if route == "/api/correct":
                         return agent.correct_archive(action_id, data.get("scope", "general"))
                     if type(data.get("revision")) is not int:
-                        raise ValueError("Нужна версия показанного действия")
+                        raise ValueError("The displayed action revision is required")
                     if route == "/api/edit":
                         if agent.get(action_id)["revision"] != data["revision"]:
-                            raise ValueError("Действие изменилось. Обновите письмо")
+                            raise ValueError("The action changed. Refresh the email")
                         if not all(type(data.get(k)) is str for k in ("text", "recipient")):
-                            raise ValueError("Нужны текст и получатель")
+                            raise ValueError("Reply text and recipient are required")
                         return agent.revise_send(action_id, data["text"], data["recipient"])
                     method = agent.approve if route == "/api/approve" else agent.reject
                     return method(action_id, data["revision"], data.get("scope", "general"))
-                raise ValueError("Неизвестная операция")
+                raise ValueError("Unknown operation")
             finally:
                 agent.close()
 
@@ -184,20 +184,20 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if (not self.valid_host() or self.headers.get("Origin") != "http://" + self.headers.get("Host", "")
                 or not secrets.compare_digest(self.headers.get("X-CSRF-Token", ""), self.server.app.csrf)):
-            return self.send(403, {"error": "Обновите страницу приложения и повторите действие"})
+            return self.send(403, {"error": "Refresh the app and try again"})
         try:
             size = int(self.headers.get("Content-Length", "0"))
             if not 0 < size <= 65536 or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
-                return self.send(400, {"error": "Ожидается JSON размером до 64 КБ"})
+                return self.send(400, {"error": "Expected JSON up to 64 KB"})
             data = json.loads(self.rfile.read(size))
             if type(data) is not dict:
-                raise ValueError("Ожидается объект JSON")
+                raise ValueError("Expected a JSON object")
             result = self.server.app.mutate(self.path, data)
             self.send(200, result)
         except (ValueError, TypeError, KeyError, AttributeError) as exc:
             self.send(400, {"error": str(exc)})
         except Exception:
-            self.send(500, {"error": "Не удалось выполнить операцию. Обновите страницу и проверьте состояние письма."})
+            self.send(500, {"error": "Operation failed. Refresh the page and check the email status."})
 
 
 def create_server(db_path, port=8765, demo=False):
@@ -223,9 +223,9 @@ def main():
         server = create_server(args.db, args.port, args.demo)
     except OSError as exc:
         if exc.errno == errno.EADDRINUSE:
-            parser.exit(2, f"Порт {args.port} уже занят. Если Wajo уже запущен, откройте "
-                        f"http://127.0.0.1:{args.port}/ — второй запуск не нужен. "
-                        "Не запускайте два сервера с одной базой данных.\n")
+            parser.exit(2, f"Port {args.port} is already in use. If Wajo is running, open "
+                        f"http://127.0.0.1:{args.port}/; a second launch is unnecessary. "
+                        "To change the database or mode, stop the existing server with Ctrl+C first. Do not run two servers against the same database.\n")
         raise
     server.app.worker.start()
     print(f"Wajo local mailbox: http://127.0.0.1:{server.server_address[1]} ({'scripted demo' if args.demo else 'Groq'})", flush=True)

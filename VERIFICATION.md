@@ -1,5 +1,14 @@
 # Iteration 1 verification
 
+## English application and Gmail import follow-up (2026-09-09)
+
+**48 tests passed**, 0 failures/errors, Python 3.14, unittest duration 3.707 seconds. A separate subprocess check on an occupied port returned exit code 2 with an English explanation and no traceback. The existing bind-before-queue-initialization regression passed.
+
+UI labels, validation errors and demo fixtures now use English. Browser checks confirmed the inbox counters and preference screen render in English; the preference screen was visually inspected. Prompt **triage-v6** requests English generated text and preserves verbatim evidence. No live v6 quality evaluation was run; previous v5 metrics do not apply to this prompt.
+
+The user reported successful Gmail OAuth and a ten-message test import. Read-only aggregate inspection of the local database confirmed **10 Gmail jobs done**, no remaining Gmail jobs queued/processing/failed. There were 11 completed jobs total, including one earlier local message. This confirms recorded processing completion, not correct classification of those messages. No message content, credentials or tokens are included in this report. Gmail actions remain local simulations.
+
+
 ## Iteration 5 — live pattern checks, bounded retries and local web (2026-09-09)
 
 **47 tests passed**, 0 failures/errors, Python 3.14.3, 3.215 seconds. Includes HTTP diagnostics/retry limits, CSRF/Origin/Host checks, exact action revisions, archive correction/exceptions, persistent queue handling and mocked Gmail read-only import/deduplication. Optional Google dependencies installed in `.venv`; exact environment versions saved in `requirements-gmail.lock.txt`. No live OAuth connection has been made.

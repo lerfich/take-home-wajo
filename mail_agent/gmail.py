@@ -79,7 +79,7 @@ def message_fields(message):
     body = plain_body(payload)
     if not body or "@" not in sender:
         raise ValueError("Missing plain-text body or sender; message requires manual review")
-    return {"sender": sender, "subject": headers.get("subject") or "(Без темы)", "body": body}
+    return {"sender": sender, "subject": headers.get("subject") or "(No subject)", "body": body}
 
 
 def import_label(api, app, label, limit):

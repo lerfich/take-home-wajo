@@ -13,7 +13,7 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 from .core import Email, Proposal, validate, PATTERNS
 
 DEFAULT_MODEL = "qwen/qwen3.8-27b"
-PROMPT_VERSION = "triage-v5"
+PROMPT_VERSION = "triage-v6"
 SYSTEM = (Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.txt").read_text()
 FIELDS = {name: {"type": "string"} for name in ("action", "reason", "label", "text", "recipient")}
 FIELDS.update({name: {"type": "boolean"} for name in ("notify", "suspicious", "needs_human")})

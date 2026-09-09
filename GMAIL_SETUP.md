@@ -1,17 +1,17 @@
-# Подготовка тестового Gmail
+# Test Gmail setup
 
-Статус: код OAuth и импорта реализован, но живое подключение ещё не выполнено. Сейчас интерфейс работает с локальным ящиком. Первый Gmail-этап запрашивает только чтение (`gmail.readonly`) и импортирует сообщения из явно выбранной метки; архивирование, метки, черновики и отправка пока остаются локальной имитацией. Пароль Gmail приложению не передаётся.
+Status: the user completed OAuth and imported ten synthetic Gmail messages. Local database inspection confirmed ten completed Gmail jobs. This is an integration check, not a classification evaluation. The integration requests only `gmail.readonly` and imports messages from a selected label. Archiving, labeling, drafts and sending remain local simulations. The application never receives your Gmail password.
 
-1. Откройте [Google Cloud Console](https://console.cloud.google.com/) под аккаунтом, которому будет принадлежать тестовый проект. Создайте отдельный проект, например `Wajo test`. Для этой локальной интеграции не включайте платный биллинг, пробный кредит или облачный сервер.
-2. В **APIs & Services → Library** найдите **Gmail API** и включите его в этом проекте.
-3. Откройте **Google Auth Platform → Branding → Get started**. Назовите приложение `Wajo local test`, укажите свой контактный email. Для обычного личного Gmail выберите аудиторию **External**. Условия Google прочитайте и примите самостоятельно, если согласны.
-4. В **Audience** оставьте статус **Testing** и добавьте адрес отдельного тестового Gmail в **Test users**. Публикация приложения не нужна.
-5. В **Clients → Create client** выберите **Desktop app**, имя `Wajo local`. Скачайте JSON клиента.
-6. Сохраните файл только локально как `task/data/gmail-credentials.json`. Каталог `data/` исключён из Git. Не вставляйте содержимое JSON в чат и не коммитьте его.
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a separate test project, such as `Wajo test`. Do not enable paid billing, trial credits or a cloud server for this local integration.
+2. Under **APIs & Services → Library**, enable **Gmail API**.
+3. Open **Google Auth Platform → Branding → Get started**. Name the app `Wajo local test` and provide your contact email. For a personal Gmail account, select **External**. Review and accept any Google terms yourself if you agree.
+4. In **Audience**, keep **Testing** and add the dedicated Gmail address under **Test users**. Publishing the application is unnecessary.
+5. Under **Clients → Create client**, select **Desktop app**, name it `Wajo local`, and download its JSON.
+6. Save it locally as `task/data/gmail-credentials.json`. The data directory is ignored by Git. Never paste credentials into chat or commit them.
 
-## Запуск после настройки клиента
+## Authorize and import
 
-Из каталога `task/` создайте виртуальное окружение Python 3.11+ и установите дополнительные библиотеки (на компьютере разработки это уже сделано):
+From `task/`, create a Python 3.11+ environment and install the optional dependencies (already installed on the development machine):
 
 ```sh
 python3 -m venv .venv
@@ -19,17 +19,21 @@ python3 -m venv .venv
 ./.venv/bin/python -m mail_agent.gmail auth
 ```
 
-Google откроет страницу согласия. Выберите тестовый ящик и самостоятельно подтвердите **доступ только для чтения**. Код использует Desktop OAuth с PKCE и локальным callback, записывает токен в `data/gmail-token.json` с правами `0600`. Подключение ещё не передаёт письма Groq.
+Google opens the consent screen. Select the test mailbox and approve **read-only access** yourself. Desktop OAuth uses PKCE and a loopback callback. The token is saved as `data/gmail-token.json` with permissions `0600`. Authorization alone does not send email content to Groq.
 
-В Gmail вручную создайте метку `Wajo-Test` и добавьте к ней только синтетические письма. Затем:
+In Gmail, create the label `Wajo-Test` and apply it only to synthetic messages. Then run:
 
 ```sh
 ./.venv/bin/python -m mail_agent.gmail import --label Wajo-Test --limit 10 --allow-groq
 ./.venv/bin/python -m mail_agent.web --db data/web-groq.sqlite3
 ```
 
-Если веб-сервер с этой базой уже работает, повторно запускать его не нужно: он подхватит новые задания сам. Команда импорта разрешает отправить отправителя, тему и текст выбранных писем в Groq. Копии попадают в локальную очередь, оригиналы Gmail не изменяются. Повторный импорт тех же ID не создаёт повторных операций. Один запуск получает до заданного количества сообщений; флаг `more_available` сообщает о наличии следующей страницы. Автоматический периодический опрос, пагинация всего ящика и Gmail-запись ещё не реализованы. HTML-only письма и сообщения без подходящего текста учитываются как `manual_review`; вложения не скачиваются. Поддерживается inline plain-text UTF-8; сложные кодировки требуют дальнейшей доработки.
+If a server using this database is already running, it automatically picks up queued messages; do not start another one. An occupied-port error explains how to open the existing server. To change its database or mode, stop it with Ctrl+C first.
 
-Тестовый OAuth может потребовать повторного входа по истечении срока токена. Для прекращения доступа остановите импорт и отзовите разрешение приложения в настройках Google Account. В `data/` могут находиться копии сообщений и токены — не включайте его в сдаваемый архив.
+The import flag permits sending selected messages' sender, subject and body to Groq. Local copies enter the queue; Gmail originals are unchanged. Reimporting the same IDs does not duplicate actions. Each invocation fetches up to the requested limit. `more_available` indicates another result page; pagination and periodic polling are not implemented, so repeating the same command may only encounter already imported messages.
 
-Официальные инструкции: [Gmail Python quickstart](https://developers.google.com/workspace/gmail/api/quickstart/python), [настройка согласия OAuth и тестовых пользователей](https://developers.google.com/workspace/guides/configure-oauth-consent). Стандартное использование Gmail API доступно без дополнительной платы в рамках опубликованных квот: [квоты Gmail](https://developers.google.com/workspace/gmail/api/reference/quota). Проверено 9 сентября 2026 года.
+HTML-only messages and messages without supported text are counted as `manual_review`. Attachments are not downloaded. Inline plain-text UTF-8 is supported; more complex encodings need further work.
+
+Testing-mode OAuth may require reauthorization after token expiry. To disconnect, stop importing and revoke the application's access in Google Account settings. Never include the local `data/` directory, which can contain message copies and tokens, in a submission archive.
+
+References: [Gmail Python quickstart](https://developers.google.com/workspace/gmail/api/quickstart/python), [OAuth consent configuration](https://developers.google.com/workspace/guides/configure-oauth-consent), and [Gmail API quotas](https://developers.google.com/workspace/gmail/api/reference/quota).
