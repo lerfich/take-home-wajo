@@ -13,6 +13,15 @@ from mail_agent.web import create_server
 
 
 class WebTests(unittest.TestCase):
+    def test_duplicate_start_does_not_reset_processing_queue(self):
+        self.server.app.demo = False
+        self.server.app.enqueue({"sender": "test@example.test", "subject": "Test", "body": "Synthetic"})
+        with self.server.app.connect() as db:
+            db.execute("UPDATE incoming_jobs SET status='processing'")
+        with self.assertRaises(OSError):
+            create_server(self.server.app.db_path, self.server.server_address[1])
+        self.assertEqual(self.server.app.state()["jobs"][0]["status"], "processing")
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.server = create_server(Path(self.directory.name) / "web.sqlite3", 0, True)

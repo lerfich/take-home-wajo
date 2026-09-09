@@ -1,5 +1,6 @@
 """Loopback-only local UI. Same policy core; background local inbox processing."""
 import argparse
+import errno
 from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -200,9 +201,14 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def create_server(db_path, port=8765, demo=False):
-    app = Application(db_path, demo)
+    # Bind before touching persistent queue state: a duplicate launch must not
+    # requeue a job currently being processed by the existing server.
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    server.app = app
+    try:
+        server.app = Application(db_path, demo)
+    except Exception:
+        server.server_close()
+        raise
     return server
 
 
@@ -213,7 +219,14 @@ def main():
     parser.add_argument("--demo", action="store_true", help="Scripted fixtures, no model calls; use a separate database")
     args = parser.parse_args()
     args.db.parent.mkdir(parents=True, exist_ok=True)
-    server = create_server(args.db, args.port, args.demo)
+    try:
+        server = create_server(args.db, args.port, args.demo)
+    except OSError as exc:
+        if exc.errno == errno.EADDRINUSE:
+            parser.exit(2, f"Порт {args.port} уже занят. Если Wajo уже запущен, откройте "
+                        f"http://127.0.0.1:{args.port}/ — второй запуск не нужен. "
+                        "Не запускайте два сервера с одной базой данных.\n")
+        raise
     server.app.worker.start()
     print(f"Wajo local mailbox: http://127.0.0.1:{server.server_address[1]} ({'scripted demo' if args.demo else 'Groq'})", flush=True)
     try:
