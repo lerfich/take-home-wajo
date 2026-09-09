@@ -2,7 +2,7 @@
 
 ## Optional Gmail manage access (2026-09-09)
 
-**50 tests passed**, 0 failures/errors, unittest duration 3.725 seconds. New mocked OAuth checks cover both access profiles, refusal to replace a token when the requested scope is missing, private token permissions, and preserving stored scopes while loading/refreshing credentials. The explicit `auth --access manage` profile requests only `gmail.modify`; default authorization remains read-only. Expanded live consent has not yet been performed or verified. No Gmail write/send endpoint is implemented by this change.
+**50 tests passed**, 0 failures/errors, unittest duration 3.725 seconds. New mocked OAuth checks cover both access profiles, refusal to replace a token when the requested scope is missing, private token permissions, and preserving stored scopes while loading/refreshing credentials. The explicit `auth --access manage` profile requests only `gmail.modify`; default authorization remains read-only. After user consent, inspection confirmed gmail.modify in the saved token scopes. Live Gmail getProfile and labels.list requests succeeded, and Wajo-Test was found. No address, token or message content was logged. These read requests do not validate write execution. No Gmail write/send endpoint is implemented by this change.
 
 
 ## English application and Gmail import follow-up (2026-09-09)
