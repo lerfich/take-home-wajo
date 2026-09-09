@@ -7,13 +7,16 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
-from .core import Email, Proposal, validate
+from .core import Email, Proposal, validate, PATTERNS
 
 DEFAULT_MODEL = "qwen/qwen3.8-27b"
-PROMPT_VERSION = "triage-v3"
-SYSTEM = (Path(__file__).parent / "prompts" / "triage-v3.txt").read_text()
+PROMPT_VERSION = "triage-v4"
+SYSTEM = (Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.txt").read_text()
 FIELDS = {name: {"type": "string"} for name in ("action", "reason", "label", "text", "recipient")}
 FIELDS.update({name: {"type": "boolean"} for name in ("notify", "suspicious", "needs_human")})
+FIELDS.update({name: {"type": "boolean"} for name in ("requires_action", "has_deadline", "significant_change", "sensitive")})
+FIELDS["pattern"] = {"type": "string", "enum": sorted(PATTERNS | {"unknown"})}
+FIELDS["pattern_evidence"] = {"type": "string"}
 SCHEMA = {"type": "object", "properties": FIELDS, "required": list(FIELDS), "additionalProperties": False}
 
 

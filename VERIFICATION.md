@@ -1,5 +1,13 @@
 # Iteration 1 verification
 
+## Iteration 4 — archive preference memory (2026-09-09)
+
+**34 unit tests passed**, 0 failures/errors, Python 3.14, unittest duration 0.043 seconds. Includes all four initial semantic categories, cross-sender transfer, sender-only scope, explicit keep exceptions, rejection, correction/reset, persistence, no learning from silence or automatic execution, risk flags, replay prevention and unchanged send/unsupported-operation restrictions.
+
+Offline evaluation: [policy report](reports/learning-policy-2026-09-09.json). Three scripted-user approvals on separate training emails; six subsequent checks. Questions **2 → 0**, eligible autoarchives **2/2**, inappropriate autoarchives **0/4** negative cases, expectation matches **6/6**. Classifications were supplied by fixtures, so these numbers measure the policy only. Test emails include job/support acknowledgements, an interview invitation, a rejection, injection and payment. The report includes full simulated state and approval evidence. No real mail was sent.
+
+Live evaluation: [partial Groq report](reports/learning-v4-2026-09-09.json). **One request attempted, one HTTP 429, zero successful classifications, zero test cases completed.** No automatic retry or paid fallback. The new `triage-v4` prompt and schema are therefore **not live-validated**; v3 accuracy numbers below do not apply to v4. This iteration is not final evaluation or proof of safe unattended archive learning. The exact-quote check establishes only that evidence occurs in the body; semantic flags may still be wrong.
+
 ## Iteration 3 — triage priority correction (2026-09-09)
 
 Instruction moved to `mail_agent/prompts/triage-v3.txt`. Outstanding financial requests and attempts to forge assistant authorization now take priority over routine sorting. Settled receipts and benign security quotations are distinguished explicitly. This is a prompt/classification correction, not a claim of a complete injection defense.

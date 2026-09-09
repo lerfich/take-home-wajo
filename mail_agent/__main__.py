@@ -20,6 +20,15 @@ def main():
         sub = commands.add_parser(command)
         sub.add_argument("action_id", type=int)
         sub.add_argument("--revision", required=True, type=int)
+        sub.add_argument("--scope", choices=("general", "sender"), default="general",
+                         help="Learn for this semantic pattern across senders (default), or this sender only")
+    correction = commands.add_parser("correct-archive", help="Undo archive and reset learning in the selected scope")
+    correction.add_argument("action_id", type=int)
+    correction.add_argument("--scope", choices=("general", "sender"), default="general")
+    rule = commands.add_parser("archive-rule", help="Explicit keep-in-inbox exception; exact sender, no company inference")
+    rule.add_argument("--sender", default="*", help="Exact sender, or * for all")
+    rule.add_argument("--pattern", default="*", help="Semantic pattern, or * for all")
+    rule.add_argument("--remove", action="store_true")
     edit = commands.add_parser("edit")
     edit.add_argument("action_id", type=int)
     edit.add_argument("--text", required=True)
@@ -57,8 +66,12 @@ def main():
             result = agent.snapshot()
         elif args.command == "edit":
             result = agent.revise_send(args.action_id, args.text, args.recipient)
+        elif args.command == "correct-archive":
+            result = agent.correct_archive(args.action_id, args.scope)
+        elif args.command == "archive-rule":
+            result = agent.set_archive_rule(args.sender, args.pattern, not args.remove)
         else:
-            result = getattr(agent, args.command)(args.action_id, args.revision)
+            result = getattr(agent, args.command)(args.action_id, args.revision, args.scope)
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except (ValueError, OSError) as exc:
         parser.exit(2, f"Error: {exc}\n")

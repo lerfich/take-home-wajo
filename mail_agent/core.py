@@ -25,6 +25,12 @@ class Proposal:
     notify: bool = False
     suspicious: bool = False
     needs_human: bool = False
+    pattern: str = "unknown"
+    requires_action: bool = True
+    has_deadline: bool = True
+    significant_change: bool = True
+    sensitive: bool = True
+    pattern_evidence: str = ""
 
 
 class Proposer(Protocol):
@@ -61,12 +67,25 @@ def decide(p: Proposal) -> Decision:
 def validate(proposal: Proposal) -> None:
     if type(proposal) is not Proposal:
         raise ValueError("Invalid proposal type")
-    for name in ("action", "reason", "label", "text", "recipient"):
+    for name in ("action", "reason", "label", "text", "recipient", "pattern", "pattern_evidence"):
         if type(getattr(proposal, name)) is not str:
             raise ValueError(f"Invalid {name}")
-    for name in ("notify", "suspicious", "needs_human"):
+    for name in ("notify", "suspicious", "needs_human", "requires_action", "has_deadline", "significant_change", "sensitive"):
         if type(getattr(proposal, name)) is not bool:
             raise ValueError(f"Invalid {name}")
+    if proposal.pattern not in PATTERNS | {"unknown"}:
+        raise ValueError("Invalid semantic pattern")
+
+
+# Communicative purpose, not sender/domain, subject keywords or job-search templates.
+PATTERNS = {"acknowledgement_only", "periodic_digest", "routine_success", "informational_reference"}
+
+
+def learnable(p: Proposal, email: Email) -> bool:
+    return (p.action == "archive" and p.pattern in PATTERNS and not any((
+        p.suspicious, p.needs_human, p.requires_action, p.has_deadline,
+        p.significant_change, p.sensitive, p.notify))
+        and bool(p.pattern_evidence.strip()) and p.pattern_evidence in email.body)
 
 
 class Agent:
@@ -93,7 +112,75 @@ class Agent:
             CREATE TABLE IF NOT EXISTS audit (
                 id INTEGER PRIMARY KEY, action_id INTEGER REFERENCES actions(id),
                 event TEXT NOT NULL, details TEXT NOT NULL, created_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS preference_feedback (
+                id INTEGER PRIMARY KEY, action_id INTEGER NOT NULL REFERENCES actions(id),
+                scope TEXT NOT NULL, pattern TEXT NOT NULL, positive INTEGER NOT NULL,
+                created_at TEXT NOT NULL, UNIQUE(action_id, positive));
+            CREATE TABLE IF NOT EXISTS archive_rules (
+                scope TEXT NOT NULL, pattern TEXT NOT NULL, mode TEXT NOT NULL,
+                PRIMARY KEY(scope, pattern));
         """)
+
+    def email_for(self, action_id):
+        row = self.db.execute("SELECT e.id,e.sender,e.subject,e.body FROM emails e JOIN actions a ON a.email_id=e.id WHERE a.id=?", (action_id,)).fetchone()
+        if row is None:
+            raise ValueError("Unknown action")
+        return Email(**dict(row))
+
+    def preference(self, p, email):
+        """Explicit keep rules override learning; sender experience overrides general."""
+        sender = email.sender.strip().casefold()
+        rules = list(self.db.execute("SELECT * FROM archive_rules WHERE scope IN ('*',?) AND pattern IN ('*',?)", (sender, p.pattern)))
+        if rules:
+            return {"mode": "keep", "rules": [dict(r) for r in rules]}
+        if not learnable(p, email):
+            return {"mode": "ask", "reason": "Not eligible for archive learning"}
+        rows = list(self.db.execute("SELECT * FROM preference_feedback WHERE scope IN ('*',?) AND pattern=? ORDER BY id", (sender, p.pattern)))
+        scope = sender if any(r["scope"] == sender for r in rows) else "*"
+        scoped = [r for r in rows if r["scope"] == scope]
+        last_negative = max((r["id"] for r in scoped if not r["positive"]), default=0)
+        evidence = [r["id"] for r in scoped if r["positive"] and r["id"] > last_negative]
+        return {"mode": "notify" if len(evidence) >= 3 else "ask", "scope": scope,
+                "pattern": p.pattern, "approval_ids": evidence, "threshold": 3}
+
+    def set_archive_rule(self, sender="*", pattern="*", keep=True):
+        """Trusted local user only. Exact sender, never inferred company affiliation."""
+        if not sender.strip() or pattern not in PATTERNS | {"*"}:
+            raise ValueError("Invalid rule scope or pattern")
+        scope = sender.strip().casefold()
+        with self.db:
+            if keep:
+                self.db.execute("INSERT OR REPLACE INTO archive_rules VALUES(?,?,'keep')", (scope, pattern))
+            else:
+                self.db.execute("DELETE FROM archive_rules WHERE scope=? AND pattern=?", (scope, pattern))
+            self.log(None, "archive_rule_changed", {"scope": scope, "pattern": pattern, "keep": keep})
+        return {"scope": scope, "pattern": pattern, "keep": keep}
+
+    def record_feedback(self, action_id, positive, scope):
+        if scope not in {"general", "sender"}:
+            raise ValueError("Feedback scope must be general or sender")
+        row = self.get(action_id)
+        email = self.email_for(action_id)
+        p = Proposal(**row["proposal"])
+        if not learnable(p, email):
+            return  # Approval still works, but uncertain/risky proposals cannot train.
+        key = "*" if scope == "general" else email.sender.strip().casefold()
+        self.db.execute("INSERT INTO preference_feedback(action_id,scope,pattern,positive,created_at) VALUES(?,?,?,?,?)",
+                        (action_id, key, p.pattern, int(positive), datetime.now(timezone.utc).isoformat()))
+        self.log(action_id, "preference_feedback", {"scope": key, "pattern": p.pattern, "positive": positive})
+
+    def correct_archive(self, action_id, scope="general"):
+        """Restore the local inbox and suspend learning in the selected scope."""
+        with self.db:
+            self.db.execute("BEGIN IMMEDIATE")
+            row = self.get(action_id)
+            if row["status"] != "executed" or row["proposal"]["action"] != "archive":
+                raise ValueError("Only an executed archive can be corrected")
+            self.record_feedback(action_id, False, scope)
+            self.db.execute("UPDATE emails SET archived=0 WHERE id=?", (row["email_id"],))
+            self.db.execute("UPDATE actions SET status='corrected' WHERE id=?", (action_id,))
+            self.log(action_id, "archive_corrected", {"scope": scope})
+        return self.get(action_id)
 
     def close(self):
         self.db.close()
@@ -122,6 +209,12 @@ class Agent:
             proposal = self.proposer.propose(email)
             validate(proposal)
             decision = decide(proposal)
+            if decision.status == "pending" and proposal.action == "archive":
+                pref = self.preference(proposal, email)
+                if pref["mode"] == "keep":
+                    decision = Decision("silent", "allowed", "skipped", "Explicit preference: keep in inbox")
+                elif pref["mode"] == "notify":
+                    decision = Decision("notify", "allowed", "ready", "Learned archive preference")
         except Exception:
             # Do not log arbitrary provider exceptions: they can contain secrets.
             proposal = Proposal("none", "Proposal unavailable or invalid")
@@ -141,7 +234,7 @@ class Agent:
                 self.log(action_id, "notification", {"reason": decision.reason, "requires_response": decision.autonomy == "escalate"})
         return self.get(action_id)
 
-    def approve(self, action_id: int, revision: int) -> dict:
+    def approve(self, action_id: int, revision: int, scope="general") -> dict:
         with self.db:
             self.db.execute("BEGIN IMMEDIATE")
             row = self.get(action_id)
@@ -153,9 +246,10 @@ class Agent:
                 raise ValueError("Policy no longer permits approval")
             self.log(action_id, "approved", {"revision": revision, "proposal": row["proposal"]})
             self._execute(action_id, approved=True)
+            self.record_feedback(action_id, True, scope)
         return self.get(action_id)
 
-    def reject(self, action_id: int, revision: int) -> dict:
+    def reject(self, action_id: int, revision: int, scope="general") -> dict:
         with self.db:
             self.db.execute("BEGIN IMMEDIATE")
             row = self.get(action_id)
@@ -163,6 +257,7 @@ class Agent:
                 raise ValueError("Rejection is stale or action is not pending")
             self.db.execute("UPDATE actions SET status='rejected' WHERE id=?", (action_id,))
             self.log(action_id, "rejected", {"revision": revision})
+            self.record_feedback(action_id, False, scope)
         return self.get(action_id)
 
     def revise_send(self, action_id: int, text: str, recipient: str) -> dict:
@@ -192,7 +287,12 @@ class Agent:
         if row["status"] not in {"ready", "pending"} or d.status not in {"ready", "pending"}:
             raise ValueError("Action cannot execute")
         if d.status == "pending" and not approved:
-            raise ValueError("Approval required")
+            pref = self.preference(p, self.email_for(action_id))
+            if p.action != "archive" or pref["mode"] != "notify":
+                raise ValueError("Approval required")
+            self.log(action_id, "learned_permission", pref)
+        if p.action == "archive" and self.preference(p, self.email_for(action_id))["mode"] == "keep":
+            raise ValueError("Explicit preference requires keeping this email in inbox")
         email_id = row["email_id"]  # Server-bound scope, never chosen by the model.
         if p.action == "label":
             self.db.execute("INSERT OR IGNORE INTO labels VALUES(?,?)", (email_id, p.label))
@@ -210,4 +310,4 @@ class Agent:
 
     def snapshot(self) -> dict:
         return {table: [dict(row) for row in self.db.execute(f"SELECT * FROM {table}")]
-                for table in ("emails", "actions", "labels", "drafts", "sent", "audit")}
+                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules")}

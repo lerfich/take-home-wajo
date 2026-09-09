@@ -1,0 +1,48 @@
+{
+  "kind": "development_learning_paired_proposal_replay",
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": "triage-v4",
+  "created_at": "2026-09-09T13:34:10.376103+00:00",
+  "planned_training": 3,
+  "planned_tests": 6,
+  "cases": [
+    {
+      "email": {
+        "id": "train-job",
+        "sender": "train-job@example.test",
+        "subject": "Notification",
+        "body": "Получили ваше резюме. Ваша кандидатура будет рассмотрена. Отвечать на это автоматическое письмо не нужно."
+      },
+      "phase": "train",
+      "expected_auto_archive": true,
+      "error": "Groq HTTP 429; check access, model or quota; no automatic fallback",
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "error",
+        "error": "Groq HTTP 429; check access, model or quota; no automatic fallback",
+        "latency_seconds": 0.257
+      }
+    }
+  ],
+  "metrics": {
+    "completed_tests": 0,
+    "questions_before": 0,
+    "questions_after": 0,
+    "eligible_tests": 0,
+    "correct_auto_archives": 0,
+    "incorrect_auto_archives": 0,
+    "matched_tests": 0
+  },
+  "state": {
+    "emails": [],
+    "actions": [],
+    "labels": [],
+    "drafts": [],
+    "sent": [],
+    "audit": [],
+    "preference_feedback": [],
+    "archive_rules": []
+  },
+  "complete": false
+}
