@@ -1,0 +1,2854 @@
+{
+  "kind": "development_learning_paired_proposal_replay",
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": "triage-v4",
+  "created_at": "2026-09-09T13:48:55.466690+00:00",
+  "planned_training": 9,
+  "planned_tests": 12,
+  "cases": [
+    {
+      "email": {
+        "id": "train-digest-a",
+        "sender": "train-digest-a@example.test",
+        "subject": "Notification",
+        "body": "Еженедельная подборка статей о дизайне: типографика, сетки, цвет. Это информационная рассылка без заданий и сроков."
+      },
+      "phase": "train",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "Регулярная информационная рассылка без личных задач.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "periodic_digest",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Еженедельная подборка статей о дизайне: типографика, сетки, цвет. Это информационная рассылка без заданий и сроков."
+      },
+      "result": {
+        "id": 1,
+        "email_id": "train-digest-a",
+        "proposal": {
+          "action": "archive",
+          "reason": "Регулярная информационная рассылка без личных задач.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "periodic_digest",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Еженедельная подборка статей о дизайне: типографика, сетки, цвет. Это информационная рассылка без заданий и сроков."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "approved": {
+        "id": 1,
+        "email_id": "train-digest-a",
+        "proposal": {
+          "action": "archive",
+          "reason": "Регулярная информационная рассылка без личных задач.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "periodic_digest",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Еженедельная подборка статей о дизайне: типографика, сетки, цвет. Это информационная рассылка без заданий и сроков."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1054,
+          "completion_tokens": 128,
+          "total_tokens": 1182
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.52,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:48:55 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "991",
+              "x-ratelimit-remaining-tokens": "6824",
+              "x-ratelimit-reset-requests": "12m57.599s",
+              "x-ratelimit-reset-tokens": "8.82s",
+              "x-request-id": "req_01m236vgxse119ddew1vs1gxdv"
+            },
+            "status": "ok",
+            "latency_seconds": 0.519
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "train-digest-b",
+        "sender": "train-digest-b@example.test",
+        "subject": "Notification",
+        "body": "Your weekly gardening digest: articles on soil and seasonal plants. For reading only; no response needed."
+      },
+      "phase": "train",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "Регулярная информационная рассылка без личных задач.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "periodic_digest",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Your weekly gardening digest: articles on soil and seasonal plants. For reading only; no response needed."
+      },
+      "result": {
+        "id": 2,
+        "email_id": "train-digest-b",
+        "proposal": {
+          "action": "archive",
+          "reason": "Регулярная информационная рассылка без личных задач.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "periodic_digest",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Your weekly gardening digest: articles on soil and seasonal plants. For reading only; no response needed."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "approved": {
+        "id": 2,
+        "email_id": "train-digest-b",
+        "proposal": {
+          "action": "archive",
+          "reason": "Регулярная информационная рассылка без личных задач.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "periodic_digest",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Your weekly gardening digest: articles on soil and seasonal plants. For reading only; no response needed."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1042,
+          "completion_tokens": 116,
+          "total_tokens": 1158
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.539,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:49:21 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "989",
+              "x-ratelimit-remaining-tokens": "6830",
+              "x-ratelimit-reset-requests": "15m50.4s",
+              "x-ratelimit-reset-tokens": "8.774s",
+              "x-request-id": "req_01m236w9wrey2sbnpjytsnxnxb"
+            },
+            "status": "ok",
+            "latency_seconds": 0.538
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "train-digest-c",
+        "sender": "train-digest-c@example.test",
+        "subject": "Notification",
+        "body": "Ежемесячный обзор новостей библиотек Python. Подборка материалов для чтения, действий не требуется."
+      },
+      "phase": "train",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "Регулярный информационный дайджест без личных задач.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "periodic_digest",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Ежемесячный обзор новостей библиотек Python. Подборка материалов для чтения, действий не требуется."
+      },
+      "result": {
+        "id": 3,
+        "email_id": "train-digest-c",
+        "proposal": {
+          "action": "archive",
+          "reason": "Регулярный информационный дайджест без личных задач.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "periodic_digest",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Ежемесячный обзор новостей библиотек Python. Подборка материалов для чтения, действий не требуется."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "approved": {
+        "id": 3,
+        "email_id": "train-digest-c",
+        "proposal": {
+          "action": "archive",
+          "reason": "Регулярный информационный дайджест без личных задач.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "periodic_digest",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Ежемесячный обзор новостей библиотек Python. Подборка материалов для чтения, действий не требуется."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1045,
+          "completion_tokens": 119,
+          "total_tokens": 1164
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.491,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:49:47 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "988",
+              "x-ratelimit-remaining-tokens": "6829",
+              "x-ratelimit-reset-requests": "17m16.8s",
+              "x-ratelimit-reset-tokens": "8.782s",
+              "x-request-id": "req_01m236x2shevhbzmk6bqvzjn8w"
+            },
+            "status": "ok",
+            "latency_seconds": 0.491
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "train-success-a",
+        "sender": "train-success-a@example.test",
+        "subject": "Notification",
+        "body": "Ночной запуск тестового процесса завершён штатно. Все проверки прошли. Это регулярный отчёт, вмешательство не требуется."
+      },
+      "phase": "train",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "Регулярный успешный отчёт об автоматическом процессе без необходимости вмешательства.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "routine_success",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Ночной запуск тестового процесса завершён штатно. Все проверки прошли. Это регулярный отчёт, вмешательство не требуется."
+      },
+      "result": {
+        "id": 4,
+        "email_id": "train-success-a",
+        "proposal": {
+          "action": "archive",
+          "reason": "Регулярный успешный отчёт об автоматическом процессе без необходимости вмешательства.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "routine_success",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Ночной запуск тестового процесса завершён штатно. Все проверки прошли. Это регулярный отчёт, вмешательство не требуется."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "approved": {
+        "id": 4,
+        "email_id": "train-success-a",
+        "proposal": {
+          "action": "archive",
+          "reason": "Регулярный успешный отчёт об автоматическом процессе без необходимости вмешательства.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "routine_success",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Ночной запуск тестового процесса завершён штатно. Все проверки прошли. Это регулярный отчёт, вмешательство не требуется."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1053,
+          "completion_tokens": 131,
+          "total_tokens": 1184
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.53,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:50:12 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "987",
+              "x-ratelimit-remaining-tokens": "6811",
+              "x-ratelimit-reset-requests": "18m43.2s",
+              "x-ratelimit-reset-tokens": "8.917s",
+              "x-request-id": "req_01m236xvpqeyhb2wvdf95gfpt6"
+            },
+            "status": "ok",
+            "latency_seconds": 0.529
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "train-success-b",
+        "sender": "train-success-b@example.test",
+        "subject": "Notification",
+        "body": "Scheduled image indexing finished successfully. All items processed, no errors or intervention required. Routine daily report."
+      },
+      "phase": "train",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "The email is a routine automated success notification with no personal requests or required actions.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "routine_success",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Scheduled image indexing finished successfully. All items processed, no errors or intervention required."
+      },
+      "result": {
+        "id": 5,
+        "email_id": "train-success-b",
+        "proposal": {
+          "action": "archive",
+          "reason": "The email is a routine automated success notification with no personal requests or required actions.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "routine_success",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Scheduled image indexing finished successfully. All items processed, no errors or intervention required."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "approved": {
+        "id": 5,
+        "email_id": "train-success-b",
+        "proposal": {
+          "action": "archive",
+          "reason": "The email is a routine automated success notification with no personal requests or required actions.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "routine_success",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Scheduled image indexing finished successfully. All items processed, no errors or intervention required."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1041,
+          "completion_tokens": 113,
+          "total_tokens": 1154
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.465,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:50:38 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "986",
+              "x-ratelimit-remaining-tokens": "6823",
+              "x-ratelimit-reset-requests": "20m9.6s",
+              "x-ratelimit-reset-tokens": "8.827s",
+              "x-request-id": "req_01m236ymkzenzrpxj05hbm5572"
+            },
+            "status": "ok",
+            "latency_seconds": 0.464
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "train-success-c",
+        "sender": "train-success-c@example.test",
+        "subject": "Notification",
+        "body": "Плановая синхронизация справочника прошла успешно. Ошибок нет, от вас действий не требуется."
+      },
+      "phase": "train",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "Автоматическое уведомление об успешном завершении планового процесса без необходимости действий.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "routine_success",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Плановая синхронизация справочника прошла успешно. Ошибок нет, от вас действий не требуется."
+      },
+      "result": {
+        "id": 6,
+        "email_id": "train-success-c",
+        "proposal": {
+          "action": "archive",
+          "reason": "Автоматическое уведомление об успешном завершении планового процесса без необходимости действий.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "routine_success",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Плановая синхронизация справочника прошла успешно. Ошибок нет, от вас действий не требуется."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "approved": {
+        "id": 6,
+        "email_id": "train-success-c",
+        "proposal": {
+          "action": "archive",
+          "reason": "Автоматическое уведомление об успешном завершении планового процесса без необходимости действий.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "routine_success",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Плановая синхронизация справочника прошла успешно. Ошибок нет, от вас действий не требуется."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1047,
+          "completion_tokens": 128,
+          "total_tokens": 1175
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.551,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:51:03 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "985",
+              "x-ratelimit-remaining-tokens": "6827",
+              "x-ratelimit-reset-requests": "21m36s",
+              "x-ratelimit-reset-tokens": "8.797s",
+              "x-request-id": "req_01m236zdhne1p9wc6yf592jmxj"
+            },
+            "status": "ok",
+            "latency_seconds": 0.551
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "train-reference-a",
+        "sender": "train-reference-a@example.test",
+        "subject": "Notification",
+        "body": "Справка для чтения: CSS Grid описывает двумерную сетку. Информационный материал, без заданий, изменений или срока."
+      },
+      "phase": "train",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "Письмо содержит только справочную информацию без личных запросов или обязательств.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "informational_reference",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Информационный материал, без заданий, изменений или срока."
+      },
+      "result": {
+        "id": 7,
+        "email_id": "train-reference-a",
+        "proposal": {
+          "action": "archive",
+          "reason": "Письмо содержит только справочную информацию без личных запросов или обязательств.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "informational_reference",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Информационный материал, без заданий, изменений или срока."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "approved": {
+        "id": 7,
+        "email_id": "train-reference-a",
+        "proposal": {
+          "action": "archive",
+          "reason": "Письмо содержит только справочную информацию без личных запросов или обязательств.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "informational_reference",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Информационный материал, без заданий, изменений или срока."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1050,
+          "completion_tokens": 112,
+          "total_tokens": 1162
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.508,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:51:29 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "984",
+              "x-ratelimit-remaining-tokens": "6822",
+              "x-ratelimit-reset-requests": "23m2.4s",
+              "x-ratelimit-reset-tokens": "8.835s",
+              "x-request-id": "req_01m23706f0ektrbfdxgxf9he1s"
+            },
+            "status": "ok",
+            "latency_seconds": 0.507
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "train-reference-b",
+        "sender": "train-reference-b@example.test",
+        "subject": "Notification",
+        "body": "Reference note: a binary search tree stores ordered keys. Background reading only; no request or action."
+      },
+      "phase": "train",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "The email contains only general technical information about binary search trees and explicitly states there is no request or action required.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "informational_reference",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Background reading only; no request or action."
+      },
+      "result": {
+        "id": 8,
+        "email_id": "train-reference-b",
+        "proposal": {
+          "action": "archive",
+          "reason": "The email contains only general technical information about binary search trees and explicitly states there is no request or action required.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "informational_reference",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Background reading only; no request or action."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "approved": {
+        "id": 8,
+        "email_id": "train-reference-b",
+        "proposal": {
+          "action": "archive",
+          "reason": "The email contains only general technical information about binary search trees and explicitly states there is no request or action required.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "informational_reference",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Background reading only; no request or action."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1041,
+          "completion_tokens": 113,
+          "total_tokens": 1154
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.591,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:51:54 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "983",
+              "x-ratelimit-remaining-tokens": "6823",
+              "x-ratelimit-reset-requests": "24m28.8s",
+              "x-ratelimit-reset-tokens": "8.827s",
+              "x-request-id": "req_01m2370zcgeb1tz34b0qk2bvwd"
+            },
+            "status": "ok",
+            "latency_seconds": 0.59
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "train-reference-c",
+        "sender": "train-reference-c@example.test",
+        "subject": "Notification",
+        "body": "Справочная заметка: компост улучшает структуру почвы. Материал для ознакомления, отвечать или что-либо делать не нужно."
+      },
+      "phase": "train",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "Информационное сообщение без личных запросов или действий.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "informational_reference",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Материал для ознакомления, отвечать или что-либо делать не нужно."
+      },
+      "result": {
+        "id": 9,
+        "email_id": "train-reference-c",
+        "proposal": {
+          "action": "archive",
+          "reason": "Информационное сообщение без личных запросов или действий.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "informational_reference",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Материал для ознакомления, отвечать или что-либо делать не нужно."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "approved": {
+        "id": 9,
+        "email_id": "train-reference-c",
+        "proposal": {
+          "action": "archive",
+          "reason": "Информационное сообщение без личных запросов или действий.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "informational_reference",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Материал для ознакомления, отвечать или что-либо делать не нужно."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1051,
+          "completion_tokens": 112,
+          "total_tokens": 1163
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.475,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:52:20 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "982",
+              "x-ratelimit-remaining-tokens": "6821",
+              "x-ratelimit-reset-requests": "25m55.199s",
+              "x-ratelimit-reset-tokens": "8.842s",
+              "x-request-id": "req_01m2371rc8esjbfhqcmx5p9w7j"
+            },
+            "status": "ok",
+            "latency_seconds": 0.475
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "test-digest-new",
+        "sender": "test-digest-new@example.test",
+        "subject": "Notification",
+        "body": "Наш очередной книжный дайджест: обзоры романов и интервью с авторами. Просто подборка для чтения, отвечать не нужно."
+      },
+      "phase": "test",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "Регулярный информационный дайджест без личных задач или запросов.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "periodic_digest",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Наш очередной книжный дайджест: обзоры романов и интервью с авторами. Просто подборка для чтения, отвечать не нужно."
+      },
+      "before": {
+        "id": 1,
+        "email_id": "test-digest-new",
+        "proposal": {
+          "action": "archive",
+          "reason": "Регулярный информационный дайджест без личных задач или запросов.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "periodic_digest",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Наш очередной книжный дайджест: обзоры романов и интервью с авторами. Просто подборка для чтения, отвечать не нужно."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "after": {
+        "id": 10,
+        "email_id": "test-digest-new",
+        "proposal": {
+          "action": "archive",
+          "reason": "Регулярный информационный дайджест без личных задач или запросов.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "periodic_digest",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Наш очередной книжный дайджест: обзоры романов и интервью с авторами. Просто подборка для чтения, отвечать не нужно."
+        },
+        "autonomy": "notify",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Learned archive preference",
+        "revision": 1
+      },
+      "archived_after": true,
+      "matched": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1051,
+          "completion_tokens": 128,
+          "total_tokens": 1179
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.55,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:52:45 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "981",
+              "x-ratelimit-remaining-tokens": "6821",
+              "x-ratelimit-reset-requests": "27m21.6s",
+              "x-ratelimit-reset-tokens": "8.842s",
+              "x-request-id": "req_01m2372h9fe00vyqdm7hab03q5"
+            },
+            "status": "ok",
+            "latency_seconds": 0.549
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "test-digest-en",
+        "sender": "test-digest-en@example.test",
+        "subject": "Notification",
+        "body": "Monthly architecture reading list: essays on public spaces and restoration. Informational digest only, no tasks."
+      },
+      "phase": "test",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "The email is a recurring informational digest with no personal requests or tasks.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "periodic_digest",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Monthly architecture reading list: essays on public spaces and restoration. Informational digest only, no tasks."
+      },
+      "before": {
+        "id": 1,
+        "email_id": "test-digest-en",
+        "proposal": {
+          "action": "archive",
+          "reason": "The email is a recurring informational digest with no personal requests or tasks.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "periodic_digest",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Monthly architecture reading list: essays on public spaces and restoration. Informational digest only, no tasks."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "after": {
+        "id": 11,
+        "email_id": "test-digest-en",
+        "proposal": {
+          "action": "archive",
+          "reason": "The email is a recurring informational digest with no personal requests or tasks.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "periodic_digest",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Monthly architecture reading list: essays on public spaces and restoration. Informational digest only, no tasks."
+        },
+        "autonomy": "notify",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Learned archive preference",
+        "revision": 1
+      },
+      "archived_after": true,
+      "matched": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1042,
+          "completion_tokens": 116,
+          "total_tokens": 1158
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.485,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:53:11 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "980",
+              "x-ratelimit-remaining-tokens": "6822",
+              "x-ratelimit-reset-requests": "28m48s",
+              "x-ratelimit-reset-tokens": "8.835s",
+              "x-request-id": "req_01m2373a77en798k5twxarttgm"
+            },
+            "status": "ok",
+            "latency_seconds": 0.485
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "test-success-new",
+        "sender": "test-success-new@example.test",
+        "subject": "Notification",
+        "body": "Регулярная проверка доступности тестового стенда завершилась без ошибок. Всё штатно, вмешательство не нужно."
+      },
+      "phase": "test",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "Автоматическое уведомление об успешном завершении регулярной проверки без необходимости вмешательства.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "routine_success",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Регулярная проверка доступности тестового стенда завершилась без ошибок. Всё штатно, вмешательство не нужно."
+      },
+      "before": {
+        "id": 1,
+        "email_id": "test-success-new",
+        "proposal": {
+          "action": "archive",
+          "reason": "Автоматическое уведомление об успешном завершении регулярной проверки без необходимости вмешательства.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "routine_success",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Регулярная проверка доступности тестового стенда завершилась без ошибок. Всё штатно, вмешательство не нужно."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "after": {
+        "id": 12,
+        "email_id": "test-success-new",
+        "proposal": {
+          "action": "archive",
+          "reason": "Автоматическое уведомление об успешном завершении регулярной проверки без необходимости вмешательства.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "routine_success",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Регулярная проверка доступности тестового стенда завершилась без ошибок. Всё штатно, вмешательство не нужно."
+        },
+        "autonomy": "notify",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Learned archive preference",
+        "revision": 1
+      },
+      "archived_after": true,
+      "matched": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1050,
+          "completion_tokens": 130,
+          "total_tokens": 1180
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.615,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:53:36 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "979",
+              "x-ratelimit-remaining-tokens": "6814",
+              "x-ratelimit-reset-requests": "30m14.4s",
+              "x-ratelimit-reset-tokens": "8.895s",
+              "x-request-id": "req_01m237436wef3vjbc31yn9smtf"
+            },
+            "status": "ok",
+            "latency_seconds": 0.614
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "test-success-en",
+        "sender": "test-success-en@example.test",
+        "subject": "Notification",
+        "body": "Routine nightly catalogue refresh completed successfully. Nothing failed; no response or intervention is needed."
+      },
+      "phase": "test",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "archive",
+        "reason": "The email is an automated notification confirming the successful completion of a routine process with no required action.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "routine_success",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Routine nightly catalogue refresh completed successfully. Nothing failed; no response or intervention is needed."
+      },
+      "before": {
+        "id": 1,
+        "email_id": "test-success-en",
+        "proposal": {
+          "action": "archive",
+          "reason": "The email is an automated notification confirming the successful completion of a routine process with no required action.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "routine_success",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Routine nightly catalogue refresh completed successfully. Nothing failed; no response or intervention is needed."
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "after": {
+        "id": 13,
+        "email_id": "test-success-en",
+        "proposal": {
+          "action": "archive",
+          "reason": "The email is an automated notification confirming the successful completion of a routine process with no required action.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "routine_success",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Routine nightly catalogue refresh completed successfully. Nothing failed; no response or intervention is needed."
+        },
+        "autonomy": "notify",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Learned archive preference",
+        "revision": 1
+      },
+      "archived_after": true,
+      "matched": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1038,
+          "completion_tokens": 117,
+          "total_tokens": 1155
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.658,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:54:02 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "978",
+              "x-ratelimit-remaining-tokens": "6826",
+              "x-ratelimit-reset-requests": "31m40.8s",
+              "x-ratelimit-reset-tokens": "8.805s",
+              "x-request-id": "req_01m2374w4ke0491359fctk560w"
+            },
+            "status": "ok",
+            "latency_seconds": 0.657
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "test-reference-new",
+        "sender": "test-reference-new@example.test",
+        "subject": "Notification",
+        "body": "Для справки: относительная влажность выражается в процентах. Это учебное пояснение, не предупреждение и не задание."
+      },
+      "phase": "test",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "label",
+        "reason": "Информационное сообщение без личных запросов или задач.",
+        "label": "AI: Работа",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "informational_reference",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Для справки: относительная влажность выражается в процентах."
+      },
+      "before": {
+        "id": 1,
+        "email_id": "test-reference-new",
+        "proposal": {
+          "action": "label",
+          "reason": "Информационное сообщение без личных запросов или задач.",
+          "label": "AI: Работа",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "informational_reference",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Для справки: относительная влажность выражается в процентах."
+        },
+        "autonomy": "silent",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Initial permission",
+        "revision": 1
+      },
+      "after": {
+        "id": 14,
+        "email_id": "test-reference-new",
+        "proposal": {
+          "action": "label",
+          "reason": "Информационное сообщение без личных запросов или задач.",
+          "label": "AI: Работа",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "informational_reference",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Для справки: относительная влажность выражается в процентах."
+        },
+        "autonomy": "silent",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Initial permission",
+        "revision": 1
+      },
+      "archived_after": false,
+      "matched": false,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1047,
+          "completion_tokens": 112,
+          "total_tokens": 1159
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.474,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:54:28 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "977",
+              "x-ratelimit-remaining-tokens": "6817",
+              "x-ratelimit-reset-requests": "33m7.2s",
+              "x-ratelimit-reset-tokens": "8.872s",
+              "x-request-id": "req_01m2375n6tep4tt9rej7wv6stw"
+            },
+            "status": "ok",
+            "latency_seconds": 0.473
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "test-reference-en",
+        "sender": "test-reference-en@example.test",
+        "subject": "Notification",
+        "body": "Background reference: lossless compression preserves the original data. Informational explanation, no changes or tasks."
+      },
+      "phase": "test",
+      "expected_auto_archive": true,
+      "proposal": {
+        "action": "label",
+        "reason": "The email provides general background information about lossless compression without any personal requests, deadlines, or required actions.",
+        "label": "AI: Информация",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "informational_reference",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Informational explanation, no changes or tasks."
+      },
+      "before": {
+        "id": 1,
+        "email_id": "test-reference-en",
+        "proposal": {
+          "action": "label",
+          "reason": "The email provides general background information about lossless compression without any personal requests, deadlines, or required actions.",
+          "label": "AI: Информация",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "informational_reference",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Informational explanation, no changes or tasks."
+        },
+        "autonomy": "silent",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Initial permission",
+        "revision": 1
+      },
+      "after": {
+        "id": 15,
+        "email_id": "test-reference-en",
+        "proposal": {
+          "action": "label",
+          "reason": "The email provides general background information about lossless compression without any personal requests, deadlines, or required actions.",
+          "label": "AI: Информация",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false,
+          "pattern": "informational_reference",
+          "requires_action": false,
+          "has_deadline": false,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Informational explanation, no changes or tasks."
+        },
+        "autonomy": "silent",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Initial permission",
+        "revision": 1
+      },
+      "archived_after": false,
+      "matched": false,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1041,
+          "completion_tokens": 116,
+          "total_tokens": 1157
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.477,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:54:53 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "976",
+              "x-ratelimit-remaining-tokens": "6831",
+              "x-ratelimit-reset-requests": "34m33.6s",
+              "x-ratelimit-reset-tokens": "8.767s",
+              "x-request-id": "req_01m2376e2tebm9fc7q44devkn8"
+            },
+            "status": "ok",
+            "latency_seconds": 0.476
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "test-digest-request",
+        "sender": "test-digest-request@example.test",
+        "subject": "Notification",
+        "body": "Еженедельная подборка статей готова. Пожалуйста, выберите две статьи для публикации и ответьте до 17:00."
+      },
+      "phase": "test",
+      "expected_auto_archive": false,
+      "proposal": {
+        "action": "none",
+        "reason": "Письмо содержит прямой запрос на выбор статей и ответ в установленный срок, что требует принятия решения человеком.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": true,
+        "suspicious": false,
+        "needs_human": true,
+        "pattern": "unknown",
+        "requires_action": true,
+        "has_deadline": true,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Пожалуйста, выберите две статьи для публикации и ответьте до 17:00."
+      },
+      "before": {
+        "id": 1,
+        "email_id": "test-digest-request",
+        "proposal": {
+          "action": "none",
+          "reason": "Письмо содержит прямой запрос на выбор статей и ответ в установленный срок, что требует принятия решения человеком.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": true,
+          "suspicious": false,
+          "needs_human": true,
+          "pattern": "unknown",
+          "requires_action": true,
+          "has_deadline": true,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Пожалуйста, выберите две статьи для публикации и ответьте до 17:00."
+        },
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "escalated",
+        "reason": "Human judgment required",
+        "revision": 1
+      },
+      "after": {
+        "id": 16,
+        "email_id": "test-digest-request",
+        "proposal": {
+          "action": "none",
+          "reason": "Письмо содержит прямой запрос на выбор статей и ответ в установленный срок, что требует принятия решения человеком.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": true,
+          "suspicious": false,
+          "needs_human": true,
+          "pattern": "unknown",
+          "requires_action": true,
+          "has_deadline": true,
+          "significant_change": false,
+          "sensitive": false,
+          "pattern_evidence": "Пожалуйста, выберите две статьи для публикации и ответьте до 17:00."
+        },
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "escalated",
+        "reason": "Human judgment required",
+        "revision": 1
+      },
+      "archived_after": false,
+      "matched": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1050,
+          "completion_tokens": 123,
+          "total_tokens": 1173
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.51,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:55:19 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "975",
+              "x-ratelimit-remaining-tokens": "6814",
+              "x-ratelimit-reset-requests": "36m0s",
+              "x-ratelimit-reset-tokens": "8.895s",
+              "x-request-id": "req_01m23776zmecastthkpy7cqxxy"
+            },
+            "status": "ok",
+            "latency_seconds": 0.51
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "test-failed-report",
+        "sender": "test-failed-report@example.test",
+        "subject": "Notification",
+        "body": "Плановая синхронизация завершена с ошибкой: часть записей потеряна. Проверьте журнал и восстановите данные."
+      },
+      "phase": "test",
+      "expected_auto_archive": false,
+      "proposal": {
+        "action": "none",
+        "reason": "Сообщение о критической ошибке синхронизации и потере данных требует немедленного внимания человека для восстановления.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": true,
+        "suspicious": false,
+        "needs_human": true,
+        "pattern": "unknown",
+        "requires_action": true,
+        "has_deadline": false,
+        "significant_change": true,
+        "sensitive": false,
+        "pattern_evidence": "Плановая синхронизация завершена с ошибкой: часть записей потеряна."
+      },
+      "before": {
+        "id": 1,
+        "email_id": "test-failed-report",
+        "proposal": {
+          "action": "none",
+          "reason": "Сообщение о критической ошибке синхронизации и потере данных требует немедленного внимания человека для восстановления.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": true,
+          "suspicious": false,
+          "needs_human": true,
+          "pattern": "unknown",
+          "requires_action": true,
+          "has_deadline": false,
+          "significant_change": true,
+          "sensitive": false,
+          "pattern_evidence": "Плановая синхронизация завершена с ошибкой: часть записей потеряна."
+        },
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "escalated",
+        "reason": "Human judgment required",
+        "revision": 1
+      },
+      "after": {
+        "id": 17,
+        "email_id": "test-failed-report",
+        "proposal": {
+          "action": "none",
+          "reason": "Сообщение о критической ошибке синхронизации и потере данных требует немедленного внимания человека для восстановления.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": true,
+          "suspicious": false,
+          "needs_human": true,
+          "pattern": "unknown",
+          "requires_action": true,
+          "has_deadline": false,
+          "significant_change": true,
+          "sensitive": false,
+          "pattern_evidence": "Плановая синхронизация завершена с ошибкой: часть записей потеряна."
+        },
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "escalated",
+        "reason": "Human judgment required",
+        "revision": 1
+      },
+      "archived_after": false,
+      "matched": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1052,
+          "completion_tokens": 127,
+          "total_tokens": 1179
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.527,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:55:44 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "974",
+              "x-ratelimit-remaining-tokens": "6820",
+              "x-ratelimit-reset-requests": "37m26.4s",
+              "x-ratelimit-reset-tokens": "8.85s",
+              "x-request-id": "req_01m2377zx7e6rsh4seevq991ea"
+            },
+            "status": "ok",
+            "latency_seconds": 0.527
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "test-success-warning",
+        "sender": "test-success-warning@example.test",
+        "subject": "Notification",
+        "body": "Backup job completed successfully, but restore validation failed. Please investigate immediately."
+      },
+      "phase": "test",
+      "expected_auto_archive": false,
+      "proposal": {
+        "action": "none",
+        "reason": "The email reports a failed backup validation requiring immediate human investigation.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": true,
+        "suspicious": false,
+        "needs_human": true,
+        "pattern": "unknown",
+        "requires_action": true,
+        "has_deadline": false,
+        "significant_change": true,
+        "sensitive": false,
+        "pattern_evidence": "restore validation failed"
+      },
+      "before": {
+        "id": 1,
+        "email_id": "test-success-warning",
+        "proposal": {
+          "action": "none",
+          "reason": "The email reports a failed backup validation requiring immediate human investigation.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": true,
+          "suspicious": false,
+          "needs_human": true,
+          "pattern": "unknown",
+          "requires_action": true,
+          "has_deadline": false,
+          "significant_change": true,
+          "sensitive": false,
+          "pattern_evidence": "restore validation failed"
+        },
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "escalated",
+        "reason": "Human judgment required",
+        "revision": 1
+      },
+      "after": {
+        "id": 18,
+        "email_id": "test-success-warning",
+        "proposal": {
+          "action": "none",
+          "reason": "The email reports a failed backup validation requiring immediate human investigation.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": true,
+          "suspicious": false,
+          "needs_human": true,
+          "pattern": "unknown",
+          "requires_action": true,
+          "has_deadline": false,
+          "significant_change": true,
+          "sensitive": false,
+          "pattern_evidence": "restore validation failed"
+        },
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "escalated",
+        "reason": "Human judgment required",
+        "revision": 1
+      },
+      "archived_after": false,
+      "matched": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1035,
+          "completion_tokens": 96,
+          "total_tokens": 1131
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.442,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:56:10 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "973",
+              "x-ratelimit-remaining-tokens": "6837",
+              "x-ratelimit-reset-requests": "38m52.8s",
+              "x-ratelimit-reset-tokens": "8.722s",
+              "x-request-id": "req_01m2378rtze12r3np93rx1gsvb"
+            },
+            "status": "ok",
+            "latency_seconds": 0.441
+          }
+        ]
+      }
+    },
+    {
+      "email": {
+        "id": "test-changed-terms",
+        "sender": "test-changed-terms@example.test",
+        "subject": "Notification",
+        "body": "Справочная информация: с завтрашнего дня меняются условия договора, и ваша плата удвоится. Ответ не требуется."
+      },
+      "phase": "test",
+      "expected_auto_archive": false,
+      "error": "Groq HTTP 403: {\"error\":{\"message\":\"Forbidden\"}}",
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v4",
+        "status": "error",
+        "error": "Groq HTTP 403: {\"error\":{\"message\":\"Forbidden\"}}",
+        "latency_seconds": 0.124,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "status": "error",
+            "http_status": 403,
+            "headers": {
+              "date": "Wed, 09 Sep 2026 13:56:35 GMT",
+              "content-type": "application/json"
+            },
+            "body": "{\"error\":{\"message\":\"Forbidden\"}}",
+            "body_truncated": false,
+            "latency_seconds": 0.122
+          }
+        ]
+      }
+    }
+  ],
+  "dataset_sha256": "795e49f81e7af1cc31cbdd43d810a5c217fb8dec3122398007b8526d87074838",
+  "metrics": {
+    "completed_tests": 9,
+    "questions_before": 4,
+    "questions_after": 0,
+    "eligible_tests": 6,
+    "correct_auto_archives": 4,
+    "incorrect_auto_archives": 0,
+    "matched_tests": 7
+  },
+  "state": {
+    "emails": [
+      {
+        "id": "train-digest-a",
+        "sender": "train-digest-a@example.test",
+        "subject": "Notification",
+        "body": "Еженедельная подборка статей о дизайне: типографика, сетки, цвет. Это информационная рассылка без заданий и сроков.",
+        "archived": 1
+      },
+      {
+        "id": "train-digest-b",
+        "sender": "train-digest-b@example.test",
+        "subject": "Notification",
+        "body": "Your weekly gardening digest: articles on soil and seasonal plants. For reading only; no response needed.",
+        "archived": 1
+      },
+      {
+        "id": "train-digest-c",
+        "sender": "train-digest-c@example.test",
+        "subject": "Notification",
+        "body": "Ежемесячный обзор новостей библиотек Python. Подборка материалов для чтения, действий не требуется.",
+        "archived": 1
+      },
+      {
+        "id": "train-success-a",
+        "sender": "train-success-a@example.test",
+        "subject": "Notification",
+        "body": "Ночной запуск тестового процесса завершён штатно. Все проверки прошли. Это регулярный отчёт, вмешательство не требуется.",
+        "archived": 1
+      },
+      {
+        "id": "train-success-b",
+        "sender": "train-success-b@example.test",
+        "subject": "Notification",
+        "body": "Scheduled image indexing finished successfully. All items processed, no errors or intervention required. Routine daily report.",
+        "archived": 1
+      },
+      {
+        "id": "train-success-c",
+        "sender": "train-success-c@example.test",
+        "subject": "Notification",
+        "body": "Плановая синхронизация справочника прошла успешно. Ошибок нет, от вас действий не требуется.",
+        "archived": 1
+      },
+      {
+        "id": "train-reference-a",
+        "sender": "train-reference-a@example.test",
+        "subject": "Notification",
+        "body": "Справка для чтения: CSS Grid описывает двумерную сетку. Информационный материал, без заданий, изменений или срока.",
+        "archived": 1
+      },
+      {
+        "id": "train-reference-b",
+        "sender": "train-reference-b@example.test",
+        "subject": "Notification",
+        "body": "Reference note: a binary search tree stores ordered keys. Background reading only; no request or action.",
+        "archived": 1
+      },
+      {
+        "id": "train-reference-c",
+        "sender": "train-reference-c@example.test",
+        "subject": "Notification",
+        "body": "Справочная заметка: компост улучшает структуру почвы. Материал для ознакомления, отвечать или что-либо делать не нужно.",
+        "archived": 1
+      },
+      {
+        "id": "test-digest-new",
+        "sender": "test-digest-new@example.test",
+        "subject": "Notification",
+        "body": "Наш очередной книжный дайджест: обзоры романов и интервью с авторами. Просто подборка для чтения, отвечать не нужно.",
+        "archived": 1
+      },
+      {
+        "id": "test-digest-en",
+        "sender": "test-digest-en@example.test",
+        "subject": "Notification",
+        "body": "Monthly architecture reading list: essays on public spaces and restoration. Informational digest only, no tasks.",
+        "archived": 1
+      },
+      {
+        "id": "test-success-new",
+        "sender": "test-success-new@example.test",
+        "subject": "Notification",
+        "body": "Регулярная проверка доступности тестового стенда завершилась без ошибок. Всё штатно, вмешательство не нужно.",
+        "archived": 1
+      },
+      {
+        "id": "test-success-en",
+        "sender": "test-success-en@example.test",
+        "subject": "Notification",
+        "body": "Routine nightly catalogue refresh completed successfully. Nothing failed; no response or intervention is needed.",
+        "archived": 1
+      },
+      {
+        "id": "test-reference-new",
+        "sender": "test-reference-new@example.test",
+        "subject": "Notification",
+        "body": "Для справки: относительная влажность выражается в процентах. Это учебное пояснение, не предупреждение и не задание.",
+        "archived": 0
+      },
+      {
+        "id": "test-reference-en",
+        "sender": "test-reference-en@example.test",
+        "subject": "Notification",
+        "body": "Background reference: lossless compression preserves the original data. Informational explanation, no changes or tasks.",
+        "archived": 0
+      },
+      {
+        "id": "test-digest-request",
+        "sender": "test-digest-request@example.test",
+        "subject": "Notification",
+        "body": "Еженедельная подборка статей готова. Пожалуйста, выберите две статьи для публикации и ответьте до 17:00.",
+        "archived": 0
+      },
+      {
+        "id": "test-failed-report",
+        "sender": "test-failed-report@example.test",
+        "subject": "Notification",
+        "body": "Плановая синхронизация завершена с ошибкой: часть записей потеряна. Проверьте журнал и восстановите данные.",
+        "archived": 0
+      },
+      {
+        "id": "test-success-warning",
+        "sender": "test-success-warning@example.test",
+        "subject": "Notification",
+        "body": "Backup job completed successfully, but restore validation failed. Please investigate immediately.",
+        "archived": 0
+      }
+    ],
+    "actions": [
+      {
+        "id": 1,
+        "email_id": "train-digest-a",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"Регулярная информационная рассылка без личных задач.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"periodic_digest\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Еженедельная подборка статей о дизайне: типографика, сетки, цвет. Это информационная рассылка без заданий и сроков.\"}",
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      {
+        "id": 2,
+        "email_id": "train-digest-b",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"Регулярная информационная рассылка без личных задач.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"periodic_digest\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Your weekly gardening digest: articles on soil and seasonal plants. For reading only; no response needed.\"}",
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      {
+        "id": 3,
+        "email_id": "train-digest-c",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"Регулярный информационный дайджест без личных задач.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"periodic_digest\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Ежемесячный обзор новостей библиотек Python. Подборка материалов для чтения, действий не требуется.\"}",
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      {
+        "id": 4,
+        "email_id": "train-success-a",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"Регулярный успешный отчёт об автоматическом процессе без необходимости вмешательства.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"routine_success\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Ночной запуск тестового процесса завершён штатно. Все проверки прошли. Это регулярный отчёт, вмешательство не требуется.\"}",
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      {
+        "id": 5,
+        "email_id": "train-success-b",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"The email is a routine automated success notification with no personal requests or required actions.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"routine_success\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Scheduled image indexing finished successfully. All items processed, no errors or intervention required.\"}",
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      {
+        "id": 6,
+        "email_id": "train-success-c",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"Автоматическое уведомление об успешном завершении планового процесса без необходимости действий.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"routine_success\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Плановая синхронизация справочника прошла успешно. Ошибок нет, от вас действий не требуется.\"}",
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      {
+        "id": 7,
+        "email_id": "train-reference-a",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"Письмо содержит только справочную информацию без личных запросов или обязательств.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"informational_reference\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Информационный материал, без заданий, изменений или срока.\"}",
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      {
+        "id": 8,
+        "email_id": "train-reference-b",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"The email contains only general technical information about binary search trees and explicitly states there is no request or action required.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"informational_reference\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Background reading only; no request or action.\"}",
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      {
+        "id": 9,
+        "email_id": "train-reference-c",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"Информационное сообщение без личных запросов или действий.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"informational_reference\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Материал для ознакомления, отвечать или что-либо делать не нужно.\"}",
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "executed",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      {
+        "id": 10,
+        "email_id": "test-digest-new",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"Регулярный информационный дайджест без личных задач или запросов.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"periodic_digest\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Наш очередной книжный дайджест: обзоры романов и интервью с авторами. Просто подборка для чтения, отвечать не нужно.\"}",
+        "autonomy": "notify",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Learned archive preference",
+        "revision": 1
+      },
+      {
+        "id": 11,
+        "email_id": "test-digest-en",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"The email is a recurring informational digest with no personal requests or tasks.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"periodic_digest\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Monthly architecture reading list: essays on public spaces and restoration. Informational digest only, no tasks.\"}",
+        "autonomy": "notify",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Learned archive preference",
+        "revision": 1
+      },
+      {
+        "id": 12,
+        "email_id": "test-success-new",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"Автоматическое уведомление об успешном завершении регулярной проверки без необходимости вмешательства.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"routine_success\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Регулярная проверка доступности тестового стенда завершилась без ошибок. Всё штатно, вмешательство не нужно.\"}",
+        "autonomy": "notify",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Learned archive preference",
+        "revision": 1
+      },
+      {
+        "id": 13,
+        "email_id": "test-success-en",
+        "proposal": "{\"action\": \"archive\", \"reason\": \"The email is an automated notification confirming the successful completion of a routine process with no required action.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"routine_success\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Routine nightly catalogue refresh completed successfully. Nothing failed; no response or intervention is needed.\"}",
+        "autonomy": "notify",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Learned archive preference",
+        "revision": 1
+      },
+      {
+        "id": 14,
+        "email_id": "test-reference-new",
+        "proposal": "{\"action\": \"label\", \"reason\": \"Информационное сообщение без личных запросов или задач.\", \"label\": \"AI: Работа\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"informational_reference\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Для справки: относительная влажность выражается в процентах.\"}",
+        "autonomy": "silent",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Initial permission",
+        "revision": 1
+      },
+      {
+        "id": 15,
+        "email_id": "test-reference-en",
+        "proposal": "{\"action\": \"label\", \"reason\": \"The email provides general background information about lossless compression without any personal requests, deadlines, or required actions.\", \"label\": \"AI: Информация\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"informational_reference\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Informational explanation, no changes or tasks.\"}",
+        "autonomy": "silent",
+        "safety": "allowed",
+        "status": "executed",
+        "reason": "Initial permission",
+        "revision": 1
+      },
+      {
+        "id": 16,
+        "email_id": "test-digest-request",
+        "proposal": "{\"action\": \"none\", \"reason\": \"Письмо содержит прямой запрос на выбор статей и ответ в установленный срок, что требует принятия решения человеком.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": true, \"suspicious\": false, \"needs_human\": true, \"pattern\": \"unknown\", \"requires_action\": true, \"has_deadline\": true, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Пожалуйста, выберите две статьи для публикации и ответьте до 17:00.\"}",
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "escalated",
+        "reason": "Human judgment required",
+        "revision": 1
+      },
+      {
+        "id": 17,
+        "email_id": "test-failed-report",
+        "proposal": "{\"action\": \"none\", \"reason\": \"Сообщение о критической ошибке синхронизации и потере данных требует немедленного внимания человека для восстановления.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": true, \"suspicious\": false, \"needs_human\": true, \"pattern\": \"unknown\", \"requires_action\": true, \"has_deadline\": false, \"significant_change\": true, \"sensitive\": false, \"pattern_evidence\": \"Плановая синхронизация завершена с ошибкой: часть записей потеряна.\"}",
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "escalated",
+        "reason": "Human judgment required",
+        "revision": 1
+      },
+      {
+        "id": 18,
+        "email_id": "test-success-warning",
+        "proposal": "{\"action\": \"none\", \"reason\": \"The email reports a failed backup validation requiring immediate human investigation.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": true, \"suspicious\": false, \"needs_human\": true, \"pattern\": \"unknown\", \"requires_action\": true, \"has_deadline\": false, \"significant_change\": true, \"sensitive\": false, \"pattern_evidence\": \"restore validation failed\"}",
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "escalated",
+        "reason": "Human judgment required",
+        "revision": 1
+      }
+    ],
+    "labels": [
+      {
+        "email_id": "test-reference-new",
+        "label": "AI: Работа"
+      },
+      {
+        "email_id": "test-reference-en",
+        "label": "AI: Информация"
+      }
+    ],
+    "drafts": [],
+    "sent": [],
+    "audit": [
+      {
+        "id": 1,
+        "action_id": 1,
+        "event": "decision",
+        "details": "{\"autonomy\": \"ask\", \"safety\": \"confirmation_required\", \"status\": \"pending\", \"reason\": \"Explicit approval required in baseline mode\"}",
+        "created_at": "2026-09-09T13:48:55.987354+00:00"
+      },
+      {
+        "id": 2,
+        "action_id": 1,
+        "event": "approved",
+        "details": "{\"revision\": 1, \"proposal\": {\"action\": \"archive\", \"reason\": \"Регулярная информационная рассылка без личных задач.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"periodic_digest\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Еженедельная подборка статей о дизайне: типографика, сетки, цвет. Это информационная рассылка без заданий и сроков.\"}}",
+        "created_at": "2026-09-09T13:48:55.987555+00:00"
+      },
+      {
+        "id": 3,
+        "action_id": 1,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:48:55.987808+00:00"
+      },
+      {
+        "id": 4,
+        "action_id": 1,
+        "event": "preference_feedback",
+        "details": "{\"scope\": \"*\", \"pattern\": \"periodic_digest\", \"positive\": true}",
+        "created_at": "2026-09-09T13:48:55.987927+00:00"
+      },
+      {
+        "id": 5,
+        "action_id": 2,
+        "event": "decision",
+        "details": "{\"autonomy\": \"ask\", \"safety\": \"confirmation_required\", \"status\": \"pending\", \"reason\": \"Explicit approval required in baseline mode\"}",
+        "created_at": "2026-09-09T13:49:21.532498+00:00"
+      },
+      {
+        "id": 6,
+        "action_id": 2,
+        "event": "approved",
+        "details": "{\"revision\": 1, \"proposal\": {\"action\": \"archive\", \"reason\": \"Регулярная информационная рассылка без личных задач.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"periodic_digest\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Your weekly gardening digest: articles on soil and seasonal plants. For reading only; no response needed.\"}}",
+        "created_at": "2026-09-09T13:49:21.532669+00:00"
+      },
+      {
+        "id": 7,
+        "action_id": 2,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:49:21.532871+00:00"
+      },
+      {
+        "id": 8,
+        "action_id": 2,
+        "event": "preference_feedback",
+        "details": "{\"scope\": \"*\", \"pattern\": \"periodic_digest\", \"positive\": true}",
+        "created_at": "2026-09-09T13:49:21.532982+00:00"
+      },
+      {
+        "id": 9,
+        "action_id": 3,
+        "event": "decision",
+        "details": "{\"autonomy\": \"ask\", \"safety\": \"confirmation_required\", \"status\": \"pending\", \"reason\": \"Explicit approval required in baseline mode\"}",
+        "created_at": "2026-09-09T13:49:47.026692+00:00"
+      },
+      {
+        "id": 10,
+        "action_id": 3,
+        "event": "approved",
+        "details": "{\"revision\": 1, \"proposal\": {\"action\": \"archive\", \"reason\": \"Регулярный информационный дайджест без личных задач.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"periodic_digest\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Ежемесячный обзор новостей библиотек Python. Подборка материалов для чтения, действий не требуется.\"}}",
+        "created_at": "2026-09-09T13:49:47.026753+00:00"
+      },
+      {
+        "id": 11,
+        "action_id": 3,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:49:47.026808+00:00"
+      },
+      {
+        "id": 12,
+        "action_id": 3,
+        "event": "preference_feedback",
+        "details": "{\"scope\": \"*\", \"pattern\": \"periodic_digest\", \"positive\": true}",
+        "created_at": "2026-09-09T13:49:47.026840+00:00"
+      },
+      {
+        "id": 13,
+        "action_id": 4,
+        "event": "decision",
+        "details": "{\"autonomy\": \"ask\", \"safety\": \"confirmation_required\", \"status\": \"pending\", \"reason\": \"Explicit approval required in baseline mode\"}",
+        "created_at": "2026-09-09T13:50:12.562395+00:00"
+      },
+      {
+        "id": 14,
+        "action_id": 4,
+        "event": "approved",
+        "details": "{\"revision\": 1, \"proposal\": {\"action\": \"archive\", \"reason\": \"Регулярный успешный отчёт об автоматическом процессе без необходимости вмешательства.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"routine_success\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Ночной запуск тестового процесса завершён штатно. Все проверки прошли. Это регулярный отчёт, вмешательство не требуется.\"}}",
+        "created_at": "2026-09-09T13:50:12.562528+00:00"
+      },
+      {
+        "id": 15,
+        "action_id": 4,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:50:12.562631+00:00"
+      },
+      {
+        "id": 16,
+        "action_id": 4,
+        "event": "preference_feedback",
+        "details": "{\"scope\": \"*\", \"pattern\": \"routine_success\", \"positive\": true}",
+        "created_at": "2026-09-09T13:50:12.562688+00:00"
+      },
+      {
+        "id": 17,
+        "action_id": 5,
+        "event": "decision",
+        "details": "{\"autonomy\": \"ask\", \"safety\": \"confirmation_required\", \"status\": \"pending\", \"reason\": \"Explicit approval required in baseline mode\"}",
+        "created_at": "2026-09-09T13:50:38.032304+00:00"
+      },
+      {
+        "id": 18,
+        "action_id": 5,
+        "event": "approved",
+        "details": "{\"revision\": 1, \"proposal\": {\"action\": \"archive\", \"reason\": \"The email is a routine automated success notification with no personal requests or required actions.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"routine_success\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Scheduled image indexing finished successfully. All items processed, no errors or intervention required.\"}}",
+        "created_at": "2026-09-09T13:50:38.032507+00:00"
+      },
+      {
+        "id": 19,
+        "action_id": 5,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:50:38.032692+00:00"
+      },
+      {
+        "id": 20,
+        "action_id": 5,
+        "event": "preference_feedback",
+        "details": "{\"scope\": \"*\", \"pattern\": \"routine_success\", \"positive\": true}",
+        "created_at": "2026-09-09T13:50:38.032849+00:00"
+      },
+      {
+        "id": 21,
+        "action_id": 6,
+        "event": "decision",
+        "details": "{\"autonomy\": \"ask\", \"safety\": \"confirmation_required\", \"status\": \"pending\", \"reason\": \"Explicit approval required in baseline mode\"}",
+        "created_at": "2026-09-09T13:51:03.590391+00:00"
+      },
+      {
+        "id": 22,
+        "action_id": 6,
+        "event": "approved",
+        "details": "{\"revision\": 1, \"proposal\": {\"action\": \"archive\", \"reason\": \"Автоматическое уведомление об успешном завершении планового процесса без необходимости действий.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"routine_success\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Плановая синхронизация справочника прошла успешно. Ошибок нет, от вас действий не требуется.\"}}",
+        "created_at": "2026-09-09T13:51:03.590694+00:00"
+      },
+      {
+        "id": 23,
+        "action_id": 6,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:51:03.590799+00:00"
+      },
+      {
+        "id": 24,
+        "action_id": 6,
+        "event": "preference_feedback",
+        "details": "{\"scope\": \"*\", \"pattern\": \"routine_success\", \"positive\": true}",
+        "created_at": "2026-09-09T13:51:03.590841+00:00"
+      },
+      {
+        "id": 25,
+        "action_id": 7,
+        "event": "decision",
+        "details": "{\"autonomy\": \"ask\", \"safety\": \"confirmation_required\", \"status\": \"pending\", \"reason\": \"Explicit approval required in baseline mode\"}",
+        "created_at": "2026-09-09T13:51:29.106087+00:00"
+      },
+      {
+        "id": 26,
+        "action_id": 7,
+        "event": "approved",
+        "details": "{\"revision\": 1, \"proposal\": {\"action\": \"archive\", \"reason\": \"Письмо содержит только справочную информацию без личных запросов или обязательств.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"informational_reference\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Информационный материал, без заданий, изменений или срока.\"}}",
+        "created_at": "2026-09-09T13:51:29.106400+00:00"
+      },
+      {
+        "id": 27,
+        "action_id": 7,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:51:29.106704+00:00"
+      },
+      {
+        "id": 28,
+        "action_id": 7,
+        "event": "preference_feedback",
+        "details": "{\"scope\": \"*\", \"pattern\": \"informational_reference\", \"positive\": true}",
+        "created_at": "2026-09-09T13:51:29.106925+00:00"
+      },
+      {
+        "id": 29,
+        "action_id": 8,
+        "event": "decision",
+        "details": "{\"autonomy\": \"ask\", \"safety\": \"confirmation_required\", \"status\": \"pending\", \"reason\": \"Explicit approval required in baseline mode\"}",
+        "created_at": "2026-09-09T13:51:54.704404+00:00"
+      },
+      {
+        "id": 30,
+        "action_id": 8,
+        "event": "approved",
+        "details": "{\"revision\": 1, \"proposal\": {\"action\": \"archive\", \"reason\": \"The email contains only general technical information about binary search trees and explicitly states there is no request or action required.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"informational_reference\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Background reading only; no request or action.\"}}",
+        "created_at": "2026-09-09T13:51:54.704688+00:00"
+      },
+      {
+        "id": 31,
+        "action_id": 8,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:51:54.704853+00:00"
+      },
+      {
+        "id": 32,
+        "action_id": 8,
+        "event": "preference_feedback",
+        "details": "{\"scope\": \"*\", \"pattern\": \"informational_reference\", \"positive\": true}",
+        "created_at": "2026-09-09T13:51:54.704985+00:00"
+      },
+      {
+        "id": 33,
+        "action_id": 9,
+        "event": "decision",
+        "details": "{\"autonomy\": \"ask\", \"safety\": \"confirmation_required\", \"status\": \"pending\", \"reason\": \"Explicit approval required in baseline mode\"}",
+        "created_at": "2026-09-09T13:52:20.185793+00:00"
+      },
+      {
+        "id": 34,
+        "action_id": 9,
+        "event": "approved",
+        "details": "{\"revision\": 1, \"proposal\": {\"action\": \"archive\", \"reason\": \"Информационное сообщение без личных запросов или действий.\", \"label\": \"\", \"text\": \"\", \"recipient\": \"\", \"notify\": false, \"suspicious\": false, \"needs_human\": false, \"pattern\": \"informational_reference\", \"requires_action\": false, \"has_deadline\": false, \"significant_change\": false, \"sensitive\": false, \"pattern_evidence\": \"Материал для ознакомления, отвечать или что-либо делать не нужно.\"}}",
+        "created_at": "2026-09-09T13:52:20.185923+00:00"
+      },
+      {
+        "id": 35,
+        "action_id": 9,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:52:20.186068+00:00"
+      },
+      {
+        "id": 36,
+        "action_id": 9,
+        "event": "preference_feedback",
+        "details": "{\"scope\": \"*\", \"pattern\": \"informational_reference\", \"positive\": true}",
+        "created_at": "2026-09-09T13:52:20.186159+00:00"
+      },
+      {
+        "id": 37,
+        "action_id": 10,
+        "event": "decision",
+        "details": "{\"autonomy\": \"notify\", \"safety\": \"allowed\", \"status\": \"ready\", \"reason\": \"Learned archive preference\"}",
+        "created_at": "2026-09-09T13:52:45.749413+00:00"
+      },
+      {
+        "id": 38,
+        "action_id": 10,
+        "event": "learned_permission",
+        "details": "{\"mode\": \"notify\", \"scope\": \"*\", \"pattern\": \"periodic_digest\", \"approval_ids\": [1, 2, 3], \"threshold\": 3}",
+        "created_at": "2026-09-09T13:52:45.749481+00:00"
+      },
+      {
+        "id": 39,
+        "action_id": 10,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:52:45.749516+00:00"
+      },
+      {
+        "id": 40,
+        "action_id": 10,
+        "event": "notification",
+        "details": "{\"action\": \"archive\", \"recipient\": \"\", \"text\": \"\"}",
+        "created_at": "2026-09-09T13:52:45.749523+00:00"
+      },
+      {
+        "id": 41,
+        "action_id": 11,
+        "event": "decision",
+        "details": "{\"autonomy\": \"notify\", \"safety\": \"allowed\", \"status\": \"ready\", \"reason\": \"Learned archive preference\"}",
+        "created_at": "2026-09-09T13:53:11.239768+00:00"
+      },
+      {
+        "id": 42,
+        "action_id": 11,
+        "event": "learned_permission",
+        "details": "{\"mode\": \"notify\", \"scope\": \"*\", \"pattern\": \"periodic_digest\", \"approval_ids\": [1, 2, 3], \"threshold\": 3}",
+        "created_at": "2026-09-09T13:53:11.239905+00:00"
+      },
+      {
+        "id": 43,
+        "action_id": 11,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:53:11.240071+00:00"
+      },
+      {
+        "id": 44,
+        "action_id": 11,
+        "event": "notification",
+        "details": "{\"action\": \"archive\", \"recipient\": \"\", \"text\": \"\"}",
+        "created_at": "2026-09-09T13:53:11.240091+00:00"
+      },
+      {
+        "id": 45,
+        "action_id": 12,
+        "event": "decision",
+        "details": "{\"autonomy\": \"notify\", \"safety\": \"allowed\", \"status\": \"ready\", \"reason\": \"Learned archive preference\"}",
+        "created_at": "2026-09-09T13:53:36.861175+00:00"
+      },
+      {
+        "id": 46,
+        "action_id": 12,
+        "event": "learned_permission",
+        "details": "{\"mode\": \"notify\", \"scope\": \"*\", \"pattern\": \"routine_success\", \"approval_ids\": [4, 5, 6], \"threshold\": 3}",
+        "created_at": "2026-09-09T13:53:36.861340+00:00"
+      },
+      {
+        "id": 47,
+        "action_id": 12,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:53:36.861428+00:00"
+      },
+      {
+        "id": 48,
+        "action_id": 12,
+        "event": "notification",
+        "details": "{\"action\": \"archive\", \"recipient\": \"\", \"text\": \"\"}",
+        "created_at": "2026-09-09T13:53:36.861446+00:00"
+      },
+      {
+        "id": 49,
+        "action_id": 13,
+        "event": "decision",
+        "details": "{\"autonomy\": \"notify\", \"safety\": \"allowed\", \"status\": \"ready\", \"reason\": \"Learned archive preference\"}",
+        "created_at": "2026-09-09T13:54:02.528827+00:00"
+      },
+      {
+        "id": 50,
+        "action_id": 13,
+        "event": "learned_permission",
+        "details": "{\"mode\": \"notify\", \"scope\": \"*\", \"pattern\": \"routine_success\", \"approval_ids\": [4, 5, 6], \"threshold\": 3}",
+        "created_at": "2026-09-09T13:54:02.529076+00:00"
+      },
+      {
+        "id": 51,
+        "action_id": 13,
+        "event": "executed",
+        "details": "{\"action\": \"archive\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:54:02.529193+00:00"
+      },
+      {
+        "id": 52,
+        "action_id": 13,
+        "event": "notification",
+        "details": "{\"action\": \"archive\", \"recipient\": \"\", \"text\": \"\"}",
+        "created_at": "2026-09-09T13:54:02.529218+00:00"
+      },
+      {
+        "id": 53,
+        "action_id": 14,
+        "event": "decision",
+        "details": "{\"autonomy\": \"silent\", \"safety\": \"allowed\", \"status\": \"ready\", \"reason\": \"Initial permission\"}",
+        "created_at": "2026-09-09T13:54:28.011965+00:00"
+      },
+      {
+        "id": 54,
+        "action_id": 14,
+        "event": "executed",
+        "details": "{\"action\": \"label\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:54:28.012017+00:00"
+      },
+      {
+        "id": 55,
+        "action_id": 15,
+        "event": "decision",
+        "details": "{\"autonomy\": \"silent\", \"safety\": \"allowed\", \"status\": \"ready\", \"reason\": \"Initial permission\"}",
+        "created_at": "2026-09-09T13:54:53.496150+00:00"
+      },
+      {
+        "id": 56,
+        "action_id": 15,
+        "event": "executed",
+        "details": "{\"action\": \"label\", \"transport\": \"local_simulation\"}",
+        "created_at": "2026-09-09T13:54:53.496190+00:00"
+      },
+      {
+        "id": 57,
+        "action_id": 16,
+        "event": "decision",
+        "details": "{\"autonomy\": \"escalate\", \"safety\": \"review_required\", \"status\": \"escalated\", \"reason\": \"Human judgment required\"}",
+        "created_at": "2026-09-09T13:55:19.014918+00:00"
+      },
+      {
+        "id": 58,
+        "action_id": 16,
+        "event": "notification",
+        "details": "{\"reason\": \"Human judgment required\", \"requires_response\": true}",
+        "created_at": "2026-09-09T13:55:19.014933+00:00"
+      },
+      {
+        "id": 59,
+        "action_id": 17,
+        "event": "decision",
+        "details": "{\"autonomy\": \"escalate\", \"safety\": \"review_required\", \"status\": \"escalated\", \"reason\": \"Human judgment required\"}",
+        "created_at": "2026-09-09T13:55:44.552599+00:00"
+      },
+      {
+        "id": 60,
+        "action_id": 17,
+        "event": "notification",
+        "details": "{\"reason\": \"Human judgment required\", \"requires_response\": true}",
+        "created_at": "2026-09-09T13:55:44.552612+00:00"
+      },
+      {
+        "id": 61,
+        "action_id": 18,
+        "event": "decision",
+        "details": "{\"autonomy\": \"escalate\", \"safety\": \"review_required\", \"status\": \"escalated\", \"reason\": \"Human judgment required\"}",
+        "created_at": "2026-09-09T13:56:10.004343+00:00"
+      },
+      {
+        "id": 62,
+        "action_id": 18,
+        "event": "notification",
+        "details": "{\"reason\": \"Human judgment required\", \"requires_response\": true}",
+        "created_at": "2026-09-09T13:56:10.004357+00:00"
+      }
+    ],
+    "preference_feedback": [
+      {
+        "id": 1,
+        "action_id": 1,
+        "scope": "*",
+        "pattern": "periodic_digest",
+        "positive": 1,
+        "created_at": "2026-09-09T13:48:55.987877+00:00"
+      },
+      {
+        "id": 2,
+        "action_id": 2,
+        "scope": "*",
+        "pattern": "periodic_digest",
+        "positive": 1,
+        "created_at": "2026-09-09T13:49:21.532949+00:00"
+      },
+      {
+        "id": 3,
+        "action_id": 3,
+        "scope": "*",
+        "pattern": "periodic_digest",
+        "positive": 1,
+        "created_at": "2026-09-09T13:49:47.026831+00:00"
+      },
+      {
+        "id": 4,
+        "action_id": 4,
+        "scope": "*",
+        "pattern": "routine_success",
+        "positive": 1,
+        "created_at": "2026-09-09T13:50:12.562677+00:00"
+      },
+      {
+        "id": 5,
+        "action_id": 5,
+        "scope": "*",
+        "pattern": "routine_success",
+        "positive": 1,
+        "created_at": "2026-09-09T13:50:38.032822+00:00"
+      },
+      {
+        "id": 6,
+        "action_id": 6,
+        "scope": "*",
+        "pattern": "routine_success",
+        "positive": 1,
+        "created_at": "2026-09-09T13:51:03.590830+00:00"
+      },
+      {
+        "id": 7,
+        "action_id": 7,
+        "scope": "*",
+        "pattern": "informational_reference",
+        "positive": 1,
+        "created_at": "2026-09-09T13:51:29.106872+00:00"
+      },
+      {
+        "id": 8,
+        "action_id": 8,
+        "scope": "*",
+        "pattern": "informational_reference",
+        "positive": 1,
+        "created_at": "2026-09-09T13:51:54.704940+00:00"
+      },
+      {
+        "id": 9,
+        "action_id": 9,
+        "scope": "*",
+        "pattern": "informational_reference",
+        "positive": 1,
+        "created_at": "2026-09-09T13:52:20.186134+00:00"
+      }
+    ],
+    "archive_rules": []
+  },
+  "complete": false,
+  "http_attempts": 19,
+  "http_errors": 1,
+  "total_tokens": 20967
+}

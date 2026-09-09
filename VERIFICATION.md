@@ -1,5 +1,24 @@
 # Iteration 1 verification
 
+## Iteration 5 — live pattern checks, bounded retries and local web (2026-09-09)
+
+**47 tests passed**, 0 failures/errors, Python 3.14.3, 3.215 seconds. Includes HTTP diagnostics/retry limits, CSRF/Origin/Host checks, exact action revisions, archive correction/exceptions, persistent queue handling and mocked Gmail read-only import/deduplication. Optional Google dependencies installed in `.venv`; exact environment versions saved in `requirements-gmail.lock.txt`. No live OAuth connection has been made.
+
+Real Groq/Qwen development runs:
+
+| Report | Prompt | Completed tests | Matched | Autoarchives / eligible | Incorrect autoarchives | Questions before → after | Reported tokens |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `learning-v4-retry-2026-09-09.json` | v4 | 6/6 | 6 | 2/2 | 0/4 contrasts | 2 → 0 | 10,475 |
+| `patterns-v4-2026-09-09.json` | v4 | 9/12 | 7 | 4/6 | 0/3 completed contrasts | 4 → 0 | 20,967 |
+| `reference-v5-2026-09-09.json` | v5 | 4/4 | 4 | 2/2 | 0/2 contrasts | 2 → 0 | 8,282 |
+| `patterns-v5-2026-09-09.json` | v5 | 12/12 | 12 | 6/6 | 0/6 contrasts | 6 → 0 | 24,963 |
+
+The first run used three training acknowledgements from different subjects; the full pattern runs used nine training examples (three per digest/success/reference pattern). Training and testing use different senders. Each model interpretation was replayed against fresh and learned policies. All training approvals were **scripted evaluation-user feedback**, not actual user preferences. No real emails were delivered. Counts exclude the separate UI diagnostic email.
+
+The v4 pattern run wrongly proposed labels for two eligible references despite correctly identifying their semantic pattern. It then stopped on one **HTTP 403**, exact body `{"error":{"message":"Forbidden"}}`; the unfinished cases were not counted as passes. V5 clarified archive eligibility before the generic label fallback. The targeted regression passed, then the entire 21-call pattern run completed without HTTP errors. Summed inference latency for that run: **12.640 seconds**, excluding deliberate inter-call pacing. All original partial reports are retained. These remain developer-written, prompt-tuned **development measurements**, not final held-out quality or proof of safe unattended mail handling.
+
+Browser verification: loaded seven offline cases, approved one local archive and restored it; card counts changed 0 → 1 → 0. In Groq mode, submitted a synthetic support acknowledgement through the web form, observed asynchronous classification, approved its archive and verified the preference screen showed **1/3** general approvals. Screens were visually inspected at desktop and narrow viewport widths. The user-facing app is served locally at `127.0.0.1:8765`. Period summaries, Gmail writes, reminders and final evaluation remain incomplete.
+
 ## Iteration 4 — archive preference memory (2026-09-09)
 
 **34 unit tests passed**, 0 failures/errors, Python 3.14, unittest duration 0.043 seconds. Includes all four initial semantic categories, cross-sender transfer, sender-only scope, explicit keep exceptions, rejection, correction/reset, persistence, no learning from silence or automatic execution, risk flags, replay prevention and unchanged send/unsupported-operation restrictions.

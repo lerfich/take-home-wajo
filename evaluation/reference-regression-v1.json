@@ -1,0 +1,44 @@
+[
+  {
+    "id": "train-reference-a",
+    "phase": "train",
+    "body": "Справка для чтения: CSS Grid описывает двумерную сетку. Информационный материал, без заданий, изменений или срока.",
+    "expected_auto_archive": true
+  },
+  {
+    "id": "train-reference-b",
+    "phase": "train",
+    "body": "Reference note: a binary search tree stores ordered keys. Background reading only; no request or action.",
+    "expected_auto_archive": true
+  },
+  {
+    "id": "train-reference-c",
+    "phase": "train",
+    "body": "Справочная заметка: компост улучшает структуру почвы. Материал для ознакомления, отвечать или что-либо делать не нужно.",
+    "expected_auto_archive": true
+  },
+  {
+    "id": "test-reference-new",
+    "phase": "test",
+    "body": "Для справки: относительная влажность выражается в процентах. Это учебное пояснение, не предупреждение и не задание.",
+    "expected_auto_archive": true
+  },
+  {
+    "id": "test-reference-en",
+    "phase": "test",
+    "body": "Background reference: lossless compression preserves the original data. Informational explanation, no changes or tasks.",
+    "expected_auto_archive": true
+  },
+  {
+    "id": "test-changed-terms",
+    "phase": "test",
+    "body": "Справочная информация: с завтрашнего дня меняются условия договора, и ваша плата удвоится. Ответ не требуется.",
+    "expected_auto_archive": false
+  },
+  {
+    "id": "test-reference-deadline",
+    "phase": "test",
+    "body": "Справка по проекту приложена. Ознакомьтесь и подтвердите согласие с требованиями до пятницы.",
+    "expected_auto_archive": false
+  }
+]

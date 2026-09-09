@@ -1,5 +1,6 @@
 from dataclasses import asdict
 import json
+import io
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -44,14 +45,41 @@ class GroqTests(unittest.TestCase):
                 agent.close()
 
     def test_http_error_is_sanitized_without_retry(self):
-        error = HTTPError("https://example.test", 429, "fake-test-key", {}, None)
+        error = HTTPError("https://example.test", 401, "fake-test-key", {}, io.BytesIO(b'{"error":"fake-test-key invalid"}'))
         with patch("mail_agent.groq_provider.build_opener") as opener:
             opener.return_value.open.side_effect = error
             with self.assertRaises(ProviderError) as context:
                 self.provider.request("models")
             self.assertNotIn("fake-test-key", str(context.exception))
-            self.assertIn("429", str(context.exception))
+            self.assertIn("401", str(context.exception))
+            self.assertIn("invalid", str(context.exception))
             self.assertEqual(opener.return_value.open.call_count, 1)
+
+    def test_rate_limit_description_retained_and_retry_succeeds(self):
+        error = HTTPError("https://example.test", 429, "Limited", {"Retry-After": "0"},
+                          io.BytesIO(b'{"error":{"message":"tokens per minute exceeded"}}'))
+        with patch("mail_agent.groq_provider.build_opener") as opener, patch("mail_agent.groq_provider.time.sleep") as sleep:
+            response = opener.return_value.open.return_value.__enter__.return_value
+            response.status = 200
+            response.headers = {"x-ratelimit-remaining-tokens": "6000"}
+            response.read.return_value = b'{"data": []}'
+            opener.return_value.open.side_effect = [error, opener.return_value.open.return_value]
+            self.assertEqual(self.provider.models(), [])
+            self.assertEqual(opener.return_value.open.call_count, 2)
+            sleep.assert_called_once_with(0)
+            self.assertIn("tokens per minute", self.provider.http_attempts[0]["body"])
+            self.assertEqual(self.provider.http_attempts[1]["status"], "ok")
+
+    def test_retry_is_bounded_and_long_retry_after_is_respected(self):
+        for retry_after, count in (("0", 3), ("3600", 1)):
+            self.provider.http_attempts.clear()
+            with patch("mail_agent.groq_provider.build_opener") as opener, patch("mail_agent.groq_provider.time.sleep"):
+                opener.return_value.open.side_effect = lambda *args, **kwargs: (_ for _ in ()).throw(
+                    HTTPError("https://example.test", 429, "Limited",
+                              {"Retry-After": retry_after}, io.BytesIO(b"Try later")))
+                with self.assertRaises(ProviderError):
+                    self.provider.models()
+                self.assertEqual(opener.return_value.open.call_count, count)
 
     def test_oversized_email_does_not_call_api(self):
         with patch.object(self.provider, "request") as request:
