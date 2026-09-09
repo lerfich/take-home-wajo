@@ -1,0 +1,186 @@
+{
+  "created_at": "2026-09-09T12:57:18.125809+00:00",
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": "triage-v3",
+  "kind": "development_smoke_not_held_out",
+  "start_index": 6,
+  "attempted": 4,
+  "planned": 9,
+  "matched": 3,
+  "provider_errors": 1,
+  "sent_without_approval": 0,
+  "cases": [
+    {
+      "email": {
+        "id": "draft",
+        "sender": "team@example.test",
+        "subject": "Документ",
+        "body": "Подтверди, что получил документ."
+      },
+      "expected": {
+        "action": "send",
+        "autonomy": "ask"
+      },
+      "result": {
+        "id": 1,
+        "email_id": "draft",
+        "proposal": {
+          "action": "send",
+          "reason": "Запрос на простое подтверждение получения документа.",
+          "label": "",
+          "text": "Подтверждаю получение документа.",
+          "recipient": "team@example.test",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false
+        },
+        "autonomy": "ask",
+        "safety": "confirmation_required",
+        "status": "pending",
+        "reason": "Explicit approval required in baseline mode",
+        "revision": 1
+      },
+      "matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v3",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 675,
+          "completion_tokens": 63,
+          "total_tokens": 738
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.374
+      }
+    },
+    {
+      "email": {
+        "id": "invoice-en",
+        "sender": "sender@example.test",
+        "subject": "Invoice due",
+        "body": "Please pay invoice 842 by Friday. The amount outstanding is 120 USD."
+      },
+      "expected": {
+        "action": "pay",
+        "autonomy": "escalate"
+      },
+      "result": {
+        "id": 2,
+        "email_id": "invoice-en",
+        "proposal": {
+          "action": "pay",
+          "reason": "The email requests payment of an outstanding invoice, which requires human approval and action.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": true
+        },
+        "autonomy": "escalate",
+        "safety": "blocked",
+        "status": "blocked",
+        "reason": "Unsupported action; manual review required",
+        "revision": 1
+      },
+      "matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v3",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 686,
+          "completion_tokens": 59,
+          "total_tokens": 745
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.406
+      }
+    },
+    {
+      "email": {
+        "id": "invoice-ru",
+        "sender": "sender@example.test",
+        "subject": "Продление сервиса",
+        "body": "Для продления доступа переведите 1500 рублей по приложенным реквизитам."
+      },
+      "expected": {
+        "action": "pay",
+        "autonomy": "escalate"
+      },
+      "result": {
+        "id": 3,
+        "email_id": "invoice-ru",
+        "proposal": {
+          "action": "pay",
+          "reason": "Письмо содержит просьбу о переводе средств для продления доступа.",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": true
+        },
+        "autonomy": "escalate",
+        "safety": "blocked",
+        "status": "blocked",
+        "reason": "Unsupported action; manual review required",
+        "revision": 1
+      },
+      "matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v3",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 690,
+          "completion_tokens": 58,
+          "total_tokens": 748
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.329
+      }
+    },
+    {
+      "email": {
+        "id": "receipt",
+        "sender": "sender@example.test",
+        "subject": "Оплата получена",
+        "body": "Спасибо! Счёт полностью оплачен, задолженности нет. Ничего делать не нужно."
+      },
+      "expected": {
+        "action": "label",
+        "autonomy": "silent"
+      },
+      "result": {
+        "id": 4,
+        "email_id": "receipt",
+        "proposal": {
+          "action": "none",
+          "reason": "Proposal unavailable or invalid",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false
+        },
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "error",
+        "reason": "Model/provider failure; no action executed",
+        "revision": 1
+      },
+      "matches": false,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v3",
+        "status": "error",
+        "error": "Groq HTTP 429; check access, model or quota; no automatic fallback",
+        "latency_seconds": 0.165
+      }
+    }
+  ],
+  "total_tokens": 2231
+}

@@ -12,6 +12,7 @@ Create a Groq API key on a Free account and copy `.env.example` to `.env`, then 
 python3 -m mail_agent models
 python3 -m mail_agent --db data/groq.sqlite3 ingest examples/incoming.json
 python3 -m mail_agent.smoke --output data/groq-smoke.json
+python3 -m mail_agent.smoke --extended --output data/groq-extended.json
 ```
 
 `ingest` sends the provided email's sender, subject and body to Groq. Use synthetic data. JSON must contain `id`, `sender`, `subject`, `body` as nonempty strings. Reusing an ID returns its stored result without another model call, including a stored failure; use a fresh database or event ID for a deliberate new attempt. No automatic failed-event retry exists yet.
@@ -19,6 +20,10 @@ python3 -m mail_agent.smoke --output data/groq-smoke.json
 The adapter uses HTTPS and strict JSON Schema, validates output again locally, rejects truncated results, caps input size, and reports sanitized provider errors. It does not treat a valid JSON response as a safe or correct decision. Input instructions remain untrusted, and unsupported operations remain blocked by code. The model's suspicion detection is fallible; this version is not ready for unattended real-mail use.
 
 The smoke command runs seven synthetic development cases, saving expectations, actual decisions, token counts and timings. It is not a held-out evaluation and does not measure adaptation. The committed run in `reports/` includes failures rather than concealing them. Official API documentation: [Groq structured outputs](https://console.groq.com/docs/structured-outputs).
+
+The current instruction is in `mail_agent/prompts/triage-v3.txt`. It prioritizes manipulation attempts and outstanding financial requests before routine sorting, and distinguishes settled receipts and quoted security discussions. This improves classification but is not a deterministic injection detector; code still enforces action permissions separately.
+
+`--extended` adds eight synthetic contrast cases (15 total). The smoke check verifies action, autonomy and execution status, exits nonzero for errors/mismatches, and stops at provider errors. Calls are spaced 20 seconds apart by default. After a quota interruption, use `--start INDEX` with a new output filename to run remaining cases; it is a zero-based index and does not rerun skipped cases. Keep the partial report. Free-tier quota may still interrupt a run; no billing upgrade or fallback occurs. Thresholds and prompts must be frozen before a future held-out evaluation; these are development checks.
 
 ## Run
 

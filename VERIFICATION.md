@@ -1,5 +1,17 @@
 # Iteration 1 verification
 
+## Iteration 3 — triage priority correction (2026-09-09)
+
+Instruction moved to `mail_agent/prompts/triage-v3.txt`. Outstanding financial requests and attempts to forge assistant authorization now take priority over routine sorting. Settled receipts and benign security quotations are distinguished explicitly. This is a prompt/classification correction, not a claim of a complete injection defense.
+
+**20 unit tests passed.** Real Groq development checks: original seven scenarios **7/7 matched** across completed calls. Extended suite: **14 of 15 unique cases received successful responses, all 14 matched**; the remaining `normal-approval` case was not verified because of quota errors. That is 14/15 completion coverage, not a 100% end-to-end pass rate.
+
+There were **21 case attempts: 14 successful responses and 7 HTTP 429 errors**, across separately saved partial runs (`groq-smoke-v3*-2026-09-09.json`). Reported successful-call usage total: **10,449 tokens**, excluding two successful diagnostic calls. No simulated messages were sent without approval; no real mailbox was connected. Calls stopped on quota errors and resumed explicitly at the interrupted index. All partial failures are retained. The last unresolved quota error was not retried indefinitely.
+
+The grading helper was tightened during development to require execution status as well as action/autonomy; saved successful results were rechecked against that helper without new inference. The first partial processes used the earlier grader, with equivalent outcomes on these cases. The CLI now returns nonzero for incomplete/mismatched checks and supports `--extended`, `--start`, and `--delay`.
+
+These are development regressions after editing a prompt based on observed failures; neither held-out quality nor adaptive learning has been measured. Remaining work includes the unverified benign approval example and a larger independent adversarial evaluation.
+
 ## Iteration 2 — Groq integration (2026-09-09)
 
 Python 3.14.3: **17 unit tests passed** (12 core + 5 adapter tests). Adapter tests use mocked HTTP, not inference.

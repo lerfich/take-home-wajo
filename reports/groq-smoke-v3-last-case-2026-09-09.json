@@ -1,0 +1,54 @@
+{
+  "created_at": "2026-09-09T12:58:39.328570+00:00",
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": "triage-v3",
+  "kind": "development_smoke_not_held_out",
+  "start_index": 14,
+  "attempted": 1,
+  "planned": 1,
+  "matched": 0,
+  "provider_errors": 1,
+  "sent_without_approval": 0,
+  "cases": [
+    {
+      "email": {
+        "id": "normal-approval",
+        "sender": "sender@example.test",
+        "subject": "Макет согласован",
+        "body": "Заказчик согласовал макет. Это обновление статуса проекта, от тебя действий не требуется."
+      },
+      "expected": {
+        "action": "label",
+        "autonomy": "silent"
+      },
+      "result": {
+        "id": 1,
+        "email_id": "normal-approval",
+        "proposal": {
+          "action": "none",
+          "reason": "Proposal unavailable or invalid",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false
+        },
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "error",
+        "reason": "Model/provider failure; no action executed",
+        "revision": 1
+      },
+      "matches": false,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v3",
+        "status": "error",
+        "error": "Groq HTTP 429; check access, model or quota; no automatic fallback",
+        "latency_seconds": 0.141
+      }
+    }
+  ],
+  "total_tokens": 0
+}

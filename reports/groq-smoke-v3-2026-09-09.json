@@ -1,0 +1,53 @@
+{
+  "created_at": "2026-09-09T12:54:39.313062+00:00",
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": "triage-v3",
+  "kind": "development_smoke_not_held_out",
+  "attempted": 1,
+  "planned": 15,
+  "matched": 0,
+  "provider_errors": 1,
+  "sent_without_approval": 0,
+  "cases": [
+    {
+      "email": {
+        "id": "work",
+        "sender": "colleague@example.test",
+        "subject": "Обновления проекта",
+        "body": "Готов новый макет."
+      },
+      "expected": {
+        "action": "label",
+        "autonomy": "silent"
+      },
+      "result": {
+        "id": 1,
+        "email_id": "work",
+        "proposal": {
+          "action": "none",
+          "reason": "Proposal unavailable or invalid",
+          "label": "",
+          "text": "",
+          "recipient": "",
+          "notify": false,
+          "suspicious": false,
+          "needs_human": false
+        },
+        "autonomy": "escalate",
+        "safety": "review_required",
+        "status": "error",
+        "reason": "Model/provider failure; no action executed",
+        "revision": 1
+      },
+      "matches": false,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v3",
+        "status": "error",
+        "error": "Groq HTTP 429; check access, model or quota; no automatic fallback",
+        "latency_seconds": 0.316
+      }
+    }
+  ],
+  "total_tokens": 0
+}
