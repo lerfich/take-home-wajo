@@ -20,9 +20,12 @@ STATIC = Path(__file__).parent / "static"
 
 
 class Application:
-    def __init__(self, db_path, demo=False, recover_jobs=True):
+    def __init__(self, db_path, demo=False, recover_jobs=True, gmail_token=None):
         self.db_path = str(db_path)
         self.demo = demo
+        self.gmail_token = gmail_token
+        if demo and gmail_token:
+            raise ValueError("Sample mode cannot enable Gmail writes")
         self.csrf = secrets.token_urlsafe(32)
         self.stop = threading.Event()
         self.wakeup = threading.Event()
@@ -36,6 +39,9 @@ class Application:
                 db.execute("UPDATE incoming_jobs SET status='queued' WHERE status='processing'")
         agent = self.agent()
         agent.close()
+        if recover_jobs:
+            from .gmail_executor import recover
+            recover(self.db_path)
         self.worker = threading.Thread(target=self.work, daemon=True)
 
     @contextmanager
@@ -51,7 +57,7 @@ class Application:
     def agent(self, proposer=None):
         return Agent(self.db_path, proposer or ScriptedProposer())
 
-    def enqueue(self, payload, event_id=None):
+    def enqueue(self, payload, event_id=None, gmail_binding=None):
         if self.demo:
             raise ValueError("Custom emails require Groq mode; sample mode uses predefined cases")
         if type(payload) is not dict or set(payload) != {"sender", "subject", "body"}:
@@ -64,13 +70,21 @@ class Application:
             raise ValueError("Email exceeds the current size limit")
         email = Email(event_id or uuid.uuid4().hex, **payload)
         with self.connect() as db:
-            db.execute("INSERT OR IGNORE INTO incoming_jobs(id,email,status,created_at) VALUES(?,?,'queued',?)",
+            cursor = db.execute("INSERT OR IGNORE INTO incoming_jobs(id,email,status,created_at) VALUES(?,?,'queued',?)",
                        (email.id, json.dumps(asdict(email)), datetime.now(timezone.utc).isoformat()))
+            if cursor.rowcount and gmail_binding is not None:
+                db.execute("INSERT INTO gmail_bindings VALUES(?,?,?,?,?,?)",
+                           (email.id, gmail_binding["account"], gmail_binding["message_id"],
+                            gmail_binding["label_id"], gmail_binding["label_name"], gmail_binding["initial_inbox"]))
         self.wakeup.set()
         return {"id": email.id, "status": "queued"}
 
     def work(self):
         while not self.stop.is_set():
+            if self.gmail_token:
+                with self.lock:
+                    if self.run_gmail():
+                        continue
             with self.connect() as db:
                 row = db.execute("SELECT * FROM incoming_jobs WHERE status='queued' ORDER BY created_at LIMIT 1").fetchone()
                 if row:
@@ -96,6 +110,15 @@ class Application:
                 db.execute("UPDATE incoming_jobs SET status=?,diagnostics=? WHERE id=?",
                            (status, json.dumps(diagnostics, ensure_ascii=False), row["id"]))
 
+    def run_gmail(self, operation_id=None, check_only=False):
+        from .gmail_executor import GmailExecutor, run_one
+        from .gmail import service
+        # Build a fresh client inside this thread; Google HTTP clients are not thread safe.
+        class LazyExecutor:
+            def apply(inner, *args, **kwargs):
+                return GmailExecutor(service(self.gmail_token)).apply(*args, **kwargs)
+        return run_one(self.db_path, LazyExecutor(), operation_id, check_only)
+
     def state(self):
         agent = self.agent()
         try:
@@ -113,13 +136,20 @@ class Application:
         with self.connect() as db:
             state["jobs"] = [dict(row) for row in db.execute("SELECT * FROM incoming_jobs ORDER BY created_at")]
         state.update(mode="scripted" if self.demo else "groq", csrf=self.csrf,
-                     patterns=sorted(PATTERNS))
+                     patterns=sorted(PATTERNS), gmail_enabled=bool(self.gmail_token))
         return state
 
     def mutate(self, route, data):
         if route == "/api/ingest":
             return self.enqueue(data)
         with self.lock:
+            if route == "/api/gmail-check":
+                if not self.gmail_token:
+                    raise ValueError("Start the server with --gmail-live to check Gmail")
+                if type(data.get("operation_id")) is not int:
+                    raise ValueError("Invalid Gmail operation ID")
+                self.run_gmail(data["operation_id"], check_only=True)
+                return {"checked": True}
             agent = self.agent()
             try:
                 if route == "/api/demo" and self.demo:
@@ -200,12 +230,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send(500, {"error": "Operation failed. Refresh the page and check the email status."})
 
 
-def create_server(db_path, port=8765, demo=False):
+def create_server(db_path, port=8765, demo=False, gmail_token=None):
     # Bind before touching persistent queue state: a duplicate launch must not
     # requeue a job currently being processed by the existing server.
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     try:
-        server.app = Application(db_path, demo)
+        server.app = Application(db_path, demo, gmail_token=gmail_token)
     except Exception:
         server.server_close()
         raise
@@ -217,10 +247,14 @@ def main():
     parser.add_argument("--db", type=Path, default=Path("data/web.sqlite3"))
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--demo", action="store_true", help="Scripted fixtures, no model calls; use a separate database")
+    parser.add_argument("--gmail-live", action="store_true", help="Execute queued Gmail labels/archive/restore for explicitly live imports")
+    parser.add_argument("--gmail-token", type=Path, default=Path("data/gmail-token.json"))
     args = parser.parse_args()
+    if args.demo and args.gmail_live:
+        parser.error("--demo cannot be combined with --gmail-live")
     args.db.parent.mkdir(parents=True, exist_ok=True)
     try:
-        server = create_server(args.db, args.port, args.demo)
+        server = create_server(args.db, args.port, args.demo, args.gmail_token if args.gmail_live else None)
     except OSError as exc:
         if exc.errno == errno.EADDRINUSE:
             parser.exit(2, f"Port {args.port} is already in use. If Wajo is running, open "

@@ -2,7 +2,7 @@
 
 Local execution and safety prototype for the Wajo take-home. **Not the finished AI agent.**
 
-Two explicit modes are available: **scripted demo** (offline fixtures) and **Groq** (real model inference). Both use a local simulated mailbox and never deliver email. Initial permissions, versioned approvals, a SQLite audit trail, archive-preference learning and a local web interface are implemented. Small real-model development checks are recorded in `VERIFICATION.md`; they are not final evaluation. Read-only Gmail OAuth/import has been exercised by the user; local database inspection confirms ten imported Gmail jobs completed. Gmail writes remain unimplemented.
+Two explicit modes are available: **scripted demo** (offline fixtures) and **Groq** (real model inference). Local simulation remains the default; explicit Gmail live mode supports labels, archive and restore. Neither mode delivers email yet. Initial permissions, versioned approvals, a SQLite audit trail, archive-preference learning and a local web interface are implemented. Small real-model development checks are recorded in `VERIFICATION.md`; they are not final evaluation. Read-only Gmail OAuth/import has been exercised by the user; local database inspection confirms ten imported Gmail jobs completed. Reversible Gmail writes are implemented and have a small live transport check; see GMAIL_SETUP.md.
 
 ## Real model via Groq
 
@@ -47,7 +47,7 @@ For an offline UI demo with prewritten decisions, use a separate database:
 python3 -m mail_agent.web --demo --db data/web-demo.sqlite3
 ```
 
-Click **Загрузить демо** to insert seven fixtures without model calls. Repeated loading is idempotent. Arbitrary input is disabled in scripted mode. Do not run two servers against one database or mix scripted and Groq data. The UI labels the selected mode; both transports are still local simulations. Gmail preparation is described in [GMAIL_SETUP.md](GMAIL_SETUP.md); no Gmail access exists yet.
+Click **Load sample cases** to insert seven fixtures without model calls. Repeated loading is idempotent. Arbitrary input is disabled in scripted mode. Do not run two servers against one database or mix scripted and Groq data. The UI labels each action as local simulation or real Gmail execution. Gmail preparation is described in [GMAIL_SETUP.md](GMAIL_SETUP.md).
 
 The server binds only to `127.0.0.1`, checks Host/Origin and a per-process CSRF token for writes, limits request size, serves only three fixed assets, and applies CSP. Email/model content is escaped before DOM rendering; email HTML is not executed. This is a single-owner local prototype, not an authenticated public web service. Start the server again after code/prompt changes; closing the browser does not stop a running server.
 
@@ -121,5 +121,5 @@ The default set uses three training fixtures with scripted evaluation-user appro
 - Sending requires approval; archiving initially asks and can use learned permission as described above. `AI: ` labels and drafts use initial permissions.
 - One proposal per incoming event in this first slice; multi-step draft/send workflows are future work.
 - Local SQLite operations execute in one transaction. This does **not** promise atomic or exactly-once Gmail delivery.
-- Optional learned auto-replies, Gmail writes/polling, period summaries, reminders, Docker and comprehensive final evaluation are not implemented yet. Read-only Gmail import has been exercised; this does not validate Gmail writes. The web interface is a local first slice. Archive learning is limited to the initial semantic categories and has only small development measurements, not established production quality.
+- Optional learned auto-replies, Gmail sending/drafts/polling, period summaries, reminders, Docker and comprehensive final evaluation are not implemented yet. Read-only Gmail import has been exercised; this does not validate Gmail writes. The web interface is a local first slice. Archive learning is limited to the initial semantic categories and has only small development measurements, not established production quality.
 - The scripted demo requires no credentials. Groq commands need a key. Local databases and `.env` are excluded from Git.

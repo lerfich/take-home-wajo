@@ -1,4 +1,4 @@
-"""Shared policy and execution core. Only the local mailbox is implemented."""
+"""Shared policy and execution core. Local execution plus a durable outbox for bounded Gmail operations."""
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -120,6 +120,29 @@ class Agent:
                 scope TEXT NOT NULL, pattern TEXT NOT NULL, mode TEXT NOT NULL,
                 PRIMARY KEY(scope, pattern));
         """)
+        # Legacy actions remain local forever; importing again cannot upgrade them.
+        if "transport" not in {r["name"] for r in self.db.execute("PRAGMA table_info(actions)")}:
+            self.db.execute("ALTER TABLE actions ADD COLUMN transport TEXT NOT NULL DEFAULT 'local_simulation'")
+        self.db.executescript("""
+            CREATE TABLE IF NOT EXISTS gmail_bindings (
+                email_id TEXT PRIMARY KEY, account TEXT NOT NULL, message_id TEXT NOT NULL,
+                label_id TEXT NOT NULL, label_name TEXT NOT NULL, initial_inbox INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS gmail_operations (
+                id INTEGER PRIMARY KEY, action_id INTEGER NOT NULL REFERENCES actions(id),
+                revision INTEGER NOT NULL, operation TEXT NOT NULL, status TEXT NOT NULL,
+                approved INTEGER NOT NULL DEFAULT 0, feedback_scope TEXT NOT NULL DEFAULT 'general',
+                error TEXT NOT NULL DEFAULT '', UNIQUE(action_id, operation));
+        """)
+
+    def queue_gmail(self, action_id, operation, approved=False, scope="general"):
+        if scope not in {"general", "sender"}:
+            raise ValueError("Feedback scope must be general or sender")
+        row = self.get(action_id)
+        self.db.execute("""INSERT INTO gmail_operations(action_id,revision,operation,status,approved,feedback_scope)
+                           VALUES(?,?,?,'queued',?,?)""", (action_id, row["revision"], operation, int(approved), scope))
+        self.db.execute("UPDATE actions SET status=? WHERE id=?",
+                        ("restoring" if operation == "restore" else "executing", action_id))
+        self.log(action_id, "gmail_queued", {"operation": operation, "transport": "gmail"})
 
     def email_for(self, action_id):
         row = self.db.execute("SELECT e.id,e.sender,e.subject,e.body FROM emails e JOIN actions a ON a.email_id=e.id WHERE a.id=?", (action_id,)).fetchone()
@@ -177,6 +200,9 @@ class Agent:
             if row["status"] != "executed" or row["proposal"]["action"] != "archive":
                 raise ValueError("Only an executed archive can be corrected")
             self.record_feedback(action_id, False, scope)
+            if row["transport"] == "gmail":
+                self.queue_gmail(action_id, "restore", scope=scope)
+                return self.get(action_id)
             self.db.execute("UPDATE emails SET archived=0 WHERE id=?", (row["email_id"],))
             self.db.execute("UPDATE actions SET status='corrected' WHERE id=?", (action_id,))
             self.log(action_id, "archive_corrected", {"scope": scope})
@@ -227,6 +253,14 @@ class Agent:
                                      (email.id, json.dumps(asdict(proposal), ensure_ascii=False),
                                       decision.autonomy, decision.safety, decision.status, decision.reason))
             action_id = cursor.lastrowid
+            binding = self.db.execute("SELECT * FROM gmail_bindings WHERE email_id=?", (email.id,)).fetchone()
+            if binding is not None:
+                self.db.execute("UPDATE actions SET transport='gmail' WHERE id=?", (action_id,))
+                self.db.execute("UPDATE emails SET archived=? WHERE id=?", (int(not binding["initial_inbox"]), email.id))
+                if proposal.action in {"send", "draft"} and decision.status in {"ready", "pending"}:
+                    decision = Decision("escalate", "review_required", "escalated", "Gmail drafts and sending are not implemented yet")
+                    self.db.execute("UPDATE actions SET autonomy=?,safety=?,status=?,reason=? WHERE id=?",
+                                    (decision.autonomy, decision.safety, decision.status, decision.reason, action_id))
             self.log(action_id, "decision", asdict(decision))
             if decision.status == "ready":
                 self._execute(action_id)
@@ -245,8 +279,11 @@ class Agent:
             if decide(proposal).status != "pending":
                 raise ValueError("Policy no longer permits approval")
             self.log(action_id, "approved", {"revision": revision, "proposal": row["proposal"]})
-            self._execute(action_id, approved=True)
-            self.record_feedback(action_id, True, scope)
+            if scope not in {"general", "sender"}:
+                raise ValueError("Feedback scope must be general or sender")
+            self._execute(action_id, approved=True, scope=scope)
+            if row["transport"] != "gmail":
+                self.record_feedback(action_id, True, scope)
         return self.get(action_id)
 
     def reject(self, action_id: int, revision: int, scope="general") -> dict:
@@ -277,7 +314,7 @@ class Agent:
             self.log(action_id, "revised", {"revision": row["revision"] + 1})
         return self.get(action_id)
 
-    def _execute(self, action_id: int, approved: bool = False):
+    def _execute(self, action_id: int, approved: bool = False, scope="general"):
         # Internal only. This local executor shares the SQLite transaction;
         # a future Gmail executor must handle uncertain external outcomes separately.
         row = self.get(action_id)
@@ -294,6 +331,11 @@ class Agent:
         if p.action == "archive" and self.preference(p, self.email_for(action_id))["mode"] == "keep":
             raise ValueError("Explicit preference requires keeping this email in inbox")
         email_id = row["email_id"]  # Server-bound scope, never chosen by the model.
+        if row["transport"] == "gmail" and p.action != "none":
+            if p.action not in {"label", "archive"}:
+                raise ValueError("Gmail operation is not implemented")
+            self.queue_gmail(action_id, p.action, approved, scope)
+            return
         if p.action == "label":
             self.db.execute("INSERT OR IGNORE INTO labels VALUES(?,?)", (email_id, p.label))
         elif p.action == "archive":
@@ -310,4 +352,4 @@ class Agent:
 
     def snapshot(self) -> dict:
         return {table: [dict(row) for row in self.db.execute(f"SELECT * FROM {table}")]
-                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules")}
+                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations")}

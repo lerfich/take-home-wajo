@@ -1,5 +1,14 @@
 # Iteration 1 verification
 
+## Reversible Gmail execution (2026-09-09)
+
+**59 tests passed**, 0 failures/errors, 3.889 seconds. New checks cover durable queuing, explicit approval, deferred positive feedback, restoration, learned-permission revocation, current account/label/Trash checks, unknown outcome after a write, read-only reconciliation without replay, crash recovery, legacy transport isolation, unsupported live sends, and the background worker.
+
+Live transport development check: **3/3 operations verified** on one user-created synthetic Wajo-Test message: AI label, archive, restore. The original Inbox membership was restored. The diagnostic label AI: Integration check remains. The shared core, durable queue and Gmail executor were used with fixed proposals and scripted explicit approval in isolated diagnostic databases. Zero model calls, zero sends, zero deletions. This does not measure Qwen quality or final task performance. Aggregate report: [gmail-writes-2026-09-09.json](reports/gmail-writes-2026-09-09.json). Original message content and account identifiers are excluded.
+
+Browser verification: the main database displays Gmail live mode while existing decisions still show Local simulation; no JavaScript errors were observed. An isolated diagnostic UI displayed Gmail · real action and Restored to inbox; its screenshot was visually checked.
+
+
 ## Optional Gmail manage access (2026-09-09)
 
 **50 tests passed**, 0 failures/errors, unittest duration 3.725 seconds. New mocked OAuth checks cover both access profiles, refusal to replace a token when the requested scope is missing, private token permissions, and preserving stored scopes while loading/refreshing credentials. The explicit `auth --access manage` profile requests only `gmail.modify`; default authorization remains read-only. After user consent, inspection confirmed gmail.modify in the saved token scopes. Live Gmail getProfile and labels.list requests succeeded, and Wajo-Test was found. No address, token or message content was logged. These read requests do not validate write execution. No Gmail write/send endpoint is implemented by this change.

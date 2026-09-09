@@ -1,6 +1,6 @@
-"""Optional Gmail connection with explicit OAuth access profiles. Imported messages use LOCAL execution.
+"""Optional Gmail connection with explicit OAuth access profiles. Imports use local execution unless --gmail-live is explicitly selected.
 
-No Gmail write/send endpoints are implemented. OAuth consent is granted by the user.
+The separate executor supports labels/archive/restore; send and drafts are not implemented. OAuth consent is granted by the user.
 Only the explicitly selected test label is imported and passed to Groq.
 """
 import argparse
@@ -91,8 +91,10 @@ def message_fields(message):
     return {"sender": sender, "subject": headers.get("subject") or "(No subject)", "body": body}
 
 
-def import_label(api, app, label, limit):
+def import_label(api, app, label, limit, live=False):
     """One bounded polling cycle. Repeated IDs are deduplicated in the local queue."""
+    if live and label != "Wajo-Test":
+        raise ValueError("Live writes are restricted to the Wajo-Test label")
     profile = api.users().getProfile(userId="me").execute()
     account = profile["emailAddress"].casefold()
     labels = api.users().labels().list(userId="me").execute().get("labels", [])
@@ -111,7 +113,14 @@ def import_label(api, app, label, limit):
         message = api.users().messages().get(userId="me", id=item["id"], format="full").execute()
         try:
             fields = message_fields(message)
-            app.enqueue(fields, event_id=event_id)
+            binding = None
+            if live:
+                ids = set(message.get("labelIds", []))
+                if label_id not in ids or ids.intersection({"TRASH", "SPAM", "DRAFT"}):
+                    raise ValueError("Message is outside the live test scope")
+                binding = {"account": account, "message_id": item["id"], "label_id": label_id,
+                           "label_name": label, "initial_inbox": int("INBOX" in ids)}
+            app.enqueue(fields, event_id=event_id, gmail_binding=binding)
             result["queued"] += 1
         except ValueError:
             result["manual_review"] += 1
@@ -128,6 +137,7 @@ def main():
     auth.add_argument("--credentials", type=Path, default=Path("data/gmail-credentials.json"))
     imp = sub.add_parser("import", help="Queue selected test-label emails for local Groq analysis")
     imp.add_argument("--db", type=Path, default=Path("data/web-groq.sqlite3"))
+    imp.add_argument("--gmail-live", action="store_true", help="Bind NEW imports to real Gmail labels/archive/restore; existing imports stay unchanged")
     imp.add_argument("--label", default="Wajo-Test")
     imp.add_argument("--limit", type=int, default=10)
     imp.add_argument("--allow-groq", action="store_true", required=True,
@@ -142,8 +152,8 @@ def main():
                 parser.error("limit must be between 1 and 50")
             args.db.parent.mkdir(parents=True, exist_ok=True)
             app = Application(args.db, recover_jobs=False)
-            print(json.dumps(import_label(service(args.token), app, args.label, args.limit), indent=2))
-            print("Run mail_agent.web with this database to process queued messages. All actions stay LOCAL.")
+            print(json.dumps(import_label(service(args.token), app, args.label, args.limit, args.gmail_live), indent=2))
+            print("Run mail_agent.web with this database" + (" and --gmail-live. New live imports can change Gmail labels and inbox state." if args.gmail_live else ". Newly queued messages use LOCAL simulation."))
     except ImportError:
         parser.exit(2, "Install optional requirements-gmail.txt in your virtual environment.\n")
     except (ValueError, FileNotFoundError) as exc:

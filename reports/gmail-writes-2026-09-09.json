@@ -1,0 +1,22 @@
+{
+  "kind": "live_gmail_transport_development_check",
+  "model_calls": 0,
+  "messages": 1,
+  "checks": [
+    {
+      "operation": "label",
+      "verified": true
+    },
+    {
+      "operation": "archive",
+      "verified": true
+    },
+    {
+      "operation": "restore",
+      "verified": true
+    }
+  ],
+  "inbox_restored": true,
+  "diagnostic_label": "AI: Integration check",
+  "note": "Diagnostic label retained. No send, draft, delete or model call. Fixed proposals and explicit scripted approval test the executor only."
+}
