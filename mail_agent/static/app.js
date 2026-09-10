@@ -194,8 +194,17 @@ $('#show-unreviewed').addEventListener('click',()=>setFilter('label_review'));
 $('#show-reviewed').addEventListener('click',()=>setFilter('label_reviewed'));
 document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>setFilter(b.dataset.filter)));
 $('#search').addEventListener('input',renderMail);$('#refresh').addEventListener('click',()=>refresh(true));
-$('#new-email').addEventListener('click',()=>$('#compose').showModal());$('#close-compose').addEventListener('click',()=>$('#compose').close());
-$('#compose-form').addEventListener('submit',async e=>{e.preventDefault();$('#submit-email').disabled=true;try{const r=await post('/api/ingest',Object.fromEntries(new FormData(e.target)));if(r){$('#compose').close();e.target.reset();navigate('mail');setFilter('all');notify('Email queued for agent analysis')}}finally{$('#submit-email').disabled=false}});
+const composeKey='wajo-unsent-test-email';
+function savedCompose(){try{return JSON.parse(sessionStorage.getItem(composeKey)||'null')}catch{return null}}
+function updateComposeRestore(){const d=savedCompose();$('#restore-compose').classList.toggle('hidden',!d||!Object.values(d).some(Boolean))}
+function storeCompose(){const d=Object.fromEntries(new FormData($('#compose-form')));if(Object.values(d).some(Boolean))sessionStorage.setItem(composeKey,JSON.stringify(d));else sessionStorage.removeItem(composeKey);updateComposeRestore()}
+function closeCompose(){$('#compose').close();$('#compose-form').reset();updateComposeRestore()}
+$('#new-email').addEventListener('click',()=>{$('#compose-form').reset();updateComposeRestore();$('#compose').showModal()});
+$('#close-compose').addEventListener('click',closeCompose);
+$('#compose').addEventListener('cancel',e=>{e.preventDefault();closeCompose()});
+$('#compose-form').addEventListener('input',storeCompose);
+$('#restore-compose').addEventListener('click',()=>{const d=savedCompose();if(!d)return;for(const [name,value] of Object.entries(d)){const field=$(`#compose-form [name="${name}"]`);if(field)field.value=value}$('#restore-compose').classList.add('hidden')});
+$('#compose-form').addEventListener('submit',async e=>{e.preventDefault();$('#submit-email').disabled=true;try{const r=await post('/api/ingest',Object.fromEntries(new FormData(e.target)));if(r){sessionStorage.removeItem(composeKey);closeCompose();navigate('mail');setFilter('all');notify('Email queued for agent analysis')}}finally{$('#submit-email').disabled=false}});
 $('#load-demo').addEventListener('click',async()=>{if(await post('/api/demo',{}))notify('Sample cases loaded. Loading again does not duplicate actions')});
 $('#rule-form').addEventListener('submit',async e=>{e.preventDefault();const sender=new FormData(e.target).get('sender');if(await post('/api/rule',{sender,keep:true})){e.target.reset();notify('Exception saved')}});
 let gmailContext='';
