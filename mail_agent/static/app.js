@@ -140,7 +140,6 @@ function bindAttention(row){
  const scopes=row.attention_scopes||[];
  if($('#attention-scope')){
    $('#attention-scope').value=scopes.includes('sender')?'sender':scopes.includes('similar')?'similar':'email';
-   $('#attention-scope').addEventListener('change',()=>{$('#attention-enabled').checked=scopes.includes($('#attention-scope').value)});
  }
  $('#attention-form')?.addEventListener('submit',async e=>{e.preventDefault();if(await post('/api/attention',{action_id:row.id,enabled:$('#attention-enabled').checked,scope:$('#attention-scope').value}))notify('Attention preference saved')});
  $('#attention-seen')?.addEventListener('click',()=>post('/api/attention-seen',{action_id:row.id}));
