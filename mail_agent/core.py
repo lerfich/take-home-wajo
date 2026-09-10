@@ -154,6 +154,8 @@ class Agent:
         initialize_attention(self.db)
         from .organization import initialize as initialize_organization
         initialize_organization(self.db)
+        from .draft_preferences import initialize as initialize_draft_preferences
+        initialize_draft_preferences(self.db)
 
     def queue_gmail(self, action_id, operation, approved=False, scope="general"):
         if scope not in {"general", "sender"}:
@@ -259,6 +261,7 @@ class Agent:
                 raise ValueError("An existing email ID cannot be reused for different content")
             return self.get(existing["id"])
         label_preference = None
+        draft_style_application = None
         original_label = ""
         surface = False
         try:
@@ -267,6 +270,8 @@ class Agent:
             original_label = proposal.label
             from .label_preferences import choose
             proposal, label_preference = choose(self, proposal, email)
+            from .draft_preferences import apply as apply_draft_style
+            proposal, draft_style_application = apply_draft_style(self, proposal, email)
             from .attention import matches
             surface = matches(self,email,proposal)
             if surface:
@@ -291,12 +296,17 @@ class Agent:
                                      (email.id, json.dumps(asdict(proposal), ensure_ascii=False),
                                       decision.autonomy, decision.safety, decision.status, decision.reason))
             action_id = cursor.lastrowid
+            if proposal.action in {"draft", "send"} and proposal.text.strip():
+                from .draft_preferences import record_version
+                record_version(self, action_id, 1, proposal.text)
             if surface:
                 self.db.execute("INSERT INTO attention_items VALUES(?,'Your attention preference applies',0)",(action_id,))
             from .label_preferences import register
             register(self, action_id, original_label, proposal, label_preference)
             from .organization import register as register_organization
             register_organization(self, action_id, proposal, email)
+            from .draft_preferences import register_application
+            register_application(self, action_id, draft_style_application)
             binding = self.db.execute("SELECT * FROM gmail_bindings WHERE email_id=?", (email.id,)).fetchone()
             if binding is not None:
                 self.db.execute("UPDATE actions SET transport='gmail' WHERE id=?", (action_id,))
@@ -368,6 +378,8 @@ class Agent:
                 raise ValueError("Invalid edited response")
             self.db.execute("UPDATE actions SET proposal=?,revision=revision+1 WHERE id=?",
                             (json.dumps(updated, ensure_ascii=False), action_id))
+            from .draft_preferences import record_version
+            record_version(self, action_id, row["revision"] + 1, text)
             self.log(action_id, "revised", {"revision": row["revision"] + 1})
         return self.get(action_id)
 
@@ -409,4 +421,4 @@ class Agent:
 
     def snapshot(self) -> dict:
         return {table: [dict(row) for row in self.db.execute(f"SELECT * FROM {table}")]
-                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items", "organization_feedback", "organization_rules", "email_organization")}
+                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items", "organization_feedback", "organization_rules", "email_organization", "draft_style_feedback", "draft_style_rules", "draft_style_applications", "draft_edit_versions")}

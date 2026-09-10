@@ -14,6 +14,14 @@ The 30-email synthetic exercise uses `labels-v1`, a label-only model prompt. **T
 
 Topic, subtype and importance are edited separately from the Gmail label. The initial hierarchy maps the 15 evidenced situation kinds to pairs such as **Applications / Receipt** and **Applications / Interview**. A user can keep an edit on one email or explicitly apply it to the same kind across senders or from one exact sender. Sender-specific rules take priority and rules can be paused. **Important** is an explicit user marker; there is no automatic Important/Normal/Low scale. Organization never authorizes archiving, sending, attention alerts or any other mail action. Existing label reviews remain unchanged.
 
+## Learn draft style from an edit
+
+When the agent proposes a reply, edit and save its body before approving it. Wajo then shows a short style summary derived from that exact revision: approximate length, whether it starts with a greeting, and whether it ends with a sign-off. Choose **future drafts for this kind of email** or narrow the preference to the same kind from the exact sender, then select **Use this style for future drafts**. A saved preference can be paused in Preferences.
+
+Only those three structural choices are stored. Recipient addresses, facts, dates, promises, attachments and requested actions are never copied into a preference. For a later matching proposal, Qwen receives the original draft plus the explicit style rule and may rewrite the body. If rewriting fails or returns invalid text, Wajo keeps the original draft and records the fallback. The model can still alter meaning incorrectly, so every send remains pending until the user approves its exact saved version. Saving a style rule does not approve the current reply or enable automatic sending.
+
+This workflow also works on locally added synthetic emails, so draft learning can be tested without Gmail. Use a supported, clearly evidenced situation such as an interview scheduling request, a work review request, or a substantive support reply. Model classification remains fallible; unknown or unevidenced situations cannot create a future style rule.
+
 Run the organization contrast check after saving explicit future preferences in the main local database:
 
 ```sh
@@ -63,7 +71,7 @@ Requires Python 3.11+; core, Groq, web and evaluations use the standard library.
 python3 -m mail_agent.web --db data/web-groq.sqlite3
 ```
 
-Open [the local app](http://127.0.0.1:8765/). Add a synthetic email; a background worker invokes Groq and the page refreshes the resulting decision. View the message, confirm or reject the exact pending action, edit a pending reply, correct an archive, choose general/sender feedback scope, manage sender exceptions and inspect approval evidence/history. Queue state and provider diagnostics persist in SQLite. Interrupted local jobs resume on server restart; repeated core event IDs do not duplicate mail actions. Failed jobs remain visible with diagnostic details and are not silently reprocessed.
+Open [the local app](http://127.0.0.1:8765/). Add a synthetic email; a background worker invokes Groq and the page refreshes the resulting decision. View the message, confirm or reject the exact pending action, edit a pending reply, optionally save its structural style for matching future drafts, correct an archive, choose general/sender feedback scope, manage sender exceptions and inspect approval evidence/history. Queue state and provider diagnostics persist in SQLite. Interrupted local jobs resume on server restart; repeated core event IDs do not duplicate mail actions. Failed jobs remain visible with diagnostic details and are not silently reprocessed.
 
 The overview counts actual current state for **all time**; pending actions have no age cutoff. Cards filter the same underlying message list. A time-range/last-visit summary and urgent-delivery notifications are not implemented in this slice. Notifications are recorded and visible within the page/history; no OS delivery is promised.
 

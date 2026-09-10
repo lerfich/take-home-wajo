@@ -1,5 +1,11 @@
 # Iteration 1 verification
 
+## September 10: explicit draft-style learning
+
+**119 tests passed** after adding separate draft-style feedback and application. Tests cover deriving only length/greeting/sign-off from a real body edit, general and exact-sender scope, cross-sender transfer, rejecting unknown or unevidenced kinds both when saving and applying a rule, provider rewrite fallback, persistence of local revisions, and the unchanged requirement for exact send approval. A web regression confirms that a locally simulated pending reply can be edited and used to save a style rule while the sent table remains empty. The Groq adapter test checks the constrained body-only rewrite response and confirms that internal action IDs are not sent to the provider.
+
+No live Gmail mutation, delivery or real-model before/after measurement was performed for this iteration. The tests verify policy and transport boundaries with fixtures and mocks; they do not prove that Qwen preserves meaning during a rewrite. The next development measurement requires user edits on several synthetic drafts followed by new matching and contrasting messages. Automatic sending remains disabled.
+
 ## September 10: topic, subtype and explicit importance
 
 **111 tests passed** after adding a local organization layer. Topic, subtype and importance are stored separately from Gmail labels, attention and action permissions. New checks cover one-email edits, general and exact-sender transfer, sender precedence, pausing, unknown or unevidenced kinds, input validation, receipt/interview contrast, and the fact that Important never removes archive approval. A consistent SQLite read transaction also closes a UI snapshot race exposed while the background worker committed a new email.

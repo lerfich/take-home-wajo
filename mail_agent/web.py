@@ -170,6 +170,14 @@ class Application:
                     k: email_map[action["email_id"]][k] for k in ("id", "sender", "subject", "body")}))
                 from .organization import current as current_organization
                 action["organization"] = current_organization(agent, action["id"])
+                action["draft_style_preview"] = None
+                if ((action["reply"] or action["proposal"]["action"] == "send")
+                        and action["revision"] > 1 and action["status"] == "pending"):
+                    from .draft_preferences import preview as draft_style_preview
+                    try:
+                        action["draft_style_preview"] = draft_style_preview(agent, action["id"], action["revision"])
+                    except ValueError:
+                        pass
         finally:
             agent.close()
         with self.connect() as db:
@@ -231,6 +239,16 @@ class Application:
                     if type(data.get("rule_id")) is not int:
                         raise ValueError("Invalid preference ID")
                     from .organization import pause
+                    return pause(agent, data["rule_id"])
+                if route == "/api/draft-style":
+                    if type(data.get("action_id")) is not int or type(data.get("revision")) is not int:
+                        raise ValueError("The displayed draft and version are required")
+                    from .draft_preferences import save
+                    return save(agent, data["action_id"], data["revision"], data.get("scope"))
+                if route == "/api/draft-style-rule-pause":
+                    if type(data.get("rule_id")) is not int:
+                        raise ValueError("Invalid preference ID")
+                    from .draft_preferences import pause
                     return pause(agent, data["rule_id"])
                 if route == "/api/label-rule-pause":
                     if type(data.get("rule_id")) is not int:

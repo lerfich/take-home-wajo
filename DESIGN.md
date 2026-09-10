@@ -14,6 +14,8 @@ The model's weights are unchanged. SQLite stores explicit approvals/rejections b
 
 Eligibility also requires no model-indicated action request, deadline, meaningful change, sensitive content, suspicion or notification need, plus a verbatim body quote. This quote only establishes source occurrence: neither it nor the risk flags prove correct understanding. Cross-sender transfer increases coverage but can generalize too broadly. The initial taxonomy does not discover new groups or learn subtler boundaries. Learning cannot authorize sending or unsupported operations. Each learned archive logs the exact supporting feedback IDs and threshold.
 
+Draft-style memory is separate from action permission. After a user saves an edited reply revision, the UI derives only its approximate length, greeting presence and sign-off presence. The user explicitly chooses whether that style applies to the same evidenced situation kind across senders or only from the exact sender. A later matching reply proposal is passed through a second constrained Qwen rewrite; the original model draft remains the fallback if that call fails or returns invalid text. The rewrite is still probabilistic and may change meaning despite the prompt, so it never bypasses exact-version send approval. Recipient, facts, dates, promises and actions are not stored in style rules, and saving a rule does not approve either the current or a future reply.
+
 ## Errors and local UI
 
 Inference retries are bounded to two for transient HTTP/transport errors and honor Retry-After within a bounded wait budget. All attempts and redacted error bodies are retained; 403 is not called a quota error. Retries never encompass email sending. Reports containing real input excerpts must stay local.

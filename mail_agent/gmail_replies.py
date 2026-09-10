@@ -79,6 +79,8 @@ def revise(agent, action_id, text, recipient, subject=None):
     from dataclasses import asdict
     agent.db.execute("UPDATE actions SET proposal=?,revision=revision+1 WHERE id=?",
                      (json.dumps(asdict(p)), action_id))
+    from .draft_preferences import record_version
+    record_version(agent, action_id, action["revision"] + 1, text)
     stage(agent, action_id, recipient, subject, text)
     agent.log(action_id, "revised", {"revision": action["revision"] + 1, "transport": "gmail"})
 

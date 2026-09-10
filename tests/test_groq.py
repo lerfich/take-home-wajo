@@ -34,6 +34,18 @@ class GroqTests(unittest.TestCase):
                 with self.assertRaises(ProviderError):
                     self.provider.propose(self.email)
 
+    def test_draft_style_rewrite_returns_body_only(self):
+        response = self.response({"text": "Thanks, received."})
+        proposal = Proposal("send", "Reply", text="Hello. Thank you for the update.",
+                            recipient="sender@example.test")
+        with patch.object(self.provider, "request", return_value=response) as request:
+            text = self.provider.rewrite_draft(self.email, proposal, {
+                "length": "concise", "greeting": "omit", "signoff": "omit"})
+        self.assertEqual(text, "Thanks, received.")
+        payload = request.call_args.args[1]
+        self.assertNotIn("server-only-id", json.dumps(payload))
+        self.assertEqual(self.provider.calls[-1]["kind"], "draft_style_rewrite")
+
     def test_truncated_response_not_executed(self):
         response = self.response(asdict(Proposal("label", "x", label="AI: Работа")), "length")
         with patch.object(self.provider, "request", return_value=response):

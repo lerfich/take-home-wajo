@@ -8,7 +8,7 @@ from unittest.mock import patch
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-from mail_agent.core import Proposal
+from mail_agent.core import Agent, Email, Proposal
 from mail_agent.web import create_server
 
 
@@ -118,6 +118,29 @@ class WebTests(unittest.TestCase):
         after = next(a for a in self.get()["actions"] if a["id"] == row["id"])
         self.assertTrue(after["organization"]["important"])
         self.assertEqual((after["autonomy"], after["status"]), (before["autonomy"], before["status"]))
+
+    def test_local_draft_edit_can_save_style_without_sending(self):
+        class Fixed:
+            def propose(self, email):
+                return Proposal("send", "Reply", text="Hello, thank you for the update. Best,",
+                                recipient=email.sender, label_kind="support_response",
+                                pattern_evidence="A fix is ready")
+        agent = Agent(self.server.app.db_path, Fixed())
+        try:
+            action = agent.ingest(Email("style-web", "support@example.test", "Fix available",
+                                        "A fix is ready. Please try again."))
+        finally:
+            agent.close()
+        edited = self.post("/api/edit", {"action_id": action["id"], "revision": 1,
+                           "recipient": "support@example.test", "text": "Thanks, received."})
+        row = next(a for a in self.get()["actions"] if a["id"] == action["id"])
+        self.assertEqual(edited["status"], "pending")
+        self.assertIn("concise", row["draft_style_preview"]["summary"])
+        saved = self.post("/api/draft-style", {"action_id": action["id"], "revision": 2, "scope": "similar"})
+        self.assertTrue(saved["saved"])
+        state = self.get()
+        self.assertEqual(len(state["draft_style_rules"]), 1)
+        self.assertEqual(state["sent"], [])
 
     def test_gmail_routes_require_csrf_and_return_async_status(self):
         from unittest.mock import MagicMock
