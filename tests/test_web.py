@@ -142,7 +142,7 @@ class WebTests(unittest.TestCase):
         self.assertEqual(len(state["draft_style_rules"]), 1)
         self.assertEqual(state["sent"], [])
 
-    def test_unchanged_reply_explains_why_style_learning_is_unavailable(self):
+    def test_unchanged_reply_can_be_explicitly_confirmed_as_style(self):
         class Fixed:
             def propose(self, email):
                 return Proposal("send", "Reply", text="Thanks, received.",
@@ -157,8 +157,11 @@ class WebTests(unittest.TestCase):
         self.post("/api/edit", {"action_id": action["id"], "revision": 1,
                   "recipient": "support@example.test", "text": "Thanks, received."})
         row = next(a for a in self.get()["actions"] if a["id"] == action["id"])
-        self.assertIsNone(row["draft_style_preview"])
-        self.assertIn("matches the original", row["draft_style_note"])
+        self.assertEqual(row["draft_style_preview"]["basis"], "confirmed")
+        saved = self.post("/api/draft-style", {"action_id": action["id"], "revision": 2,
+                          "scope": "similar"})
+        self.assertTrue(saved["saved"])
+        self.assertEqual(self.get()["sent"], [])
 
     def test_gmail_routes_require_csrf_and_return_async_status(self):
         from unittest.mock import MagicMock

@@ -16,7 +16,7 @@ Topic, subtype and importance are edited separately from the Gmail label. The in
 
 ## Learn draft style from an edit
 
-When the agent proposes a reply, edit and save its body before approving it. Wajo then shows a short style summary derived from that exact revision: approximate length, whether it starts with a greeting, and whether it ends with a sign-off. Choose **future drafts for this kind of email** or narrow the preference to the same kind from the exact sender, then select **Use this style for future drafts**. A saved preference can be paused in Preferences.
+When the agent proposes a reply, review and save its body before approving it. Wajo then shows a short style summary derived from that exact revision: approximate length, whether it starts with a greeting, and whether it ends with a sign-off. A changed body appears as **Learn from your edit**. An unchanged body instead asks whether the proposed style works for you; it is learned only if you explicitly select **This style works for me**. Choose **future drafts for this kind of email** or narrow the preference to the same kind from the exact sender. A saved preference can be paused in Preferences.
 
 Only those three structural choices are stored. Recipient addresses, facts, dates, promises, attachments and requested actions are never copied into a preference. For a later matching proposal, Qwen receives the original draft plus the explicit style rule and may rewrite the body. If rewriting fails or returns invalid text, Wajo keeps the original draft and records the fallback. The model can still alter meaning incorrectly, so every send remains pending until the user approves its exact saved version. Saving a style rule does not approve the current reply or enable automatic sending.
 

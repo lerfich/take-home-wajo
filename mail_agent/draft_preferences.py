@@ -81,10 +81,11 @@ def preview(agent, action_id, revision):
                              (action_id,)).fetchone()
     edited = agent.db.execute("SELECT text FROM draft_edit_versions WHERE action_id=? AND revision=?",
                               (action_id, revision)).fetchone()
-    if not first or not edited or first["text"] == edited["text"]:
-        raise ValueError("The saved body matches the original. Change the body text and save another revision to teach a writing preference.")
+    if not first or not edited:
+        raise ValueError("The saved draft version is unavailable for style review.")
     style = derive(first["text"], edited["text"])
-    return {**style, "summary": describe(style)}
+    return {**style, "summary": describe(style),
+            "basis": "confirmed" if first["text"] == edited["text"] else "edited"}
 
 
 def record_version(agent, action_id, revision, text):
