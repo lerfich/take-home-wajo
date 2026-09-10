@@ -8,6 +8,7 @@ from .label_preferences import LABEL_KINDS, account_for
 
 GREETINGS = re.compile(r"^(hi|hello|hey|dear|привет|здравствуйте)\b", re.I)
 SIGNOFFS = re.compile(r"^(best|thanks|thank you|regards|sincerely|спасибо|с уважением)[,!.]?$", re.I)
+EXAMPLE_LIMIT = 1000
 
 
 def initialize(db):
@@ -66,6 +67,11 @@ def describe(style):
     return f"Write {length}, {greeting}, and {signoff}."
 
 
+def _example_text(text):
+    text = text.strip()
+    return text if len(text) <= EXAMPLE_LIMIT else text[:EXAMPLE_LIMIT].rstrip() + "…"
+
+
 def preview(agent, action_id, revision):
     action = agent.get(action_id)
     if (action["status"] != "pending" or action["revision"] != revision
@@ -85,7 +91,9 @@ def preview(agent, action_id, revision):
         raise ValueError("The saved draft version is unavailable for style review.")
     style = derive(first["text"], edited["text"])
     return {**style, "summary": describe(style),
-            "basis": "confirmed" if first["text"] == edited["text"] else "edited"}
+            "basis": "confirmed" if first["text"] == edited["text"] else "edited",
+            "example_before": _example_text(first["text"]),
+            "example_after": _example_text(edited["text"])}
 
 
 def record_version(agent, action_id, revision, text):
@@ -134,7 +142,19 @@ def choose(agent, proposal, email):
     row = agent.db.execute("""SELECT * FROM draft_style_rules WHERE account=? AND kind=?
         AND active=1 AND scope IN ('*',?) ORDER BY (scope='*') ASC LIMIT 1""",
         (account_for(agent, email.id), proposal.label_kind, email.sender.casefold())).fetchone()
-    return dict(row) if row else None
+    if not row:
+        return None
+    rule = dict(row)
+    example = agent.db.execute("""SELECT first.text AS example_before, edited.text AS example_after
+        FROM draft_style_feedback f
+        JOIN draft_edit_versions first ON first.action_id=f.action_id AND first.revision=(
+            SELECT MIN(v.revision) FROM draft_edit_versions v WHERE v.action_id=f.action_id)
+        JOIN draft_edit_versions edited ON edited.action_id=f.action_id AND edited.revision=f.revision
+        WHERE f.id=?""", (rule["feedback_id"],)).fetchone()
+    if example and example["example_before"] != example["example_after"]:
+        rule["example_before"] = _example_text(example["example_before"])
+        rule["example_after"] = _example_text(example["example_after"])
+    return rule
 
 
 def apply(agent, proposal, email):

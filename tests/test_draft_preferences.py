@@ -61,6 +61,8 @@ class DraftPreferenceTests(unittest.TestCase):
         self.assertEqual(result["proposal"]["text"], "Thanks, received.")
         self.assertEqual(result["status"], "pending")
         self.assertEqual(len(provider.styles), 1)
+        self.assertEqual(provider.styles[0]["example_before"], self.proposal.text)
+        self.assertEqual(provider.styles[0]["example_after"], "Thanks, received.")
         application = self.agent.snapshot()["draft_style_applications"][0]
         self.assertEqual(application["status"], "applied")
         self.assertEqual(self.agent.snapshot()["sent"], [])
