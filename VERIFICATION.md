@@ -6,6 +6,10 @@
 
 No live Gmail mutation, delivery or real-model before/after measurement was performed for this iteration. The tests verify policy and transport boundaries with fixtures and mocks; they do not prove that Qwen preserves meaning during a rewrite. The next development measurement requires user edits on several synthetic drafts followed by new matching and contrasting messages. Automatic sending remains disabled.
 
+After two explicit user edits, a one-case real-Qwen development check replayed a new support-resolution proposal through a copy of the user's active preference state. The baseline body was `Received, thank you for the update.`; the preference rewrite produced the user's latest phrasing, `yes, I received, thank you.\nWill try again`. The action remained pending, with zero sends and no Gmail mutation. Two preceding contrasts did not apply the rule: one was escalated because it requested a new human commitment, and one was classified as `service_success` rather than `support_response`. Full report: [draft-tone-transfer-2026-09-10.json](reports/draft-tone-transfer-2026-09-10.json).
+
+This is a developer-written check performed after inspecting earlier classifications, with one positive transfer case. It demonstrates that the stored example reaches the constrained rewrite and that the situation boundary is enforced in these cases; it is not independent quality evidence. The resulting wording still needs user judgment, and a larger before/after edit-distance evaluation remains outstanding.
+
 ## September 10: topic, subtype and explicit importance
 
 **111 tests passed** after adding a local organization layer. Topic, subtype and importance are stored separately from Gmail labels, attention and action permissions. New checks cover one-email edits, general and exact-sender transfer, sender precedence, pausing, unknown or unevidenced kinds, input validation, receipt/interview contrast, and the fact that Important never removes archive approval. A consistent SQLite read transaction also closes a UI snapshot race exposed while the background worker committed a new email.

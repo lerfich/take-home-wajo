@@ -1,0 +1,50 @@
+{
+  "kind": "user_draft_tone_development_check",
+  "created_at": "2026-09-10T11:46:55.841297+00:00",
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": "triage-v7",
+  "input": {
+    "sender": "support@filespace.example.test",
+    "subject": "FS-318: export issue resolved",
+    "body": "This is a follow-up from the Filespace support team about request FS-318. We fixed the CSV export issue. Please try exporting again. Reply only to confirm that you received this support update. No other response is required."
+  },
+  "classification": "support_response",
+  "baseline": {
+    "action": "send",
+    "text": "Received, thank you for the update."
+  },
+  "with_preference": {
+    "action": "send",
+    "text": "yes, I received, thank you.\nWill try again",
+    "status": "pending"
+  },
+  "style_application": {
+    "action_id": 44,
+    "rule_id": 1,
+    "base_words": 6,
+    "styled_words": 8,
+    "status": "applied"
+  },
+  "sent_count": 0,
+  "provider_calls": [
+    {
+      "kind": "triage",
+      "status": "ok",
+      "usage": {
+        "prompt_tokens": 1463,
+        "completion_tokens": 128,
+        "total_tokens": 1591
+      }
+    },
+    {
+      "kind": "draft_style_rewrite",
+      "status": "ok",
+      "usage": {
+        "prompt_tokens": 324,
+        "completion_tokens": 18,
+        "total_tokens": 342
+      }
+    }
+  ],
+  "limitations": "One developer-written synthetic case after observing earlier classifications; user judgment of wording is still required. No Gmail mutation or send."
+}
