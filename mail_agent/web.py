@@ -171,13 +171,14 @@ class Application:
                 from .organization import current as current_organization
                 action["organization"] = current_organization(agent, action["id"])
                 action["draft_style_preview"] = None
+                action["draft_style_note"] = ""
                 if ((action["reply"] or action["proposal"]["action"] == "send")
                         and action["revision"] > 1 and action["status"] == "pending"):
                     from .draft_preferences import preview as draft_style_preview
                     try:
                         action["draft_style_preview"] = draft_style_preview(agent, action["id"], action["revision"])
-                    except ValueError:
-                        pass
+                    except ValueError as exc:
+                        action["draft_style_note"] = str(exc)
         finally:
             agent.close()
         with self.connect() as db:

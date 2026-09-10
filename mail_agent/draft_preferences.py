@@ -82,7 +82,7 @@ def preview(agent, action_id, revision):
     edited = agent.db.execute("SELECT text FROM draft_edit_versions WHERE action_id=? AND revision=?",
                               (action_id, revision)).fetchone()
     if not first or not edited or first["text"] == edited["text"]:
-        raise ValueError("The saved draft body has no user edit to learn from")
+        raise ValueError("The saved body matches the original. Change the body text and save another revision to teach a writing preference.")
     style = derive(first["text"], edited["text"])
     return {**style, "summary": describe(style)}
 

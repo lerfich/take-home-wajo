@@ -103,7 +103,8 @@ function renderDetail(row){
 }
 
 function draftStyleForm(row){
-  const p=row.draft_style_preview;if(!p)return '';
+  const p=row.draft_style_preview;
+  if(!p)return row.draft_style_note?`<div class="send-preview"><strong>Draft style not learned</strong><br>${esc(row.draft_style_note)}</div>`:'';
   return `<form id="draft-style-form" class="label-review-form"><div class="eyebrow">LEARN FROM YOUR EDIT</div><h3>Your draft style</h3><p>${esc(p.summary)}</p><small>Only length, greeting and sign-off are learned. The recipient, facts and promises are not copied. Sending always requires approval.</small><label>Use this style for<select id="draft-style-scope"><option value="similar">Future drafts for this kind of email</option><option value="sender">This kind of email from ${esc(row.email.sender)} only</option></select></label><button class="secondary">Use this style for future drafts</button></form>`;
 }
 function bindDraftStyle(row){
