@@ -141,6 +141,10 @@ class WebTests(unittest.TestCase):
         state = self.get()
         self.assertEqual(len(state["draft_style_rules"]), 1)
         self.assertEqual(state["sent"], [])
+        row = next(a for a in state["actions"] if a["id"] == action["id"])
+        self.assertTrue(row["draft_style_saved"])
+        self.assertIsNone(row["draft_style_preview"])
+        self.assertIn("saved", row["draft_style_note"])
 
     def test_unchanged_reply_can_be_explicitly_confirmed_as_style(self):
         class Fixed:

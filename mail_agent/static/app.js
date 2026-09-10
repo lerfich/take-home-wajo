@@ -104,7 +104,7 @@ function renderDetail(row){
 
 function draftStyleForm(row){
   const p=row.draft_style_preview;
-  if(!p)return row.draft_style_note?`<div class="send-preview"><strong>Draft style not learned</strong><br>${esc(row.draft_style_note)}</div>`:'';
+  if(!p)return row.draft_style_note?`<div class="send-preview"><strong>${row.draft_style_saved?'Draft style saved':'Draft style not learned'}</strong><br>${esc(row.draft_style_note)}</div>`:'';
   const confirmed=p.basis==='confirmed';
   return `<form id="draft-style-form" class="label-review-form"><div class="eyebrow">${confirmed?'CONFIRM DRAFT STYLE':'LEARN FROM YOUR EDIT'}</div><h3>${confirmed?'Does this style work for you?':'Your draft style'}</h3><p>${esc(p.summary)}</p><small>${confirmed?'The body matches the agent’s suggestion. Save this only if its writing style is what you want for similar drafts.':'Only length, greeting and sign-off are learned. The recipient, facts and promises are not copied.'} Sending always requires approval.</small><label>Use this style for<select id="draft-style-scope"><option value="similar">Future drafts for this kind of email</option><option value="sender">This kind of email from ${esc(row.email.sender)} only</option></select></label><button class="secondary">${confirmed?'This style works for me':'Use this style for future drafts'}</button></form>`;
 }
@@ -197,15 +197,19 @@ $('#show-reviewed').addEventListener('click',()=>setFilter('label_reviewed'));
 document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>setFilter(b.dataset.filter)));
 $('#search').addEventListener('input',renderMail);$('#refresh').addEventListener('click',()=>refresh(true));
 const composeKey='wajo-unsent-test-email';
-function savedCompose(){try{return JSON.parse(sessionStorage.getItem(composeKey)||'null')}catch{return null}}
-function updateComposeRestore(){const d=savedCompose();$('#restore-compose').classList.toggle('hidden',!d||!Object.values(d).some(Boolean))}
-function storeCompose(){const d=Object.fromEntries(new FormData($('#compose-form')));if(Object.values(d).some(Boolean))sessionStorage.setItem(composeKey,JSON.stringify(d));else sessionStorage.removeItem(composeKey);updateComposeRestore()}
-function closeCompose(){$('#compose').close();$('#compose-form').reset();updateComposeRestore()}
-$('#new-email').addEventListener('click',()=>{$('#compose-form').reset();updateComposeRestore();$('#compose').showModal()});
+const composeNames=['sender','subject','body'];
+function completeCompose(d){return d&&composeNames.every(name=>typeof d[name]==='string'&&d[name].trim())}
+function savedCompose(){try{const d=JSON.parse(sessionStorage.getItem(composeKey)||'null');if(completeCompose(d))return d;sessionStorage.removeItem(composeKey)}catch{sessionStorage.removeItem(composeKey)}return null}
+function composeData(){return Object.fromEntries(new FormData($('#compose-form')))}
+function composeIsEmpty(){const d=composeData();return composeNames.every(name=>!d[name].trim())}
+function updateComposeControls(){const form=$('#compose-form');$('#submit-email').disabled=!form.checkValidity();$('#restore-compose').classList.toggle('hidden',!savedCompose()||!composeIsEmpty())}
+function storeCompleteCompose(){const d=composeData();if(completeCompose(d))sessionStorage.setItem(composeKey,JSON.stringify(d));updateComposeControls()}
+function closeCompose(){storeCompleteCompose();$('#compose').close();$('#compose-form').reset();updateComposeControls()}
+$('#new-email').addEventListener('click',()=>{$('#compose-form').reset();updateComposeControls();$('#compose').showModal()});
 $('#close-compose').addEventListener('click',closeCompose);
 $('#compose').addEventListener('cancel',e=>{e.preventDefault();closeCompose()});
-$('#compose-form').addEventListener('input',storeCompose);
-$('#restore-compose').addEventListener('click',()=>{const d=savedCompose();if(!d)return;for(const [name,value] of Object.entries(d)){const field=$(`#compose-form [name="${name}"]`);if(field)field.value=value}$('#restore-compose').classList.add('hidden')});
+$('#compose-form').addEventListener('input',storeCompleteCompose);
+$('#restore-compose').addEventListener('click',()=>{const d=savedCompose();if(!d)return;for(const name of composeNames)$(`#compose-form [name="${name}"]`).value=d[name];updateComposeControls()});
 $('#compose-form').addEventListener('submit',async e=>{e.preventDefault();$('#submit-email').disabled=true;try{const r=await post('/api/ingest',Object.fromEntries(new FormData(e.target)));if(r){sessionStorage.removeItem(composeKey);closeCompose();navigate('mail');setFilter('all');notify('Email queued for agent analysis')}}finally{$('#submit-email').disabled=false}});
 $('#load-demo').addEventListener('click',async()=>{if(await post('/api/demo',{}))notify('Sample cases loaded. Loading again does not duplicate actions')});
 $('#rule-form').addEventListener('submit',async e=>{e.preventDefault();const sender=new FormData(e.target).get('sender');if(await post('/api/rule',{sender,keep:true})){e.target.reset();notify('Exception saved')}});
