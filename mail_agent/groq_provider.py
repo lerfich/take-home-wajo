@@ -13,13 +13,15 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 from .core import Email, Proposal, validate, PATTERNS
 
 DEFAULT_MODEL = "qwen/qwen3.8-27b"
-PROMPT_VERSION = "triage-v6"
+PROMPT_VERSION = "triage-v7"
 SYSTEM = (Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.txt").read_text()
 FIELDS = {name: {"type": "string"} for name in ("action", "reason", "label", "text", "recipient")}
 FIELDS.update({name: {"type": "boolean"} for name in ("notify", "suspicious", "needs_human")})
 FIELDS.update({name: {"type": "boolean"} for name in ("requires_action", "has_deadline", "significant_change", "sensitive")})
 FIELDS["pattern"] = {"type": "string", "enum": sorted(PATTERNS | {"unknown"})}
 FIELDS["pattern_evidence"] = {"type": "string"}
+from .label_preferences import LABEL_KINDS
+FIELDS["label_kind"] = {"type": "string", "enum": sorted(set(LABEL_KINDS) | {"unknown"})}
 SCHEMA = {"type": "object", "properties": FIELDS, "required": list(FIELDS), "additionalProperties": False}
 
 
@@ -50,6 +52,8 @@ def read_settings(path: Path) -> dict:
 
 
 class GroqProposer:
+    prompt_version = PROMPT_VERSION
+    system = SYSTEM
     def __init__(self, api_key: str, model: str = DEFAULT_MODEL, max_retries: int = 2):
         if not api_key or any(c.isspace() for c in api_key):
             raise ProviderError("Set a valid GROQ_API_KEY in task/.env or the environment")
@@ -152,12 +156,12 @@ class GroqProposer:
         if len(json.dumps(content)) > 24000:
             raise ProviderError("Email exceeds initial context limit; manual review required")
         payload = {"model": self.model, "temperature": 0, "max_completion_tokens": 1600,
-                   "messages": [{"role": "system", "content": SYSTEM},
+                   "messages": [{"role": "system", "content": self.system},
                                 {"role": "user", "content": json.dumps({"untrusted_email": content}, ensure_ascii=False)}],
                    "response_format": {"type": "json_schema", "json_schema": {
                        "name": "email_proposal", "strict": True, "schema": SCHEMA}}}
         start = time.monotonic()
-        record = {"model": self.model, "prompt_version": PROMPT_VERSION}
+        record = {"model": self.model, "prompt_version": self.prompt_version}
         attempts_start = len(self.http_attempts)
         try:
             result = self.request("chat/completions", payload)

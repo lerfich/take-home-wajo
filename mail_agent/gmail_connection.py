@@ -20,7 +20,7 @@ class GmailConnection:
         self.info = {"status": "unchecked" if self.token_path.is_file() else "disconnected",
                      "account": None, "access": None, "label_ready": False,
                      "checked_at": None, "operation": None, "error": None,
-                     "last_sync": None}
+                     "last_sync": None, "auth_url": None}
 
     def snapshot(self):
         with self.lock:
@@ -80,8 +80,14 @@ class GmailConnection:
             # OAuth replacement and token refresh cannot race live Gmail writes.
             with self.app.lock:
                 if operation == "connect":
+                    def show_url(url):
+                        from urllib.parse import urlparse
+                        if urlparse(url).scheme != "https" or urlparse(url).hostname != "accounts.google.com":
+                            raise ValueError("Unexpected Google authorization destination")
+                        with self.lock:
+                            self.info["auth_url"] = url
                     authorize(self.credentials_path, self.token_path,
-                              "manage" if self.app.gmail_token else "readonly")
+                              "manage" if self.app.gmail_token else "readonly", on_url=show_url)
                 api = service(self.token_path)
                 self._inspect(api)
                 if operation == "sync":
@@ -112,3 +118,4 @@ class GmailConnection:
         finally:
             with self.lock:
                 self.info["operation"] = None
+                self.info["auth_url"] = None

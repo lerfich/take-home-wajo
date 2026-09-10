@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, ANY
 
 from mail_agent.gmail import MANAGE_SCOPE, READONLY_SCOPE
 from mail_agent.web import Application
@@ -134,7 +134,7 @@ class GmailConnectionTests(unittest.TestCase):
 
     def test_background_connect_single_flight_and_executor_serialization(self):
         entered, release = threading.Event(), threading.Event()
-        def authorize(*args):
+        def authorize(*args, **kwargs):
             entered.set()
             release.wait(3)
         with patch("mail_agent.gmail.authorize", side_effect=authorize) as auth, \
@@ -151,7 +151,7 @@ class GmailConnectionTests(unittest.TestCase):
             finally:
                 release.set()
                 self.connection.thread.join(3)
-        auth.assert_called_once_with(self.client, self.token, "manage")
+        auth.assert_called_once_with(self.client, self.token, "manage", on_url=ANY)
         self.assertEqual(self.connection.snapshot()["status"], "connected")
         self.assertEqual(self.app.state()["jobs"], [])
 
@@ -178,7 +178,7 @@ class GmailConnectionTests(unittest.TestCase):
         self.token.write_text(json.dumps({"scopes": [READONLY_SCOPE]}))
         with patch("mail_agent.gmail.authorize") as authorize, patch("mail_agent.gmail.service", return_value=self.api):
             self.run_operation("connect")
-            authorize.assert_called_once_with(self.client, self.token, "readonly")
+            authorize.assert_called_once_with(self.client, self.token, "readonly", on_url=ANY)
             with self.assertRaisesRegex(ValueError, "mode changed"):
                 self.run_operation("sync", self.consent())
             self.users.messages.return_value.list.return_value.execute.return_value = {}

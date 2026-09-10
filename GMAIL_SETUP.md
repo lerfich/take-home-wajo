@@ -16,14 +16,14 @@ Status: the user completed OAuth and imported ten synthetic Gmail messages. Loca
 After configuring the Desktop client and installing the optional dependencies, start the app from `task/`:
 
 ```sh
-./.venv/bin/python -m mail_agent.web --db data/web-groq.sqlite3 --gmail-live
+./run.sh
 ```
 
 Open Wajo and click **Connect Gmail**. If a saved token exists, the panel checks it without starting another sign-in. Otherwise click **Connect with Google**, complete sign-in in the system browser on the computer running Wajo, and return to the panel. Sign-in waits up to three minutes; closing the panel does not cancel it. **Reconnect with Google** renews or upgrades access. If the Google client is missing, expand the setup instructions. Custom local paths are available through `--gmail-credentials` and `--gmail-token`.
 
 The panel shows the verified account, access profile and whether Wajo-Test exists. **Check connection** reads the Gmail profile and labels; it does not import email text or invoke Groq. Failed verification disables sync until access is checked again. Raw provider errors and token contents never enter the panel.
 
-Review the account and action mode, choose a limit from 10 to 50, explicitly allow synthetic message text to be sent to Groq, and click **Sync emails**. Live mode permits real Gmail actions under the existing policy. Without `--gmail-live`, new imports use local simulation and Connect requests read-only access. Sample mode hides Gmail and rejects its connection/sync routes. The server independently validates consent, account, live mode, label and limit.
+Review the account and action mode, choose a limit from 10 to 50, explicitly allow synthetic message text to be sent to Groq, and click **Sync emails**. Live mode permits real Gmail actions under the existing policy. The web server enables Gmail by default. With `--local-simulation`, new imports use local simulation and Connect requests read-only access. Sample mode hides Gmail and rejects its connection/sync routes. The server independently validates consent, account, live mode, label and limit.
 
 This first UI version reads one bounded page. It reports queued, already imported, manual review and whether further pages exist. Repeating sync may encounter the same first page; pagination and automatic polling remain future work. Import counts do not measure decision quality. If sync fails midway, already queued messages may still be processed. Check the inbox and connection; repeated IDs do not duplicate imports or upgrade old simulated actions to live ones.
 
@@ -80,7 +80,7 @@ Use the existing token with manage access. To import **new** test messages for r
 
 ```sh
 ./.venv/bin/python -m mail_agent.gmail import --db data/web-groq.sqlite3 --label Wajo-Test --limit 20 --allow-groq --gmail-live
-./.venv/bin/python -m mail_agent.web --db data/web-groq.sqlite3 --gmail-live
+./run.sh
 ```
 
 Do not start a second server if the same database is already being served. The application shows **Gmail · real action** or **Local simulation** for each decision. Previously queued or processed local imports never become live when reimported. To test an already imported email independently, use a separate database deliberately; it creates separate decisions and preferences.

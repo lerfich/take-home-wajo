@@ -1,5 +1,21 @@
 # Email agent — development prototype
 
+## Start the current Gmail workspace
+
+From `task/`, run `./run.sh` and open http://127.0.0.1:8765. This uses the project virtual environment and `data/web-groq.sqlite3`. Install dependencies once in that environment as described in GMAIL_SETUP.md. Do not run two servers against one database.
+
+Gmail is enabled by default in the web server. The saved token is checked on startup; Gmail settings displays the verified account. Connect/Reconnect opens Google and also provides a **Continue with Google** link while authorization is pending. `--local-simulation` explicitly selects local execution; existing local records never become live actions. The standalone Gmail import CLI still requires `--gmail-live` to create live bindings.
+
+## Review labels and attention
+
+The 30-email synthetic exercise uses `labels-v1`, a label-only model prompt. **To review** is a category-review queue, separate from **Pending** action approvals. Confirm a label, select an existing name, or type a new one. Wajo verifies the Gmail change before marking a review complete. Unknown outcomes require read-only reconciliation, never automatic mutation retries. Only the old AI label is replaced; unrelated Gmail labels remain.
+
+**This email only** corrects the present label without teaching a general rule. **Future similar emails** saves an explicit preference for the displayed situation type; **This situation from this sender** narrows it to the exact sender. There are 15 initial semantic kinds. A model supplies the kind and supporting body quote, so matching remains fallible. One explicit instruction creates a rule; it is not measured statistical learning or model fine-tuning. Preferences can be paused.
+
+The separate **Always bring this to my attention** control saves an in-app visibility rule using the same scopes. Matching future emails appear in **Needs attention** and do not qualify for automatic archiving. **Mark as seen** clears the current attention item without disabling the future rule. This does not send an OS push notification or authorize sending. **No notification** describes autonomy, not importance. General importance classification and a consolidated topic hierarchy are not implemented yet. The synthetic labels run is not an evaluation of those features.
+
+Both the email list and detail pane scroll independently on desktop. Filters include Pending, Archived, To review, Reviewed and Needs attention.
+
 Local execution and safety prototype for the Wajo take-home. **Not the finished AI agent.**
 
 Two explicit modes are available: **scripted demo** (offline fixtures) and **Groq** (real model inference). Local simulation remains the default; explicit Gmail live mode supports labels, archive, restore, drafts and approved replies. Live Gmail replies create a draft and send only after exact-version approval; local sends remain simulations. Initial permissions, versioned approvals, a SQLite audit trail, archive-preference learning and a local web interface are implemented. Small real-model development checks are recorded in `VERIFICATION.md`; they are not final evaluation. Read-only Gmail OAuth/import has been exercised by the user; local database inspection confirms ten imported Gmail jobs completed. Reversible Gmail writes are implemented and have a small live transport check; see GMAIL_SETUP.md.
@@ -23,7 +39,7 @@ The adapter uses HTTPS and strict JSON Schema, validates output again locally, r
 
 The smoke command runs seven synthetic development cases, saving expectations, actual decisions, token counts and timings. It is not a held-out evaluation and does not measure adaptation. The committed run in `reports/` includes failures rather than concealing them. Official API documentation: [Groq structured outputs](https://console.groq.com/docs/structured-outputs).
 
-The current instruction is in `mail_agent/prompts/triage-v6.txt`. V6 requests English explanations, labels and reply text while preserving verbatim evidence. Its model quality has not yet been measured. V4 added semantic pattern and risk fields; v5 clarifies that eligible informational patterns propose archive before the general label fallback. The model is a fallible classifier; code still enforces action permissions separately. The `smoke` suite now expects a benign informational security article to propose archive with approval (previously a silent label); historical saved reports retain their original expectations. Measurements are versioned in `VERIFICATION.md`; do not transfer historical v3 results to newer prompts.
+The current instruction is in `mail_agent/prompts/triage-v7.txt`. V7 adds a finite label-purpose taxonomy; it requests English explanations, labels and reply text while preserving verbatim evidence. Its model quality has not yet been measured. V4 added semantic pattern and risk fields; v5 clarifies that eligible informational patterns propose archive before the general label fallback. The model is a fallible classifier; code still enforces action permissions separately. The `smoke` suite now expects a benign informational security article to propose archive with approval (previously a silent label); historical saved reports retain their original expectations. Measurements are versioned in `VERIFICATION.md`; do not transfer historical v3 results to newer prompts.
 
 `--extended` adds eight synthetic contrast cases (15 total). The smoke check verifies action, autonomy and execution status, exits nonzero for errors/mismatches, and stops if a provider call still fails after bounded retries. Calls are spaced 20 seconds apart by default. After an interruption, use `--start INDEX` with a new output filename to run remaining cases; it is a zero-based index and does not rerun skipped cases. Keep the partial report. No billing upgrade or fallback occurs. Thresholds and prompts must be frozen before a future held-out evaluation; these are development checks.
 
@@ -41,7 +57,7 @@ Open [the local app](http://127.0.0.1:8765/). Add a synthetic email; a backgroun
 
 The overview counts actual current state for **all time**; pending actions have no age cutoff. Cards filter the same underlying message list. A time-range/last-visit summary and urgent-delivery notifications are not implemented in this slice. Notifications are recorded and visible within the page/history; no OS delivery is promised.
 
-**Connect Gmail** opens connection settings in the UI. With the local Google Desktop client configured, sign in through Google or verify an existing connection. Review the account, Wajo-Test scope and execution mode, then explicitly permit synthetic email text to be sent to Groq before clicking **Sync emails**. Use `--gmail-live` to enable real actions for new imports; sending still requires exact-version approval. Connection and sync run in the background and report status. Current sync reads one page of up to 50 messages; pagination and automatic polling are not implemented yet. See [GMAIL_SETUP.md](GMAIL_SETUP.md) for setup and limitations.
+**Connect Gmail** opens connection settings in the UI. With the local Google Desktop client configured, sign in through Google or verify an existing connection. Review the account, Wajo-Test scope and execution mode, then explicitly permit synthetic email text to be sent to Groq before clicking **Sync emails**. The web server enables Gmail by default; use `--local-simulation` for local execution. Sending still requires exact-version approval. Connection and sync run in the background and report status. Current sync reads one page of up to 50 messages; pagination and automatic polling are not implemented yet. See [GMAIL_SETUP.md](GMAIL_SETUP.md) for setup and limitations.
 
 For an offline UI demo with prewritten decisions, use a separate database:
 

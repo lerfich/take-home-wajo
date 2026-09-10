@@ -88,6 +88,9 @@ def run_one(db_path, executor, operation_id=None, check_only=False):
     try:
         candidate = (agent.db.execute("SELECT * FROM gmail_operations WHERE status='queued' ORDER BY id LIMIT 1").fetchone()
                      if operation_id is None else agent.db.execute("SELECT * FROM gmail_operations WHERE id=?", (operation_id,)).fetchone())
+        if candidate is not None and candidate["operation"].startswith("label-review:"):
+            from .label_preferences import run_review
+            return run_review(agent, executor, candidate, check_only)
         if candidate is not None and candidate["operation"].split(":")[0] in {"draft", "send"}:
             from .gmail_replies import run_operation
             return run_operation(agent, executor, candidate, check_only)
@@ -120,9 +123,16 @@ def run_one(db_path, executor, operation_id=None, check_only=False):
                 if d.status not in {"ready", "pending"}:
                     raise ScopeError("Policy blocks Gmail execution")
                 if p.action == "archive" and not check_only:
+                    from .attention import matches
+                    if not row["approved"] and matches(agent,agent.email_for(action['id']),p):
+                        raise ScopeError("Your attention preference requires review before archiving")
                     pref = agent.preference(p, agent.email_for(action["id"]))
                     if pref["mode"] == "keep" or (not row["approved"] and pref["mode"] != "notify"):
                         raise ScopeError("Current archive preference does not permit execution")
+                if p.action == "label" and not check_only:
+                    from .label_preferences import current_rule_valid
+                    if not current_rule_valid(agent, action["id"]):
+                        raise ScopeError("The label preference changed before execution")
             agent.db.execute("UPDATE gmail_operations SET status='processing',error='' WHERE id=?", (row["id"],))
             agent.log(action["id"], "gmail_started", {"operation": row["operation"], "check_only": check_only})
         # Read-only status checks deliberately do not require old learning permission.

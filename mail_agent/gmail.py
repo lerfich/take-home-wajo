@@ -29,7 +29,7 @@ def private_write(path, content):
         raise
 
 
-def authorize(credentials_path, token_path, access="readonly"):
+def authorize(credentials_path, token_path, access="readonly", on_url=None):
     from google_auth_oauthlib.flow import InstalledAppFlow
     config = json.loads(credentials_path.read_text())
     installed = config.get("installed", {})
@@ -38,6 +38,13 @@ def authorize(credentials_path, token_path, access="readonly"):
         raise ValueError("Use an official Google Desktop app OAuth client JSON")
     scopes = ACCESS_SCOPES[access]
     flow = InstalledAppFlow.from_client_config(config, scopes, autogenerate_code_verifier=True)
+    if on_url:
+        original_url = flow.authorization_url
+        def authorization_url(**kwargs):
+            result = original_url(**kwargs)
+            on_url(result[0])
+            return result
+        flow.authorization_url = authorization_url
     credentials = flow.run_local_server(host="127.0.0.1", port=0, open_browser=True,
         timeout_seconds=180, prompt="consent",
         authorization_prompt_message=f"Authorize Gmail {access} access in your browser.",

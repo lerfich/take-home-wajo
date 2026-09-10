@@ -1,5 +1,12 @@
 # Iteration 1 verification
 
+## September 10: label review and interface iteration
+
+101 unit tests pass. Thirty realistic synthetic messages were inserted in the test Gmail (no sends), classified by Qwen with `labels-v1`, and reviewed by the actual user. All 30 reviews are verified. Recovery of initially uncertain reviews confirmed 22 by reading and applied eight saved replacements once following the user's request to finish. Original generic errors did not retain their exception type; their exact cause is unproven. No automatic retry of uncertain mutations was added. The aggregate report is [labels-review-2026-09-10.json](reports/labels-review-2026-09-10.json).
+
+Browser checks confirmed the saved Gmail connection, 30 reviewed rows and no console errors. These are integration/UI checks, not a held-out accuracy score or a measured reduction in questions. The new general triage-v7 prompt has no independent model-quality measurement yet. New OAuth consent was tested with mocks, not a fresh live login. Priority/tree organization and skill import previews remain unimplemented.
+
+
 ## Gmail connection and manual sync UI (2026-09-09)
 
 **83 tests passed**, 0 failures/errors, 4.927 seconds. New checks cover CSRF-protected asynchronous routes, no network activity on state reads, explicit Groq consent, account/mode/limit validation, missing labels and access, account changes between checks, single-flight OAuth and executor serialization, sanitized OAuth failures, partial imports, deduplication, sample-mode rejection and simulation-mode access.

@@ -31,6 +31,7 @@ class Proposal:
     significant_change: bool = True
     sensitive: bool = True
     pattern_evidence: str = ""
+    label_kind: str = "unknown"
 
 
 class Proposer(Protocol):
@@ -53,7 +54,8 @@ def decide(p: Proposal) -> Decision:
         return Decision("escalate", "blocked", "blocked", "Unsupported action; manual review required")
     if p.needs_human:
         return Decision("escalate", "review_required", "escalated", "Human judgment required")
-    if p.action == "label" and (not p.label.startswith("AI: ") or not p.label[4:].strip()):
+    if p.action == "label" and (not p.label.startswith("AI: ") or not p.label[4:].strip()
+                                or len(p.label) > 100 or any(ord(c) < 32 or ord(c) == 127 for c in p.label)):
         return Decision("notify", "blocked", "blocked", "Agent labels must start with AI: ")
     if p.action in {"draft", "send"} and not p.text.strip():
         return Decision("notify", "blocked", "blocked", "Empty response text")
@@ -67,7 +69,7 @@ def decide(p: Proposal) -> Decision:
 def validate(proposal: Proposal) -> None:
     if type(proposal) is not Proposal:
         raise ValueError("Invalid proposal type")
-    for name in ("action", "reason", "label", "text", "recipient", "pattern", "pattern_evidence"):
+    for name in ("action", "reason", "label", "text", "recipient", "pattern", "pattern_evidence", "label_kind"):
         if type(getattr(proposal, name)) is not str:
             raise ValueError(f"Invalid {name}")
     for name in ("notify", "suspicious", "needs_human", "requires_action", "has_deadline", "significant_change", "sensitive"):
@@ -75,6 +77,9 @@ def validate(proposal: Proposal) -> None:
             raise ValueError(f"Invalid {name}")
     if proposal.pattern not in PATTERNS | {"unknown"}:
         raise ValueError("Invalid semantic pattern")
+    from .label_preferences import LABEL_KINDS
+    if proposal.label_kind not in set(LABEL_KINDS) | {"unknown"}:
+        raise ValueError("Invalid label situation type")
 
 
 # Communicative purpose, not sender/domain, subject keywords or job-search templates.
@@ -143,6 +148,10 @@ class Agent:
                 sent_id TEXT NOT NULL DEFAULT '', approved_hash TEXT NOT NULL DEFAULT '',
                 PRIMARY KEY(action_id,revision));
         """)
+        from .label_preferences import initialize
+        initialize(self.db)
+        from .attention import initialize as initialize_attention
+        initialize_attention(self.db)
 
     def queue_gmail(self, action_id, operation, approved=False, scope="general"):
         if scope not in {"general", "sender"}:
@@ -247,9 +256,20 @@ class Agent:
             if dict(saved) != asdict(email):
                 raise ValueError("An existing email ID cannot be reused for different content")
             return self.get(existing["id"])
+        label_preference = None
+        original_label = ""
+        surface = False
         try:
             proposal = self.proposer.propose(email)
             validate(proposal)
+            original_label = proposal.label
+            from .label_preferences import choose
+            proposal, label_preference = choose(self, proposal, email)
+            from .attention import matches
+            surface = matches(self,email,proposal)
+            if surface:
+                from dataclasses import replace
+                proposal = replace(proposal,notify=True)
             decision = decide(proposal)
             if decision.status == "pending" and proposal.action == "archive":
                 pref = self.preference(proposal, email)
@@ -269,6 +289,10 @@ class Agent:
                                      (email.id, json.dumps(asdict(proposal), ensure_ascii=False),
                                       decision.autonomy, decision.safety, decision.status, decision.reason))
             action_id = cursor.lastrowid
+            if surface:
+                self.db.execute("INSERT INTO attention_items VALUES(?,'Your attention preference applies',0)",(action_id,))
+            from .label_preferences import register
+            register(self, action_id, original_label, proposal, label_preference)
             binding = self.db.execute("SELECT * FROM gmail_bindings WHERE email_id=?", (email.id,)).fetchone()
             if binding is not None:
                 self.db.execute("UPDATE actions SET transport='gmail' WHERE id=?", (action_id,))
@@ -381,4 +405,4 @@ class Agent:
 
     def snapshot(self) -> dict:
         return {table: [dict(row) for row in self.db.execute(f"SELECT * FROM {table}")]
-                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations")}
+                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items")}

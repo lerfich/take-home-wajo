@@ -38,6 +38,8 @@ class Application:
             db.execute("""CREATE TABLE IF NOT EXISTS incoming_jobs (
                 id TEXT PRIMARY KEY, email TEXT NOT NULL, status TEXT NOT NULL,
                 created_at TEXT NOT NULL, diagnostics TEXT NOT NULL DEFAULT '[]')""")
+            if "processing_mode" not in {r["name"] for r in db.execute("PRAGMA table_info(incoming_jobs)")}:
+                db.execute("ALTER TABLE incoming_jobs ADD COLUMN processing_mode TEXT NOT NULL DEFAULT 'triage'")
             # Only local operations: a completed core event is idempotently returned.
             if recover_jobs:
                 db.execute("UPDATE incoming_jobs SET status='queued' WHERE status='processing'")
@@ -61,7 +63,9 @@ class Application:
     def agent(self, proposer=None):
         return Agent(self.db_path, proposer or ScriptedProposer())
 
-    def enqueue(self, payload, event_id=None, gmail_binding=None):
+    def enqueue(self, payload, event_id=None, gmail_binding=None, processing_mode="triage"):
+        if processing_mode not in {"triage", "label_review"}:
+            raise ValueError("Invalid processing mode")
         if self.demo:
             raise ValueError("Custom emails require Groq mode; sample mode uses predefined cases")
         if type(payload) is not dict or set(payload) != {"sender", "subject", "body"}:
@@ -80,10 +84,14 @@ class Application:
                 db.execute("INSERT INTO gmail_bindings VALUES(?,?,?,?,?,?)",
                            (email.id, gmail_binding["account"], gmail_binding["message_id"],
                             gmail_binding["label_id"], gmail_binding["label_name"], gmail_binding["initial_inbox"]))
+            if cursor.rowcount:
+                db.execute("UPDATE incoming_jobs SET processing_mode=? WHERE id=?", (processing_mode,email.id))
         self.wakeup.set()
         return {"id": email.id, "status": "queued"}
 
     def work(self):
+        if not self.demo and self.gmail_connection.token_path.is_file():
+            self.gmail_connection.start("check", {})
         while not self.stop.is_set():
             if self.gmail_token:
                 with self.lock:
@@ -99,7 +107,9 @@ class Application:
                 continue
             provider = None
             try:
-                provider = GroqProposer.from_env(Path(__file__).resolve().parents[1] / ".env")
+                from .label_provider import LabelProposer
+                provider_class = LabelProposer if row["processing_mode"] == "label_review" else GroqProposer
+                provider = provider_class.from_env(Path(__file__).resolve().parents[1] / ".env")
                 agent = self.agent(provider)
                 try:
                     result = agent.ingest(Email(**json.loads(row["email"])))
@@ -113,6 +123,9 @@ class Application:
             with self.connect() as db:
                 db.execute("UPDATE incoming_jobs SET status=?,diagnostics=? WHERE id=?",
                            (status, json.dumps(diagnostics, ensure_ascii=False), row["id"]))
+            if row["processing_mode"] == "label_review":
+                # Pace the explicit review batch on the free provider tier.
+                self.stop.wait(20)
 
     def run_gmail(self, operation_id=None, check_only=False):
         from .gmail_executor import GmailExecutor, run_one
@@ -141,6 +154,13 @@ class Application:
                 action["reply"] = agent.get(action["id"])["reply"]
                 p = Proposal(**json.loads(action["proposal"]))
                 action["proposal"] = asdict(p)
+                from .label_preferences import account_for
+                email = email_map[action["email_id"]]
+                keys = {"email": "email:" + action["email_id"], "similar": "*", "sender": email["sender"].casefold()}
+                action["attention_scopes"] = [scope for scope, key in keys.items() if any(
+                    r["enabled"] and r["account"] == account_for(agent, action["email_id"])
+                    and r["kind"] == p.label_kind and r["scope"] == key
+                    for r in state["attention_rules"])]
                 action["preference"] = agent.preference(p, Email(**{
                     k: email_map[action["email_id"]][k] for k in ("id", "sender", "subject", "body")}))
                 action["learning_eligible"] = learnable(p, Email(**{
@@ -152,6 +172,8 @@ class Application:
         state.update(mode="scripted" if self.demo else "groq", csrf=self.csrf,
                      patterns=sorted(PATTERNS), gmail_enabled=bool(self.gmail_token),
                      gmail_connection=self.gmail_connection.snapshot())
+        from .label_preferences import LABEL_KINDS
+        state["label_kinds"] = LABEL_KINDS
         return state
 
     def mutate(self, route, data):
@@ -173,6 +195,34 @@ class Application:
             try:
                 if route == "/api/demo" and self.demo:
                     return [agent.ingest(email) for email, _ in CASES]
+                if route == "/api/label-review":
+                    if type(data.get("action_id")) is not int or type(data.get("revision")) is not int:
+                        raise ValueError("The displayed action and version are required")
+                    row = agent.get(data["action_id"])
+                    if row["transport"] == "gmail" and not self.gmail_token:
+                        raise ValueError("Start the server in Gmail live mode to update Gmail labels")
+                    from .label_preferences import submit
+                    result = submit(agent, data["action_id"], data["revision"], data.get("label"), data.get("scope", "email"))
+                    self.wakeup.set()
+                    return result
+                if route == "/api/attention":
+                    if type(data.get('action_id')) is not int:
+                        raise ValueError('Invalid email action')
+                    from .attention import set_rule
+                    return set_rule(agent,data['action_id'],data.get('enabled'),data.get('scope','email'))
+                if route == "/api/attention-seen":
+                    if type(data.get('action_id')) is not int:
+                        raise ValueError('Invalid email action')
+                    with agent.db:
+                        agent.db.execute('UPDATE attention_items SET seen=1 WHERE action_id=?',(data['action_id'],))
+                    return {'seen':True}
+                if route == "/api/label-rule-pause":
+                    if type(data.get("rule_id")) is not int:
+                        raise ValueError("Invalid preference ID")
+                    with agent.db:
+                        agent.db.execute("UPDATE label_rules SET active=0 WHERE id=?",(data["rule_id"],))
+                        agent.log(None,"label_rule_paused",{"rule_id":data["rule_id"]})
+                    return {"paused":True}
                 if route == "/api/rule":
                     if type(data.get("keep", True)) is not bool:
                         raise ValueError("Invalid rule")
@@ -268,6 +318,7 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--demo", action="store_true", help="Scripted fixtures, no model calls; use a separate database")
     parser.add_argument("--gmail-live", action="store_true", help="Execute queued Gmail operations for explicitly live imports; sends require approval")
+    parser.add_argument("--local-simulation", action="store_true", help="Explicitly disable Gmail writes")
     parser.add_argument("--gmail-token", type=Path, default=Path("data/gmail-token.json"))
     parser.add_argument("--gmail-credentials", type=Path, default=Path("data/gmail-credentials.json"),
                         help="Local Google Desktop client JSON for Connect Gmail")
@@ -276,7 +327,7 @@ def main():
         parser.error("--demo cannot be combined with --gmail-live")
     args.db.parent.mkdir(parents=True, exist_ok=True)
     try:
-        server = create_server(args.db, args.port, args.demo, args.gmail_token if args.gmail_live else None,
+        server = create_server(args.db, args.port, args.demo, args.gmail_token if not (args.demo or args.local_simulation) else None,
                                args.gmail_token, args.gmail_credentials)
     except OSError as exc:
         if exc.errno == errno.EADDRINUSE:

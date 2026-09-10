@@ -1,0 +1,23 @@
+{
+  "date": "2026-09-10",
+  "scope": "30 synthetic Gmail label reviews; real model proposals and actual user feedback, not a held-out evaluation",
+  "verification": {
+    "batch_messages": 30,
+    "human_ready_present": 30,
+    "current_label_verified": 30,
+    "inbox_present": 30,
+    "review_statuses": {
+      "reviewed": 30
+    },
+    "operation_statuses": {
+      "done": 60
+    }
+  },
+  "recovery": {
+    "read_only_confirmed": 22,
+    "explicitly_reapplied_saved_label_changes": 8,
+    "initial_exception_cause": "Original generic error did not retain the exception type; exact cause unproven"
+  },
+  "outbound_sends_this_iteration": 0,
+  "tests_passed": 101
+}
