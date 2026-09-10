@@ -202,7 +202,7 @@ class Application:
                     if row["transport"] == "gmail" and not self.gmail_token:
                         raise ValueError("Start the server in Gmail live mode to update Gmail labels")
                     from .label_preferences import submit
-                    result = submit(agent, data["action_id"], data["revision"], data.get("label"), data.get("scope", "email"))
+                    result = submit(agent, data["action_id"], data["revision"], data.get("label"), data.get("scope", "email"), data.get("mode", "replace"))
                     self.wakeup.set()
                     return result
                 if route == "/api/attention":

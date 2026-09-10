@@ -107,3 +107,32 @@ class GmailLabelReviewTests(unittest.TestCase):
         self.assertFalse(run_one(self.path,self.executor))
         self.assertEqual(self.agent.get(action['id'])['status'],'unknown')
         self.assertEqual(self.agent.snapshot()['label_rules'],[])
+
+    def test_add_preserves_original_and_unrelated_labels(self):
+        action=self.label_action()
+        submit(self.agent,action['id'],1,'Follow up','email',mode='add')
+        run_one(self.path,self.executor)
+        self.assertTrue({'ai','new-label','human','INBOX','test'}.issubset(self.ids))
+        body=self.api.users.return_value.messages.return_value.modify.call_args.kwargs['body']
+        self.assertEqual(body['removeLabelIds'],[])
+        self.assertEqual(self.agent.get(action['id'])['proposal']['label'],'AI: Work')
+        labels={r['label'] for r in self.agent.snapshot()['labels']}
+        self.assertTrue({'AI: Work','AI: Follow up'}.issubset(labels))
+        self.assertEqual(self.agent.snapshot()['label_rules'],[])
+
+    def test_uncertain_add_reconciles_without_removing_original(self):
+        action=self.label_action()
+        submit(self.agent,action['id'],1,'Follow up','email',mode='add')
+        messages=self.api.users.return_value.messages.return_value
+        def uncertain(**kwargs):
+            self.ids.add('new-label')
+            raise TimeoutError()
+        messages.modify.side_effect=uncertain
+        run_one(self.path,self.executor)
+        self.assertEqual(self.agent.get(action['id'])['status'],'unknown')
+        attempts=messages.modify.call_count
+        op=self.agent.snapshot()['gmail_operations'][-1]
+        run_one(self.path,self.executor,op['id'],check_only=True)
+        self.assertEqual(messages.modify.call_count,attempts)
+        self.assertIn('ai',self.ids)
+        self.assertEqual(self.agent.get(action['id'])['status'],'executed')

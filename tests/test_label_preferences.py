@@ -32,6 +32,17 @@ class LabelLearningTests(unittest.TestCase):
         self.agent.proposer=Fixed(p or self.p)
         return self.agent.ingest(Email(str(i),sender,'Application update','Application received. No action needed.'))
 
+    def test_add_does_not_replace_and_rejects_future_scope(self):
+        row=self.ingest(1)
+        with self.assertRaises(ValueError):
+            submit(self.agent,row['id'],1,'Follow up','similar',mode='add')
+        submit(self.agent,row['id'],1,'Follow up','email',mode='add')
+        labels={r['label'] for r in self.agent.snapshot()['labels']}
+        self.assertEqual(labels,{'AI: Work','AI: Follow up'})
+        submit(self.agent,row['id'],2,'Applications','email')
+        labels={r['label'] for r in self.agent.snapshot()['labels']}
+        self.assertEqual(labels,{'AI: Applications','AI: Follow up'})
+
     def test_single_email_change_does_not_train_or_change_other_actions(self):
         row=self.ingest(1)
         submit(self.agent,row['id'],1,'Job applications','email')

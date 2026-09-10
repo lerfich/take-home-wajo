@@ -117,3 +117,5 @@ Initial effects: two labels and one draft created, zero messages sent, zero emai
 These are execution/policy checks, **not measured AI accuracy, learning performance, or prompt-injection detection results**. The proposer is scripted, and no real messages were delivered. Full evaluation remains to be implemented.
 
 Environment issue found during verification: one shell resolved `python3` to Python 3.6. The successful checks explicitly used the installed Python 3.14 interpreter. The application now exits with a clear Python 3.11+ requirement when invoked with an older interpreter.
+
+September 10 follow-up: 104 tests pass after adding explicit Replace/Add review modes. New tests cover preservation of original/unrelated labels, replacement after addition, rejected unsupported future-add scope, and read-only reconciliation after an uncertain addition. Gmail transport uses mocks for these new cases; no live mailbox mutation was performed. Browser mode-switch check passed with no console errors.

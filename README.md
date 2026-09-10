@@ -8,7 +8,7 @@ Gmail is enabled by default in the web server. The saved token is checked on sta
 
 ## Review labels and attention
 
-The 30-email synthetic exercise uses `labels-v1`, a label-only model prompt. **To review** is a category-review queue, separate from **Pending** action approvals. Confirm a label, select an existing name, or type a new one. Wajo verifies the Gmail change before marking a review complete. Unknown outcomes require read-only reconciliation, never automatic mutation retries. Only the old AI label is replaced; unrelated Gmail labels remain.
+The 30-email synthetic exercise uses `labels-v1`, a label-only model prompt. **To review** is a category-review queue, separate from **Pending** action approvals. Confirm a label, select an existing name, or type a new one. Wajo verifies the Gmail change before marking a review complete. Unknown outcomes require read-only reconciliation, never automatic mutation retries. Choose **Replace / confirm current label** to replace the displayed AI label, or **Add another label** to keep existing labels and add one more. Additional labels currently apply to this email only; future multi-label preferences are not implemented. Unrelated Gmail labels remain.
 
 **This email only** corrects the present label without teaching a general rule. **Future similar emails** saves an explicit preference for the displayed situation type; **This situation from this sender** narrows it to the exact sender. There are 15 initial semantic kinds. A model supplies the kind and supporting body quote, so matching remains fallible. One explicit instruction creates a rule; it is not measured statistical learning or model fine-tuning. Preferences can be paused.
 

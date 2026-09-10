@@ -41,6 +41,10 @@ def initialize(db):
             active INTEGER NOT NULL DEFAULT 1, UNIQUE(account,kind,scope));
     """)
 
+    columns = {r[1] for r in db.execute("PRAGMA table_info(label_feedback)")}
+    if "mode" not in columns:
+        db.execute("ALTER TABLE label_feedback ADD COLUMN mode TEXT NOT NULL DEFAULT 'replace'")
+
 
 def normalize_label(value):
     if type(value) is not str:
@@ -95,10 +99,14 @@ def current_rule_valid(agent, action_id):
     return bool(rule and rule["id"] == review["preference_id"] and rule["label"] == review["current_label"])
 
 
-def submit(agent, action_id, revision, label, scope):
+def submit(agent, action_id, revision, label, scope, mode="replace"):
     from .core import Proposal, decide
     if scope not in {"email", "similar", "sender"}:
         raise ValueError("Choose this email, similar emails, or similar emails from this sender")
+    if mode not in {"replace", "add"}:
+        raise ValueError("Choose Replace or Add")
+    if mode == "add" and scope != "email":
+        raise ValueError("Additional labels currently apply to this email only")
     name = normalize_label(label)
     with agent.db:
         agent.db.execute("BEGIN IMMEDIATE")
@@ -115,17 +123,17 @@ def submit(agent, action_id, revision, label, scope):
         new_revision = revision + 1
         account = account_for(agent, email.id)
         key = "email" if scope == "email" else "*" if scope == "similar" else email.sender.casefold()
-        agent.db.execute("""INSERT INTO label_feedback(action_id,revision,old_label,new_label,scope,account,kind,status,created_at)
-                            VALUES(?,?,?,?,?,?,?,'pending',?)""",
+        agent.db.execute("""INSERT INTO label_feedback(action_id,revision,old_label,new_label,scope,account,kind,status,created_at,mode)
+                            VALUES(?,?,?,?,?,?,?,'pending',?,?)""",
                          (action_id, new_revision, review["current_label"], name, key, account, review["kind"],
-                          datetime.now(timezone.utc).isoformat()))
+                          datetime.now(timezone.utc).isoformat(), mode))
         # Stop using the superseded rule while Gmail verification is pending.
         if scope != "email":
             agent.db.execute("UPDATE label_rules SET active=0 WHERE account=? AND kind=? AND scope=?",
                              (account, review["kind"], key))
         agent.db.execute("UPDATE actions SET revision=? WHERE id=?", (new_revision, action_id))
         agent.db.execute("UPDATE label_reviews SET status='saving' WHERE action_id=?", (action_id,))
-        agent.log(action_id, "label_review_submitted", {"revision": new_revision, "label": name, "scope": key})
+        agent.log(action_id, "label_review_submitted", {"revision": new_revision, "label": name, "scope": key, "mode": mode})
         if action["transport"] == "gmail":
             agent.queue_gmail(action_id, "label-review:" + str(new_revision), approved=True)
         else:
@@ -139,18 +147,20 @@ def finish(agent, action_id, revision):
     if not feedback or feedback["status"] != "pending":
         raise ValueError("Label feedback is missing or already completed")
     action = agent.get(action_id)
-    agent.db.execute("DELETE FROM labels WHERE email_id=? AND label=?", (action["email_id"], feedback["old_label"]))
+    if feedback["mode"] == "replace":
+        agent.db.execute("DELETE FROM labels WHERE email_id=? AND label=?", (action["email_id"], feedback["old_label"]))
     agent.db.execute("INSERT OR IGNORE INTO labels VALUES(?,?)", (action["email_id"], feedback["new_label"]))
-    proposal = {**action["proposal"], "label": feedback["new_label"]}
+    current_label = feedback["old_label"] if feedback["mode"] == "add" else feedback["new_label"]
+    proposal = {**action["proposal"], "label": current_label}
     agent.db.execute("UPDATE actions SET proposal=?,status='executed' WHERE id=?", (json.dumps(proposal),action_id))
     agent.db.execute("UPDATE label_reviews SET current_label=?,status='reviewed',preference_id=NULL,basis='Reviewed by you' WHERE action_id=?",
-                     (feedback["new_label"],action_id))
+                     (current_label,action_id))
     agent.db.execute("UPDATE label_feedback SET status='verified' WHERE id=?", (feedback["id"],))
     if feedback["scope"] != "email":
         agent.db.execute("""INSERT INTO label_rules(account,kind,scope,label,feedback_id,active) VALUES(?,?,?,?,?,1)
             ON CONFLICT(account,kind,scope) DO UPDATE SET label=excluded.label,feedback_id=excluded.feedback_id,active=1""",
                          (feedback["account"],feedback["kind"],feedback["scope"],feedback["new_label"],feedback["id"]))
-    agent.log(action_id,"label_reviewed", {"feedback_id":feedback["id"],"label":feedback["new_label"],"scope":feedback["scope"]})
+    agent.log(action_id,"label_reviewed", {"feedback_id":feedback["id"],"label":feedback["new_label"],"scope":feedback["scope"],"mode":feedback["mode"]})
 
 
 def run_review(agent, executor, candidate, check_only):
@@ -181,7 +191,7 @@ def run_review(agent, executor, candidate, check_only):
         def find(name):
             return next((x["id"] for x in labels if x["name"] == name and x.get("type") == "user"),None)
         old_id,new_id = find(old),find(new)
-        verified = new_id in ids and (old == new or old_id not in ids)
+        verified = new_id in ids and (feedback["mode"] == "add" or old == new or old_id not in ids)
         if not verified and not check_only:
             if old_id not in ids:
                 raise ScopeError("The previous label changed in Gmail. Review the message there; Wajo will not overwrite it.")
@@ -189,9 +199,9 @@ def run_review(agent, executor, candidate, check_only):
                 new_id = executor.api.users().labels().create(userId="me",body={"name":new,
                          "labelListVisibility":"labelShow","messageListVisibility":"show"}).execute()["id"]
             executor.api.users().messages().modify(userId="me",id=binding["message_id"],body={
-                "addLabelIds":[new_id],"removeLabelIds":[old_id] if old != new else []}).execute()
+                "addLabelIds":[new_id],"removeLabelIds":[old_id] if feedback["mode"] == "replace" and old != new else []}).execute()
             labels,ids = executor.inspect(dict(binding))
-            verified = new_id in ids and (old == new or old_id not in ids)
+            verified = new_id in ids and (feedback["mode"] == "add" or old == new or old_id not in ids)
         with agent.db:
             if not verified:
                 agent.db.execute("UPDATE gmail_operations SET status='unknown',error=? WHERE id=?",

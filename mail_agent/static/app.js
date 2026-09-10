@@ -120,16 +120,26 @@ function labelReviewForm(row){
   const r=row.labelReview;if(!r||row.status!=='executed')return '';
   const kind=state.label_kinds[r.kind];
   const names=[...new Set([...(state.labels||[]).map(x=>x.label),...(state.label_rules||[]).map(x=>x.label)])].sort();
-  return `<form id="label-review-form" class="label-review-form"><div class="eyebrow">${r.status==='reviewed'?'REVIEWED · EDIT YOUR CHOICE':'YOUR LABEL REVIEW'}</div><h3>${esc(r.current_label)}</h3><p>${esc(r.basis)}. ${kind?`Situation: ${esc(kind)}.`:'The situation type is uncertain; this review applies to this email only.'}</p><label>Choose a label or type a new name<input id="review-label" list="available-labels" maxlength="100" required aria-label="Label name"><datalist id="available-labels">${names.map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist></label><small>Custom names are saved with the AI: prefix. Other Gmail labels, including human ready, stay in place.</small><label>Use this choice for<select id="review-scope"><option value="email">This email only</option>${kind?`<option value="similar">Future similar emails · ${esc(kind)}</option><option value="sender">This situation from ${esc(row.email.sender)} only</option>`:''}</select></label><p class="review-scope-note" id="review-scope-note">Only this email changes. No preference will be saved.</p><button class="primary" id="save-label-review">Confirm label &amp; continue →</button><p class="review-save-note">${row.transport==='gmail'?'Saved to Gmail and verified before the review is marked complete.':'This is a local simulation.'}</p></form>`;
+  return `<form id="label-review-form" class="label-review-form"><div class="eyebrow">${r.status==='reviewed'?'REVIEWED · EDIT YOUR CHOICE':'YOUR LABEL REVIEW'}</div><h3>${esc(r.current_label)}</h3><p>${esc(r.basis)}. ${kind?`Situation: ${esc(kind)}.`:'The situation type is uncertain; this review applies to this email only.'}</p><p>Current labels: ${esc((state.labels||[]).filter(x=>x.email_id===row.email_id).map(x=>x.label).join(' · '))}</p><label>Review action<select id="review-mode"><option value="replace">Replace / confirm current label</option><option value="add">Add another label · keep existing labels</option></select></label><p id="review-mode-note">Replaces ${esc(r.current_label)} only. Other labels stay.</p><label>Choose a label or type a new name<input id="review-label" list="available-labels" maxlength="100" required aria-label="Label name"><datalist id="available-labels">${names.map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist></label><small>Custom names are saved with the AI: prefix. Other Gmail labels, including human ready, stay in place.</small><label>Use this choice for<select id="review-scope"><option value="email">This email only</option>${kind?`<option value="similar">Future similar emails · ${esc(kind)}</option><option value="sender">This situation from ${esc(row.email.sender)} only</option>`:''}</select></label><p class="review-scope-note" id="review-scope-note">Only this email changes. No preference will be saved.</p><button class="primary" id="save-label-review">Confirm label &amp; continue →</button><p class="review-save-note">${row.transport==='gmail'?'Saved to Gmail and verified before the review is marked complete.':'This is a local simulation.'}</p></form>`;
 }
 function bindLabelReview(row){
   if(!$('#label-review-form'))return;
   $('#review-label').value=row.labelReview.current_label;
-  $('#review-label').addEventListener('input',()=>{$('#save-label-review').textContent=$('#review-label').value.trim()===row.labelReview.current_label?'Confirm label & continue →':'Save label & continue →'});
+  const updateReviewButton=()=>{$('#save-label-review').textContent=$('#review-mode').value==='add'?'Add label & continue →':$('#review-label').value.trim()===row.labelReview.current_label?'Confirm label & continue →':'Replace label & continue →'};
+  $('#review-label').addEventListener('input',updateReviewButton);
+  $('#review-mode').addEventListener('change',()=>{
+    const add=$('#review-mode').value==='add';
+    $('#review-label').value=add?'':row.labelReview.current_label;
+    $('#review-scope').disabled=add;
+    if(add)$('#review-scope').value='email';
+    $('#review-mode-note').textContent=add?'Adds one more label. All existing labels stay.':'Replaces '+row.labelReview.current_label+' only. Other labels stay.';
+    $('#review-scope-note').textContent=add?'Additional labels currently apply to this email only. No future preference is saved.':'Only this email changes. No preference will be saved.';
+    $('#review-scope').value='email';updateReviewButton();
+  });
   $('#review-scope').addEventListener('change',()=>{$('#review-scope-note').textContent=$('#review-scope').value==='email'?'Only this email changes. No preference will be saved.':'Save an explicit preference for this situation. Existing emails will not be relabeled automatically; sending and archiving permissions stay unchanged.'});
   $('#label-review-form').addEventListener('submit',async e=>{
     e.preventDefault();const button=$('#save-label-review');button.disabled=true;
-    const result=await post('/api/label-review',{action_id:row.id,revision:row.revision,label:$('#review-label').value,scope:$('#review-scope').value});
+    const result=await post('/api/label-review',{action_id:row.id,revision:row.revision,label:$('#review-label').value,scope:$('#review-scope').value,mode:$('#review-mode').value});
     if(result){
       if(['label_review','label_reviewed'].includes(filter)){
         const next=currentRows().filter(x=>x.labelReview?.status==='needs_review'&&x.status==='executed'&&x.id!==row.id).sort((a,b)=>a.id-b.id)[0];
