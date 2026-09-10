@@ -30,9 +30,9 @@ python3 -m mail_agent.organization_eval
 
 It sends twelve new synthetic emails to Qwen, then replays each returned proposal through a fresh organization policy and through a copy of the user's active general organization rules. This separates model kind classification from preference transfer and never imports the examples into Gmail. The committed September 10 development report recorded **12/12** kind matches, organization matches **8/12 before → 12/12 after**, **4/4** expected Important transfers, and **0/8** false Important results. This small developer-written set is not the final independent evaluation.
 
-The separate **Always bring this to my attention** control saves an in-app visibility rule using the same scopes. Matching future emails appear in **Needs attention** and do not qualify for automatic archiving. **Mark as seen** clears the current attention item without disabling the future rule. This does not send an OS push notification or authorize sending. **No notification** describes autonomy, not importance. General importance classification and a consolidated topic hierarchy are not implemented yet. The synthetic labels run is not an evaluation of those features.
+The separate **Keep this in Needs attention** control saves an in-app visibility rule using the same scopes. Future scopes require an evidenced situation kind. Matching emails appear in **Needs attention** and do not qualify for learned automatic archiving. **Mark as seen** clears the current attention item without disabling the future rule. Visibility does not change autonomy to **Notify**, mark an email **Important**, create or suppress an **Escalation**, send an OS push notification or authorize sending. The synthetic labels run is not an evaluation of those features.
 
-Both the email list and detail pane scroll independently on desktop. Filters include Pending, Archived, To review, Reviewed and Needs attention.
+Both the email list and detail pane scroll independently on desktop. Filters include Pending, Needs attention, Escalated, Archived, To review and Reviewed.
 
 Local execution and safety prototype for the Wajo take-home. **Not the finished AI agent.**
 

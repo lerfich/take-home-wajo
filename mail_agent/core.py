@@ -274,16 +274,17 @@ class Agent:
             proposal, draft_style_application = apply_draft_style(self, proposal, email)
             from .attention import matches
             surface = matches(self,email,proposal)
-            if surface:
-                from dataclasses import replace
-                proposal = replace(proposal,notify=True)
             decision = decide(proposal)
             if decision.status == "pending" and proposal.action == "archive":
-                pref = self.preference(proposal, email)
-                if pref["mode"] == "keep":
-                    decision = Decision("silent", "allowed", "skipped", "Explicit preference: keep in inbox")
-                elif pref["mode"] == "notify":
-                    decision = Decision("notify", "allowed", "ready", "Learned archive preference")
+                if surface:
+                    decision = Decision("ask", "confirmation_required", "pending",
+                                        "Attention preference requires review before archiving")
+                else:
+                    pref = self.preference(proposal, email)
+                    if pref["mode"] == "keep":
+                        decision = Decision("silent", "allowed", "skipped", "Explicit preference: keep in inbox")
+                    elif pref["mode"] == "notify":
+                        decision = Decision("notify", "allowed", "ready", "Learned archive preference")
         except Exception:
             # Do not log arbitrary provider exceptions: they can contain secrets.
             proposal = Proposal("none", "Proposal unavailable or invalid")
@@ -421,4 +422,4 @@ class Agent:
 
     def snapshot(self) -> dict:
         return {table: [dict(row) for row in self.db.execute(f"SELECT * FROM {table}")]
-                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items", "organization_feedback", "organization_rules", "email_organization", "draft_style_feedback", "draft_style_rules", "draft_style_applications", "draft_edit_versions")}
+                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items", "attention_feedback", "organization_feedback", "organization_rules", "email_organization", "draft_style_feedback", "draft_style_rules", "draft_style_applications", "draft_edit_versions")}

@@ -1,5 +1,11 @@
 # Iteration 1 verification
 
+## September 10: attention is separate from autonomy and escalation
+
+**122 tests passed** after separating explicit visibility preferences from the four autonomy levels. A matching Attention rule now adds the email to **Needs attention** without changing a silent action into **Notify**. If the same email would otherwise qualify for learned automatic archiving, it remains pending for review. Future similar/sender rules require a supported situation kind with an exact evidence quote in the email; each enable/disable choice is retained as distinct feedback. Unit checks cover visibility without autonomy changes, archive review, sender boundaries, disabling and missing evidence.
+
+The local browser now shows separate **Needs attention** and **Escalated** counters and filters. **Important** remains a separate organization marker. JavaScript syntax and the live local rendering on the existing database were checked; the database contained no queued Gmail operations before restart, and no Gmail mutation or send was performed. User attention preferences and the planned contrast measurement are still outstanding, so this is implementation verification rather than a transfer result or final independent evaluation.
+
 ## September 10: explicit draft-style learning
 
 **120 tests passed** after adding separate draft-style feedback and application. Tests cover deriving length/greeting/sign-off and a bounded before/after wording example from a real body edit, general and exact-sender scope, cross-sender transfer, rejecting unknown or unevidenced kinds both when saving and applying a rule, provider rewrite fallback, persistence of local revisions, and the unchanged requirement for exact send approval. Web regressions confirm that a locally simulated pending reply can be edited and used to save a style rule while the sent table remains empty, and that an unchanged reviewed body can become style feedback only through a separate explicit confirmation. The Groq adapter test checks the constrained body-only rewrite response, inclusion of the confirmed wording example, and confirms that internal action IDs are not sent to the provider.
