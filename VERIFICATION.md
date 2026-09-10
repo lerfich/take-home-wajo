@@ -1,5 +1,11 @@
 # Iteration 1 verification
 
+## September 10: exact-version live reply approval
+
+A new synthetic message addressed only to the connected test account exercised the complete live path with real Qwen and `triage-v9`. The model proposed a reply, Gmail verified draft revision 1, the user edited the body, and Gmail verified revision 2. Nothing was sent until the user personally clicked **Approve and send via Gmail** for that displayed revision. The worker then completed `send:2`; a read-only check confirmed the Sent label, the exact approved recipient/subject/body and self-delivery in Inbox. There was one send to the same test account and zero automatic sends or external recipients. See [exact-reply-approval-2026-09-10.json](reports/exact-reply-approval-2026-09-10.json).
+
+An initial negative contrast explicitly described a fictional scenario with no real request. Qwen selected no action, so no draft or send was created. These two cases check conservative gating, transport and exact-version permission binding; they are not a general reply-quality evaluation. The existing **125 tests** still pass.
+
 ## September 10: semantic attention transfer and escalation contrasts
 
 **125 tests passed.** Attention transfer now uses an independently classified semantic cue with an exact supporting quote. This lets confirmed personal commitments transfer across topics while keeping ordinary team schedule changes separate. Exact-sender account rules do not trust a different sender. Repeated identical saves are idempotent, distinct examples remain auditable, and disabling a shared semantic cue disables all legacy kind rows for that scope. The UI deduplicates those legacy rows and calls dismissal **Clear from Needs attention**.

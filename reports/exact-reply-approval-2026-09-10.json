@@ -1,0 +1,42 @@
+{
+  "created_at": "2026-09-10T14:05:14.227298+00:00",
+  "kind": "gmail_exact_reply_approval_development_check",
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": "triage-v9",
+  "scope": "connected test account addressed only to itself",
+  "synthetic_messages_inserted": 2,
+  "initial_negative_case": {
+    "result": "no_action",
+    "reason": "The explicit fictional/no-real-request wording did not justify a reply.",
+    "gmail_drafts": 0,
+    "gmail_sends": 0
+  },
+  "exact_approval_case": {
+    "model_action": "send",
+    "autonomy": "ask",
+    "initial_draft_revision": 1,
+    "initial_body": "Received.",
+    "reviewed_revision": 2,
+    "reviewed_subject": "Re: Please confirm receipt of this Wajo test message",
+    "reviewed_body": "Hello, Wajo test\nI received",
+    "draft_revisions_verified": 2,
+    "approved_revision": 2,
+    "sent_operations": 1,
+    "gmail_sent_readback": true,
+    "recipient_matches_approved_revision": true,
+    "subject_matches_approved_revision": true,
+    "body_matches_approved_revision": true,
+    "self_delivery_found_in_inbox": true,
+    "automatic_send": false
+  },
+  "gmail_operations": [
+    {"operation": "draft:1", "status": "done"},
+    {"operation": "draft:2", "status": "done"},
+    {"operation": "send:2", "status": "done"}
+  ],
+  "limitations": [
+    "This is a single synthetic self-send transport and permission check, not a reply-quality evaluation.",
+    "The user explicitly approved the exact saved revision in the web UI.",
+    "No external recipient was contacted."
+  ]
+}

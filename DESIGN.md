@@ -48,6 +48,8 @@ Before sending, the worker validates current source scope and policy, verifies t
 
 Gmail rewrites draft Message-ID, discovered during live verification. Matching therefore uses the per-revision X-Wajo-Reply-Key and decoded From/To/Subject/Body, rejects extra recipients and attachments, and compares threading headers. A send response ID is saved before readback. Unknown outcomes are reconciled read-only by known ID or a bounded search/scan of Sent; lack of evidence remains unknown, never permission to retry. No exactly-once delivery guarantee is claimed. Independent manual sends, multiple databases, indexing delays and edits/removal of tracking headers are residual limitations. One server per database remains required.
 
+A second live synthetic self-send exercised this boundary with real Qwen: the user changed draft revision 1, saved and verified revision 2, then explicitly approved it. Sent readback matched the exact approved fields and body. This verifies the transport and permission path only; it does not establish general reply quality and does not enable automatic replies.
+
 API basis: [Google draft creation/update/send guide](https://developers.google.com/workspace/gmail/api/guides/drafts), including supplying approved MIME in the send request.
 
 ## Explicit label and attention preferences
