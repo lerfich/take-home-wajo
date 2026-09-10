@@ -179,14 +179,18 @@ function renderGmail(){
   if(context!==gmailContext){$('#gmail-consent').checked=false;gmailContext=context}
   $('#gmail-summary').textContent=connected?g.account:g.token_present?'Gmail connection saved':'Connect your Gmail';
   $('#gmail-auth-link').classList.toggle('hidden',!g.auth_url);if(g.auth_url)$('#gmail-auth-link').href=g.auth_url;
-  $('#gmail-summary-note').textContent=running?({connect:'Waiting for Google sign-in…',check:'Checking your connection…',sync:'Syncing selected emails…'}[g.operation]):connected?'Wajo-Test · '+(g.live?'Gmail actions enabled':'Local simulation'):'Connect an account and sync selected emails.';
+  $('#gmail-summary-note').textContent=running?({connect:'Waiting for Google sign-in…',check:'Checking your connection…',sync:'Syncing selected emails…'}[g.operation]):connected?'Connected · Wajo-Test · '+(g.live?'Gmail actions enabled':'Local simulation'):'Connect an account and sync selected emails.';
   $('#open-gmail').textContent=connected?'Gmail settings':g.token_present?'Check Gmail':'Connect Gmail';
-  $('#gmail-title').textContent=connected?'Your Gmail connection':'Connect Gmail';
+  $('#gmail-title').textContent=connected?'Gmail connected':g.token_present?'Your Gmail connection':'Connect Gmail';
+  $('#gmail-intro').textContent=connected?'Your account is connected. You can sync emails below.':g.token_present?'A saved connection is available. Check its status before signing in again.':'Connect your account through Google. Wajo never asks for your Gmail password.';
   $('#gmail-account').textContent=connected?g.account:g.token_present?'Saved connection · verification needed':'No Gmail account connected';
   $('#gmail-access').textContent=connected?(g.access==='manage'?'Read and manage access':'Read-only access'):'Check your connection or sign in with Google.';
   $('#gmail-progress').textContent=running?({connect:'Continue in your system browser. Google sign-in can take up to three minutes.',check:'Verifying access and the Wajo-Test label…',sync:'Reading selected emails and adding new ones to the analysis queue…'}[g.operation]):g.checked_at&&connected?'Connection checked '+new Date(g.checked_at).toLocaleTimeString('en-US'):'';
   $('#gmail-error').textContent=g.error||'';$('#gmail-error').classList.toggle('hidden',!g.error);
-  $('#gmail-connect').textContent=g.token_present?'Reconnect with Google':'Connect with Google';
+  const needsAccess=connected&&g.live&&g.access!=='manage';
+  $('#gmail-connect').classList.toggle('hidden',(connected&&!needsAccess)||(g.token_present&&(g.status==='unchecked'||g.operation==='check')));
+  $('#gmail-connect').textContent=needsAccess?'Grant Gmail action access':g.token_present?'Reconnect with Google':'Connect with Google';
+  $('#gmail-setup').classList.toggle('hidden',connected&&!needsAccess);
   $('#gmail-connect').disabled=running||!g.client_ready;$('#gmail-status').disabled=running||!g.token_present;
   if(!g.client_ready&&!g.token_present)$('#gmail-setup').open=true;
   $('#gmail-mode').textContent=g.live?'Gmail · real actions':'Local simulation';
