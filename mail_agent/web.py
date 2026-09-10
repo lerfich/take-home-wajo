@@ -158,11 +158,14 @@ class Application:
                 p = Proposal(**json.loads(action["proposal"]))
                 action["proposal"] = asdict(p)
                 from .label_preferences import account_for
+                from .attention import cue_for
                 email = email_map[action["email_id"]]
                 keys = {"email": "email:" + action["email_id"], "similar": "*", "sender": email["sender"].casefold()}
+                attention_cue = cue_for(Email(**{k: email[k] for k in ("id", "sender", "subject", "body")}), p)
+                action["attention_cue"] = attention_cue
                 action["attention_scopes"] = [scope for scope, key in keys.items() if any(
                     r["enabled"] and r["account"] == account_for(agent, action["email_id"])
-                    and r["kind"] == p.label_kind and r["scope"] == key
+                    and r["scope"] == key and (scope == "email" or r["cue"] == attention_cue)
                     for r in state["attention_rules"])]
                 action["preference"] = agent.preference(p, Email(**{
                     k: email_map[action["email_id"]][k] for k in ("id", "sender", "subject", "body")}))
@@ -196,6 +199,8 @@ class Application:
                      gmail_connection=self.gmail_connection.snapshot())
         from .label_preferences import LABEL_KINDS
         state["label_kinds"] = LABEL_KINDS
+        from .attention import ATTENTION_CUES
+        state["attention_cues"] = ATTENTION_CUES
         return state
 
     def mutate(self, route, data):

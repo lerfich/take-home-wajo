@@ -13,7 +13,7 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 from .core import Email, Proposal, validate, PATTERNS
 
 DEFAULT_MODEL = "qwen/qwen3.8-27b"
-PROMPT_VERSION = "triage-v7"
+PROMPT_VERSION = "triage-v9"
 SYSTEM = (Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.txt").read_text()
 FIELDS = {name: {"type": "string"} for name in ("action", "reason", "label", "text", "recipient")}
 FIELDS.update({name: {"type": "boolean"} for name in ("notify", "suspicious", "needs_human")})
@@ -22,6 +22,9 @@ FIELDS["pattern"] = {"type": "string", "enum": sorted(PATTERNS | {"unknown"})}
 FIELDS["pattern_evidence"] = {"type": "string"}
 from .label_preferences import LABEL_KINDS
 FIELDS["label_kind"] = {"type": "string", "enum": sorted(set(LABEL_KINDS) | {"unknown"})}
+from .attention import ATTENTION_CUES
+FIELDS["attention_cue"] = {"type": "string", "enum": sorted(set(ATTENTION_CUES) | {"unknown"})}
+FIELDS["attention_evidence"] = {"type": "string"}
 SCHEMA = {"type": "object", "properties": FIELDS, "required": list(FIELDS), "additionalProperties": False}
 
 

@@ -60,8 +60,50 @@ class AttentionTests(unittest.TestCase):
         a=Agent(':memory:',Fixed(p))
         try:
             r=a.ingest(Email('1','a@example.test','Notice','Notice'))
-            with self.assertRaisesRegex(ValueError,'evidenced situation'):
+            with self.assertRaisesRegex(ValueError,'evidenced attention cue'):
                 set_rule(a,r['id'],True,'similar')
             self.assertEqual(a.snapshot()['attention_feedback'],[])
             self.assertTrue(set_rule(a,r['id'],True,'email')['saved'])
+        finally:a.close()
+
+    def test_semantic_cue_transfers_across_topics_but_not_writing_style(self):
+        first=Proposal('label','Booking',label='AI: Travel',label_kind='travel_confirmation',
+                       pattern_evidence='Booking confirmed',attention_cue='personal_commitment',
+                       attention_evidence='Booking confirmed')
+        a=Agent(':memory:',Fixed(first))
+        try:
+            r=a.ingest(Email('1','travel@example.test','Trip','Booking confirmed for October 3'))
+            set_rule(a,r['id'],True,'similar')
+            a.proposer=Fixed(Proposal('none','Interview choice',needs_human=True,label_kind='job_interview',
+                             pattern_evidence='choose a time',attention_cue='personal_commitment',
+                             attention_evidence='choose a time'))
+            interview=a.ingest(Email('2','jobs@example.test','Interview','Please choose a time next week'))
+            self.assertEqual(interview['autonomy'],'escalate')
+            self.assertTrue(any(x['action_id']==interview['id'] for x in a.snapshot()['attention_items']))
+            set_rule(a,interview['id'],False,'similar')
+            self.assertFalse(any(r['enabled'] for r in a.snapshot()['attention_rules']
+                                 if r['cue']=='personal_commitment' and r['scope']=='*'))
+            a.proposer=Fixed(first)
+            later=a.ingest(Email('4','travel@example.test','Trip','Booking confirmed for October 4'))
+            self.assertFalse(any(x['action_id']==later['id'] for x in a.snapshot()['attention_items']))
+            a.proposer=Fixed(Proposal('label','Marketing urgency',label='AI: Newsletter',label_kind='newsletter',
+                             pattern_evidence='Last chance today',attention_cue='none'))
+            promotion=a.ingest(Email('3','promo@example.test','Last chance','Last chance today'))
+            self.assertFalse(any(x['action_id']==promotion['id'] for x in a.snapshot()['attention_items']))
+        finally:a.close()
+
+    def test_repeated_save_is_idempotent_but_second_example_is_retained(self):
+        p=Proposal('label','Booking',label='AI: Travel',label_kind='travel_confirmation',
+                   pattern_evidence='Confirmed',attention_cue='personal_commitment',
+                   attention_evidence='Confirmed')
+        a=Agent(':memory:',Fixed(p))
+        try:
+            first=a.ingest(Email('1','one@example.test','Trip one','Confirmed one'))
+            saved=set_rule(a,first['id'],True,'similar')
+            repeated=set_rule(a,first['id'],True,'similar')
+            second=a.ingest(Email('2','two@example.test','Trip two','Confirmed two'))
+            set_rule(a,second['id'],True,'similar')
+            self.assertNotIn('unchanged',saved)
+            self.assertTrue(repeated['unchanged'])
+            self.assertEqual(len(a.snapshot()['attention_feedback']),2)
         finally:a.close()

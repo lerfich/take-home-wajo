@@ -1,7 +1,28 @@
 """Explicit user requests to surface mail, independent of organization and autonomy."""
 from datetime import datetime, timezone
 
-from .label_preferences import account_for, LABEL_KINDS
+from .label_preferences import account_for
+
+
+ATTENTION_CUES = {
+    "personal_commitment": "Personal future plan or commitment",
+    "account_security": "Account security or access change",
+    "decision_required": "Decision or substantive response required",
+    "deadline_consequence": "Deadline with a consequence if missed",
+    "financial_commitment": "Money or financial commitment",
+    "service_impact": "Service failure affecting current work",
+    "schedule_change": "Change to an existing meeting or schedule",
+    "none": "No distinct attention cue",
+}
+
+LEGACY_KIND_CUES = {
+    "travel_confirmation": "personal_commitment",
+    "job_interview": "personal_commitment",
+    "account_notice": "account_security",
+    "work_review_request": "decision_required",
+    "service_failure": "service_impact",
+    "meeting_change": "schedule_change",
+}
 
 
 def initialize(db):
@@ -16,11 +37,27 @@ def initialize(db):
         kind TEXT NOT NULL, scope TEXT NOT NULL, enabled INTEGER NOT NULL,
         created_at TEXT NOT NULL);
     """)
+    for table in ("attention_rules", "attention_feedback"):
+        columns = {r[1] for r in db.execute(f"PRAGMA table_info({table})")}
+        if "cue" not in columns:
+            db.execute(f"ALTER TABLE {table} ADD COLUMN cue TEXT NOT NULL DEFAULT ''")
+    for kind, cue in LEGACY_KIND_CUES.items():
+        db.execute("UPDATE attention_rules SET cue=? WHERE cue='' AND kind=?", (cue, kind))
+        db.execute("UPDATE attention_feedback SET cue=? WHERE cue='' AND kind=?", (cue, kind))
 
 
-def _evidenced(email, proposal):
-    evidence = proposal.pattern_evidence.strip()
-    return proposal.label_kind in LABEL_KINDS and bool(evidence) and evidence in email.body
+def cue_for(email, proposal):
+    """Prefer the model's semantic cue; map old v7 examples without rewriting history."""
+    evidence = proposal.attention_evidence.strip()
+    if proposal.attention_cue in ATTENTION_CUES and proposal.attention_cue != "none":
+        if evidence and evidence in email.body:
+            return proposal.attention_cue
+        return "unknown"
+    legacy_evidence = proposal.pattern_evidence.strip()
+    if (proposal.label_kind in LEGACY_KIND_CUES and legacy_evidence
+            and legacy_evidence in email.body):
+        return LEGACY_KIND_CUES[proposal.label_kind]
+    return "unknown"
 
 
 def matches(agent, email, proposal):
@@ -29,7 +66,7 @@ def matches(agent, email, proposal):
     for r in rules:
         if r['scope']=='email:'+email.id:
             return True
-        if r['kind']==proposal.label_kind and _evidenced(email, proposal):
+        if r['cue'] and r['cue']==cue_for(email, proposal):
             if r['scope'] in ('*',email.sender.casefold()):
                 return True
     return False
@@ -40,19 +77,37 @@ def set_rule(agent, action_id, enabled, scope):
     if type(enabled) is not bool or scope not in {'email','similar','sender'}:
         raise ValueError('Choose a valid attention setting and scope')
     action=agent.get(action_id);email=agent.email_for(action_id);p=Proposal(**action['proposal'])
-    if scope!='email' and not _evidenced(email, p):
-        raise ValueError('This email has no evidenced situation type; choose this email only')
+    cue=cue_for(email,p)
+    if scope!='email' and cue not in set(ATTENTION_CUES) - {'none'}:
+        raise ValueError('This email has no evidenced attention cue; choose this email only')
     key='email:'+email.id if scope=='email' else '*' if scope=='similar' else email.sender.casefold()
     with agent.db:
-        agent.db.execute('INSERT OR REPLACE INTO attention_rules VALUES(?,?,?,?)',
-                         (account_for(agent,email.id),p.label_kind,key,int(enabled)))
+        account=account_for(agent,email.id)
+        duplicate=agent.db.execute(
+            'SELECT id FROM attention_feedback WHERE action_id=? AND account=? AND kind=? AND scope=? AND enabled=?',
+            (action_id,account,p.label_kind,key,int(enabled))).fetchone()
+        # Several concrete situations can express the same user-facing reason
+        # (for example, travel and an interview are both personal commitments).
+        # Keep their effective rule state aligned even though legacy rows retain
+        # the original kind for auditability.
+        agent.db.execute(
+            'UPDATE attention_rules SET enabled=? WHERE account=? AND cue=? AND scope=?',
+            (int(enabled),account,cue,key))
+        agent.db.execute('INSERT OR REPLACE INTO attention_rules(account,kind,scope,enabled,cue) VALUES(?,?,?,?,?)',
+                         (account,p.label_kind,key,int(enabled),cue))
+        if duplicate is not None:
+            if enabled:
+                agent.db.execute("INSERT OR REPLACE INTO attention_items VALUES(?,'You asked to see this email',0)",(action_id,))
+            else:
+                agent.db.execute('UPDATE attention_items SET seen=1 WHERE action_id=?',(action_id,))
+            return {'saved':True,'unchanged':True,'feedback_id':duplicate['id']}
         cursor=agent.db.execute(
-            'INSERT INTO attention_feedback(action_id,account,kind,scope,enabled,created_at) VALUES(?,?,?,?,?,?)',
-            (action_id,account_for(agent,email.id),p.label_kind,key,int(enabled),datetime.now(timezone.utc).isoformat()))
+            'INSERT INTO attention_feedback(action_id,account,kind,scope,enabled,created_at,cue) VALUES(?,?,?,?,?,?,?)',
+            (action_id,account,p.label_kind,key,int(enabled),datetime.now(timezone.utc).isoformat(),cue))
         if enabled:
             agent.db.execute("INSERT OR REPLACE INTO attention_items VALUES(?,'You asked to see this email',0)",(action_id,))
         else:
             agent.db.execute('UPDATE attention_items SET seen=1 WHERE action_id=?',(action_id,))
         agent.log(action_id,'attention_preference_changed',
-                  {'enabled':enabled,'scope':key,'kind':p.label_kind,'feedback_id':cursor.lastrowid})
+                  {'enabled':enabled,'scope':key,'kind':p.label_kind,'cue':cue,'feedback_id':cursor.lastrowid})
     return {'saved':True,'feedback_id':cursor.lastrowid}

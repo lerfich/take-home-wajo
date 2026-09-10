@@ -1,10 +1,16 @@
 # Iteration 1 verification
 
+## September 10: semantic attention transfer and escalation contrasts
+
+**125 tests passed.** Attention transfer now uses an independently classified semantic cue with an exact supporting quote. This lets confirmed personal commitments transfer across topics while keeping ordinary team schedule changes separate. Exact-sender account rules do not trust a different sender. Repeated identical saves are idempotent, distinct examples remain auditable, and disabling a shared semantic cue disables all legacy kind rows for that scope. The UI deduplicates those legacy rows and calls dismissal **Clear from Needs attention**.
+
+A 12-email developer-written contrast set was run with real Qwen and `triage-v9`: 12/12 attention cues matched. With the saved user preferences, 4/4 expected emails entered Needs attention, with 0 misses and 0 false positives; 5/5 expected escalations matched, with 0 misses and 0 false escalations. The first v8 run and raw v9 run remain in separate reports. Two expectations were corrected after review—an actionable service failure should escalate, and an account-security message from an untrusted sender should be handled conservatively—then the already saved v9 proposals were regraded without another model call. This is a transparent development check, not an independent final evaluation. No Gmail mutation or send occurred.
+
 ## September 10: attention is separate from autonomy and escalation
 
-**122 tests passed** after separating explicit visibility preferences from the four autonomy levels. A matching Attention rule now adds the email to **Needs attention** without changing a silent action into **Notify**. If the same email would otherwise qualify for learned automatic archiving, it remains pending for review. Future similar/sender rules require a supported situation kind with an exact evidence quote in the email; each enable/disable choice is retained as distinct feedback. Unit checks cover visibility without autonomy changes, archive review, sender boundaries, disabling and missing evidence.
+**122 tests passed** after separating explicit visibility preferences from the four autonomy levels. A matching Attention rule now adds the email to **Needs attention** without changing a silent action into **Notify**. If the same email would otherwise qualify for learned automatic archiving, it remains pending for review. At this initial slice, future similar/sender rules still used the model's situation kind; the later semantic-transfer iteration above replaces that behavior. Unit checks cover visibility without autonomy changes, archive review, sender boundaries, disabling and missing evidence.
 
-The local browser now shows separate **Needs attention** and **Escalated** counters and filters. **Important** remains a separate organization marker. JavaScript syntax and the live local rendering on the existing database were checked; the database contained no queued Gmail operations before restart, and no Gmail mutation or send was performed. User attention preferences and the planned contrast measurement are still outstanding, so this is implementation verification rather than a transfer result or final independent evaluation.
+The local browser now shows separate **Needs attention** and **Escalated** counters and filters. **Important** remains a separate organization marker. JavaScript syntax and the live local rendering on the existing database were checked; the database contained no queued Gmail operations before restart, and no Gmail mutation or send was performed. At this point the user attention preferences and contrast measurement were still outstanding; their later result is recorded above.
 
 ## September 10: explicit draft-style learning
 

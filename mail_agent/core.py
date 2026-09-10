@@ -32,6 +32,8 @@ class Proposal:
     sensitive: bool = True
     pattern_evidence: str = ""
     label_kind: str = "unknown"
+    attention_cue: str = "unknown"
+    attention_evidence: str = ""
 
 
 class Proposer(Protocol):
@@ -69,7 +71,8 @@ def decide(p: Proposal) -> Decision:
 def validate(proposal: Proposal) -> None:
     if type(proposal) is not Proposal:
         raise ValueError("Invalid proposal type")
-    for name in ("action", "reason", "label", "text", "recipient", "pattern", "pattern_evidence", "label_kind"):
+    for name in ("action", "reason", "label", "text", "recipient", "pattern", "pattern_evidence", "label_kind",
+                 "attention_cue", "attention_evidence"):
         if type(getattr(proposal, name)) is not str:
             raise ValueError(f"Invalid {name}")
     for name in ("notify", "suspicious", "needs_human", "requires_action", "has_deadline", "significant_change", "sensitive"):
@@ -80,6 +83,9 @@ def validate(proposal: Proposal) -> None:
     from .label_preferences import LABEL_KINDS
     if proposal.label_kind not in set(LABEL_KINDS) | {"unknown"}:
         raise ValueError("Invalid label situation type")
+    from .attention import ATTENTION_CUES
+    if proposal.attention_cue not in set(ATTENTION_CUES) | {"unknown"}:
+        raise ValueError("Invalid attention cue")
 
 
 # Communicative purpose, not sender/domain, subject keywords or job-search templates.
