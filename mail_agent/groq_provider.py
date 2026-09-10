@@ -155,7 +155,7 @@ class GroqProposer:
         content = {k: v for k, v in asdict(email).items() if k != "id"}
         if len(json.dumps(content)) > 24000:
             raise ProviderError("Email exceeds initial context limit; manual review required")
-        payload = {"model": self.model, "temperature": 0, "max_completion_tokens": 1600,
+        payload = {"model": self.model, "temperature": 0, "max_completion_tokens": 800,
                    "messages": [{"role": "system", "content": self.system},
                                 {"role": "user", "content": json.dumps({"untrusted_email": content}, ensure_ascii=False)}],
                    "response_format": {"type": "json_schema", "json_schema": {

@@ -1,0 +1,75 @@
+{
+  "kind": "user_interview_draft_style_development_check",
+  "created_at": "2026-09-10T11:54:35.225983+00:00",
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": "triage-v7",
+  "results": [
+    {
+      "subject": "Your interview is booked",
+      "classification": "job_interview",
+      "baseline": {
+        "action": "send",
+        "text": "Hi, I confirm that I have received the interview invitation for September 21. Best regards."
+      },
+      "with_preference": {
+        "action": "send",
+        "text": "Hi there. I received the invitation, thank you",
+        "status": "pending"
+      },
+      "style_application": {
+        "action_id": 45,
+        "rule_id": 2,
+        "base_words": 15,
+        "styled_words": 8,
+        "status": "applied"
+      },
+      "calls": [
+        {
+          "kind": "triage",
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 1457,
+            "completion_tokens": 141,
+            "total_tokens": 1598
+          }
+        },
+        {
+          "kind": "draft_style_rewrite",
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 353,
+            "completion_tokens": 16,
+            "total_tokens": 369
+          }
+        }
+      ]
+    },
+    {
+      "subject": "Choose an interview time",
+      "classification": "job_interview",
+      "baseline": {
+        "action": "none",
+        "text": ""
+      },
+      "with_preference": {
+        "action": "none",
+        "text": "",
+        "status": "escalated"
+      },
+      "style_application": null,
+      "calls": [
+        {
+          "kind": "triage",
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 1460,
+            "completion_tokens": 132,
+            "total_tokens": 1592
+          }
+        }
+      ]
+    }
+  ],
+  "sent_count": 0,
+  "limitations": "Two developer-written cases after training. This is not independent evaluation; wording still requires user review. Database copy only, no Gmail mutation or send."
+}

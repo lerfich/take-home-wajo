@@ -26,6 +26,7 @@ class GroqTests(unittest.TestCase):
             self.assertNotIn("server-only-id", json.dumps(payload))
             self.assertNotIn("fake-test-key", json.dumps(payload))
             self.assertTrue(payload["response_format"]["json_schema"]["strict"])
+            self.assertLessEqual(payload["max_completion_tokens"], 1000)
 
     def test_extra_permissions_and_wrong_types_rejected(self):
         for value in ({**asdict(Proposal("none", "x")), "approved": True},
