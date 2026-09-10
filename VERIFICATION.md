@@ -1,5 +1,11 @@
 # Iteration 1 verification
 
+## September 10: topic, subtype and explicit importance
+
+**111 tests passed** after adding a local organization layer. Topic, subtype and importance are stored separately from Gmail labels, attention and action permissions. New checks cover one-email edits, general and exact-sender transfer, sender precedence, pausing, unknown or unevidenced kinds, input validation, receipt/interview contrast, and the fact that Important never removes archive approval. A consistent SQLite read transaction also closes a UI snapshot race exposed while the background worker committed a new email.
+
+Browser verification confirmed the compact editor, list/detail chips, persistence and the Preferences section with no console-visible failure. The existing `web-groq.sqlite3` opened successfully with all **41 actions and 30 label reviews** intact; no old review was rewritten and no Gmail mutation occurred. The hierarchy is still an initial product hypothesis. Its usefulness and the model's kind classification must be checked on new contrast emails before reporting a transfer result.
+
 ## September 10: label review and interface iteration
 
 101 unit tests pass. Thirty realistic synthetic messages were inserted in the test Gmail (no sends), classified by Qwen with `labels-v1`, and reviewed by the actual user. All 30 reviews are verified. Recovery of initially uncertain reviews confirmed 22 by reading and applied eight saved replacements once following the user's request to finish. Original generic errors did not retain their exception type; their exact cause is unproven. No automatic retry of uncertain mutations was added. The aggregate report is [labels-review-2026-09-10.json](reports/labels-review-2026-09-10.json).

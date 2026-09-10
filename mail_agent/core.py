@@ -152,6 +152,8 @@ class Agent:
         initialize(self.db)
         from .attention import initialize as initialize_attention
         initialize_attention(self.db)
+        from .organization import initialize as initialize_organization
+        initialize_organization(self.db)
 
     def queue_gmail(self, action_id, operation, approved=False, scope="general"):
         if scope not in {"general", "sender"}:
@@ -293,6 +295,8 @@ class Agent:
                 self.db.execute("INSERT INTO attention_items VALUES(?,'Your attention preference applies',0)",(action_id,))
             from .label_preferences import register
             register(self, action_id, original_label, proposal, label_preference)
+            from .organization import register as register_organization
+            register_organization(self, action_id, proposal, email)
             binding = self.db.execute("SELECT * FROM gmail_bindings WHERE email_id=?", (email.id,)).fetchone()
             if binding is not None:
                 self.db.execute("UPDATE actions SET transport='gmail' WHERE id=?", (action_id,))
@@ -405,4 +409,4 @@ class Agent:
 
     def snapshot(self) -> dict:
         return {table: [dict(row) for row in self.db.execute(f"SELECT * FROM {table}")]
-                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items")}
+                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items", "organization_feedback", "organization_rules", "email_organization")}

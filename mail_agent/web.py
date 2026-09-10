@@ -148,6 +148,9 @@ class Application:
     def state(self):
         agent = self.agent()
         try:
+            # Keep all tables in this response on one SQLite snapshot while the
+            # background worker may commit a newly processed email.
+            agent.db.execute("BEGIN")
             state = agent.snapshot()
             email_map = {e["id"]: e for e in state["emails"]}
             for action in state["actions"]:
@@ -165,6 +168,8 @@ class Application:
                     k: email_map[action["email_id"]][k] for k in ("id", "sender", "subject", "body")}))
                 action["learning_eligible"] = learnable(p, Email(**{
                     k: email_map[action["email_id"]][k] for k in ("id", "sender", "subject", "body")}))
+                from .organization import current as current_organization
+                action["organization"] = current_organization(agent, action["id"])
         finally:
             agent.close()
         with self.connect() as db:
@@ -216,6 +221,17 @@ class Application:
                     with agent.db:
                         agent.db.execute('UPDATE attention_items SET seen=1 WHERE action_id=?',(data['action_id'],))
                     return {'seen':True}
+                if route == "/api/organization":
+                    if type(data.get("action_id")) is not int:
+                        raise ValueError("Invalid email action")
+                    from .organization import submit
+                    return submit(agent, data["action_id"], data.get("topic"), data.get("subtype"),
+                                  data.get("important"), data.get("scope", "email"))
+                if route == "/api/organization-rule-pause":
+                    if type(data.get("rule_id")) is not int:
+                        raise ValueError("Invalid preference ID")
+                    from .organization import pause
+                    return pause(agent, data["rule_id"])
                 if route == "/api/label-rule-pause":
                     if type(data.get("rule_id")) is not int:
                         raise ValueError("Invalid preference ID")

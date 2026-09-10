@@ -108,6 +108,17 @@ class WebTests(unittest.TestCase):
         with self.assertRaises(HTTPError):
             self.post("/api/ingest", {"sender": "x@example.test", "subject": "hello", "body": "test"})
 
+    def test_organization_route_keeps_action_permission_separate(self):
+        rows = self.post("/api/demo", {})
+        row = rows[0]
+        before = next(a for a in self.get()["actions"] if a["id"] == row["id"])
+        result = self.post("/api/organization", {"action_id": row["id"], "topic": "Work",
+                           "subtype": "Important update", "important": True, "scope": "email"})
+        self.assertEqual(result["topic"], "Work")
+        after = next(a for a in self.get()["actions"] if a["id"] == row["id"])
+        self.assertTrue(after["organization"]["important"])
+        self.assertEqual((after["autonomy"], after["status"]), (before["autonomy"], before["status"]))
+
     def test_gmail_routes_require_csrf_and_return_async_status(self):
         from unittest.mock import MagicMock
         from mail_agent.gmail import READONLY_SCOPE
