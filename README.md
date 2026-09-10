@@ -14,6 +14,14 @@ The 30-email synthetic exercise uses `labels-v1`, a label-only model prompt. **T
 
 Topic, subtype and importance are edited separately from the Gmail label. The initial hierarchy maps the 15 evidenced situation kinds to pairs such as **Applications / Receipt** and **Applications / Interview**. A user can keep an edit on one email or explicitly apply it to the same kind across senders or from one exact sender. Sender-specific rules take priority and rules can be paused. **Important** is an explicit user marker; there is no automatic Important/Normal/Low scale. Organization never authorizes archiving, sending, attention alerts or any other mail action. Existing label reviews remain unchanged.
 
+Run the organization contrast check after saving explicit future preferences in the main local database:
+
+```sh
+python3 -m mail_agent.organization_eval
+```
+
+It sends twelve new synthetic emails to Qwen, then replays each returned proposal through a fresh organization policy and through a copy of the user's active general organization rules. This separates model kind classification from preference transfer and never imports the examples into Gmail. The committed September 10 development report recorded **12/12** kind matches, organization matches **8/12 before → 12/12 after**, **4/4** expected Important transfers, and **0/8** false Important results. This small developer-written set is not the final independent evaluation.
+
 The separate **Always bring this to my attention** control saves an in-app visibility rule using the same scopes. Matching future emails appear in **Needs attention** and do not qualify for automatic archiving. **Mark as seen** clears the current attention item without disabling the future rule. This does not send an OS push notification or authorize sending. **No notification** describes autonomy, not importance. General importance classification and a consolidated topic hierarchy are not implemented yet. The synthetic labels run is not an evaluation of those features.
 
 Both the email list and detail pane scroll independently on desktop. Filters include Pending, Archived, To review, Reviewed and Needs attention.
@@ -141,7 +149,7 @@ The default set uses three training fixtures with scripted evaluation-user appro
 - Sending requires approval; archiving initially asks and can use learned permission as described above. `AI: ` labels and drafts use initial permissions.
 - One model proposal per incoming event; live replies can progress through draft creation, edits and exact-version approved sending.
 - Local SQLite operations execute in one transaction. This does **not** promise atomic or exactly-once Gmail delivery.
-- Optional learned auto-replies, Gmail polling, period summaries, reminders, Docker and comprehensive final evaluation are not implemented yet. Gmail import, reversible writes and one approved synthetic self-send have been exercised; these are small transport checks, not a final evaluation. The web interface is a local first slice. Archive learning is limited to the initial semantic categories and has only small development measurements, not established production quality. Topic/subtype/importance transfer has policy tests, but its usefulness still needs review on new contrast emails.
+- Optional learned auto-replies, Gmail polling, period summaries, reminders, Docker and comprehensive final evaluation are not implemented yet. Gmail import, reversible writes and one approved synthetic self-send have been exercised; these are small transport checks, not a final evaluation. The web interface is a local first slice. Archive learning is limited to the initial semantic categories and has only small development measurements, not established production quality. Topic/subtype/importance transfer has one small user-preference contrast check, not established general quality.
 - The scripted demo requires no credentials. Groq commands need a key. Local databases and `.env` are excluded from Git.
 
 Live reply workflow: review From/To/Subject/Body, save edits as a new verified Gmail draft revision, then explicitly approve sending. Unknown delivery outcomes allow read-only reconciliation and never automatic resend. See [GMAIL_SETUP.md](GMAIL_SETUP.md) for bounds and manual-intervention cases.

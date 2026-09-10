@@ -6,6 +6,10 @@
 
 Browser verification confirmed the compact editor, list/detail chips, persistence and the Preferences section with no console-visible failure. The existing `web-groq.sqlite3` opened successfully with all **41 actions and 30 label reviews** intact; no old review was rewritten and no Gmail mutation occurred. The hierarchy is still an initial product hypothesis. Its usefulness and the model's kind classification must be checked on new contrast emails before reporting a transfer result.
 
+The user then saved seven general organization rules. The separate [12-case contrast dataset](evaluation/organization-contrasts-v1.json) used new senders and paired meanings including interview/application receipt/outcome and work review/status. Qwen with `triage-v7` matched the expected situation kind **12/12**, with no provider errors. Replaying each exact model proposal through fresh and preference-enabled policies produced organization matches **8/12 before → 12/12 after**. Expected Important transfer improved **0/4 → 4/4**; false Important remained **0/8 → 0/8**. Full report: [organization-transfer-2026-09-10.json](reports/organization-transfer-2026-09-10.json).
+
+This is a user-preference development check on a small dataset written after the feature design, not the final held-out evaluation. The same proposal is replayed before and after, so the improvement measures stored-rule application rather than a model-weight change. No email was imported, changed or sent in this run.
+
 ## September 10: label review and interface iteration
 
 101 unit tests pass. Thirty realistic synthetic messages were inserted in the test Gmail (no sends), classified by Qwen with `labels-v1`, and reviewed by the actual user. All 30 reviews are verified. Recovery of initially uncertain reviews confirmed 22 by reading and applied eight saved replacements once following the user's request to finish. Original generic errors did not retain their exception type; their exact cause is unproven. No automatic retry of uncertain mutations was added. The aggregate report is [labels-review-2026-09-10.json](reports/labels-review-2026-09-10.json).

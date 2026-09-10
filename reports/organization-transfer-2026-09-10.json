@@ -1,0 +1,1043 @@
+{
+  "created_at": "2026-09-10T10:32:37.026378+00:00",
+  "kind": "organization_contrast_development_check",
+  "dataset": "organization-contrasts-v1",
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": "triage-v7",
+  "rules_copied": 7,
+  "metrics": {
+    "attempted": 12,
+    "completed": 12,
+    "kind_matches": 12,
+    "before_matches": 8,
+    "after_matches": 12,
+    "expected_important": 4,
+    "important_transferred_before": 0,
+    "important_transferred_after": 4,
+    "false_important_before": 0,
+    "false_important_after": 0,
+    "provider_errors": 0
+  },
+  "cases": [
+    {
+      "id": "org-interview-1",
+      "email": {
+        "id": "org-interview-1",
+        "sender": "talent@maple-interface.example.test",
+        "subject": "Choose a time for your product engineering interview",
+        "body": "Hi Alex, we would like to invite you to the next stage for our Product Engineer role. Please reply with either Tuesday at 09:00 UTC or Wednesday at 14:00 UTC for a 40-minute interview. We will send the meeting link after you choose."
+      },
+      "expected": {
+        "kind": "job_interview",
+        "topic": "Applications",
+        "subtype": "Interview",
+        "important": true
+      },
+      "proposal": {
+        "action": "none",
+        "reason": "The email requests a specific human decision to schedule an interview, which requires user input.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": true,
+        "pattern": "unknown",
+        "requires_action": true,
+        "has_deadline": false,
+        "significant_change": true,
+        "sensitive": false,
+        "pattern_evidence": "Please reply with either Tuesday at 09:00 UTC or Wednesday at 14:00 UTC for a 40-minute interview.",
+        "label_kind": "job_interview"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "job_interview",
+        "topic": "Applications",
+        "subtype": "Interview",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 1,
+        "kind": "job_interview",
+        "topic": "Applications",
+        "subtype": "Interview",
+        "important": true,
+        "source": "Your preference",
+        "rule_id": 7
+      },
+      "before_matches": false,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1476,
+          "completion_tokens": 137,
+          "total_tokens": 1613
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.954,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:28:44 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "999",
+              "x-ratelimit-remaining-tokens": "6428",
+              "x-ratelimit-reset-requests": "1m26.4s",
+              "x-ratelimit-reset-tokens": "11.79s",
+              "x-request-id": "req_01m25dsp57edksagzn19s6k10v"
+            },
+            "status": "ok",
+            "latency_seconds": 0.954
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-interview-2",
+      "email": {
+        "id": "org-interview-2",
+        "sender": "recruiting@blueharbor.example.test",
+        "subject": "Invitation to discuss your frontend application",
+        "body": "Hello Alex, your application has moved forward and the team would like to meet you. Send two available time slots for a 30-minute technical conversation next week, including your time zone. This is an interview invitation rather than a receipt or final decision."
+      },
+      "expected": {
+        "kind": "job_interview",
+        "topic": "Applications",
+        "subtype": "Interview",
+        "important": true
+      },
+      "proposal": {
+        "action": "none",
+        "reason": "The email requests the user to provide specific availability for an interview, which requires human judgment and action.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": true,
+        "suspicious": false,
+        "needs_human": true,
+        "pattern": "unknown",
+        "requires_action": true,
+        "has_deadline": true,
+        "significant_change": true,
+        "sensitive": false,
+        "pattern_evidence": "Send two available time slots for a 30-minute technical conversation next week",
+        "label_kind": "job_interview"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "job_interview",
+        "topic": "Applications",
+        "subtype": "Interview",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 2,
+        "kind": "job_interview",
+        "topic": "Applications",
+        "subtype": "Interview",
+        "important": true,
+        "source": "Your preference",
+        "rule_id": 7
+      },
+      "before_matches": false,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1467,
+          "completion_tokens": 125,
+          "total_tokens": 1592
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 1.22,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:29:06 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "998",
+              "x-ratelimit-remaining-tokens": "6396",
+              "x-ratelimit-reset-requests": "2m52.8s",
+              "x-ratelimit-reset-tokens": "12.03s",
+              "x-request-id": "req_01m25dtaydex8v8va91e1a7kv8"
+            },
+            "status": "ok",
+            "latency_seconds": 1.218
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-review-1",
+      "email": {
+        "id": "org-review-1",
+        "sender": "mira@northwind-team.example.test",
+        "subject": "Please review the onboarding empty state",
+        "body": "Hi Alex, I have prepared two variants for the onboarding empty state. Could you review the wording and recommend which primary action we should use before tomorrow's handoff? We are waiting for your feedback before implementation."
+      },
+      "expected": {
+        "kind": "work_review_request",
+        "topic": "Work",
+        "subtype": "Review request",
+        "important": true
+      },
+      "proposal": {
+        "action": "none",
+        "reason": "The email requests a specific design review and decision before a deadline, requiring human judgment.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": true,
+        "suspicious": false,
+        "needs_human": true,
+        "pattern": "unknown",
+        "requires_action": true,
+        "has_deadline": true,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Could you review the wording and recommend which primary action we should use before tomorrow's handoff?",
+        "label_kind": "work_review_request"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "work_review_request",
+        "topic": "Work",
+        "subtype": "Review request",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 3,
+        "kind": "work_review_request",
+        "topic": "Work",
+        "subtype": "Review request",
+        "important": true,
+        "source": "Your preference",
+        "rule_id": 1
+      },
+      "before_matches": false,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1457,
+          "completion_tokens": 125,
+          "total_tokens": 1582
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.803,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:29:26 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "997",
+              "x-ratelimit-remaining-tokens": "6406",
+              "x-ratelimit-reset-requests": "4m19.2s",
+              "x-ratelimit-reset-tokens": "11.955s",
+              "x-request-id": "req_01m25dtz4fe6avdha3r6x6v6xg"
+            },
+            "status": "ok",
+            "latency_seconds": 0.803
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-review-2",
+      "email": {
+        "id": "org-review-2",
+        "sender": "devon@ridge-team.example.test",
+        "subject": "Feedback needed on export error handling",
+        "body": "Hello Alex, the proposed export flow now keeps the previous report visible after an error. Please review the interaction and tell us whether the retry button is clear enough. The team needs your decision before merging the change."
+      },
+      "expected": {
+        "kind": "work_review_request",
+        "topic": "Work",
+        "subtype": "Review request",
+        "important": true
+      },
+      "proposal": {
+        "action": "none",
+        "reason": "The email requests a specific human review and decision on a UI change, which requires user judgment.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": true,
+        "pattern": "unknown",
+        "requires_action": true,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "Please review the interaction and tell us whether the retry button is clear enough.",
+        "label_kind": "work_review_request"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "work_review_request",
+        "topic": "Work",
+        "subtype": "Review request",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 4,
+        "kind": "work_review_request",
+        "topic": "Work",
+        "subtype": "Review request",
+        "important": true,
+        "source": "Your preference",
+        "rule_id": 1
+      },
+      "before_matches": false,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1455,
+          "completion_tokens": 123,
+          "total_tokens": 1578
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.657,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:29:47 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "996",
+              "x-ratelimit-remaining-tokens": "6468",
+              "x-ratelimit-reset-requests": "5m45.6s",
+              "x-ratelimit-reset-tokens": "11.49s",
+              "x-request-id": "req_01m25dvke7erkrr78m1fkb3dc8"
+            },
+            "status": "ok",
+            "latency_seconds": 0.656
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-application-receipt",
+      "email": {
+        "id": "org-application-receipt",
+        "sender": "jobs@sunlit-studio.example.test",
+        "subject": "We received your frontend application",
+        "body": "Hi Alex, your application and portfolio for the Frontend Developer opening have been received. Our hiring team will review them and contact you if there is a next step. This is only a receipt; no response or additional document is needed."
+      },
+      "expected": {
+        "kind": "job_application_receipt",
+        "topic": "Applications",
+        "subtype": "Receipt",
+        "important": false
+      },
+      "proposal": {
+        "action": "archive",
+        "reason": "The email is an automated receipt confirming the application was received and explicitly states no action is required.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "acknowledgement_only",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "This is only a receipt; no response or additional document is needed.",
+        "label_kind": "job_application_receipt"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "job_application_receipt",
+        "topic": "Applications",
+        "subtype": "Receipt",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 5,
+        "kind": "job_application_receipt",
+        "topic": "Applications",
+        "subtype": "Receipt",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "before_matches": true,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1460,
+          "completion_tokens": 125,
+          "total_tokens": 1585
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 3.141,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:30:10 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "995",
+              "x-ratelimit-remaining-tokens": "6403",
+              "x-ratelimit-reset-requests": "7m12s",
+              "x-ratelimit-reset-tokens": "11.977s",
+              "x-request-id": "req_01m25dw7k8egdt4qabn4cvdch7"
+            },
+            "status": "ok",
+            "latency_seconds": 3.141
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-application-outcome",
+      "email": {
+        "id": "org-application-outcome",
+        "sender": "careers@oak-product.example.test",
+        "subject": "Update on your product developer application",
+        "body": "Hello Alex, we have completed the hiring process and selected another candidate for this position. Your current application is now closed and no further action is required. Thank you for the time you spent speaking with us."
+      },
+      "expected": {
+        "kind": "job_outcome",
+        "topic": "Applications",
+        "subtype": "Outcome",
+        "important": false
+      },
+      "proposal": {
+        "action": "none",
+        "reason": "The email contains a substantive rejection of a job application, which is a significant outcome requiring human attention rather than automatic archiving.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": true,
+        "pattern": "unknown",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": true,
+        "sensitive": false,
+        "pattern_evidence": "we have completed the hiring process and selected another candidate for this position",
+        "label_kind": "job_outcome"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "job_outcome",
+        "topic": "Applications",
+        "subtype": "Outcome",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 6,
+        "kind": "job_outcome",
+        "topic": "Applications",
+        "subtype": "Outcome",
+        "important": false,
+        "source": "Your preference",
+        "rule_id": 6
+      },
+      "before_matches": true,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1455,
+          "completion_tokens": 128,
+          "total_tokens": 1583
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.975,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:30:31 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "994",
+              "x-ratelimit-remaining-tokens": "6408",
+              "x-ratelimit-reset-requests": "8m38.4s",
+              "x-ratelimit-reset-tokens": "11.94s",
+              "x-request-id": "req_01m25dwy74excrn9x15s8p4nch"
+            },
+            "status": "ok",
+            "latency_seconds": 0.974
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-work-status",
+      "email": {
+        "id": "org-work-status",
+        "sender": "mira@northwind-team.example.test",
+        "subject": "Onboarding implementation status",
+        "body": "Hi team, the onboarding empty state and loading behavior are implemented in the test environment. I am finishing keyboard navigation this afternoon. This is a progress update and does not require review, feedback, or a decision from Alex."
+      },
+      "expected": {
+        "kind": "work_status",
+        "topic": "Work",
+        "subtype": "Status update",
+        "important": false
+      },
+      "proposal": {
+        "action": "label",
+        "reason": "The email is a routine project progress update that explicitly states no action is required.",
+        "label": "AI: Work Status",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "unknown",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "This is a progress update and does not require review, feedback, or a decision from Alex.",
+        "label_kind": "work_status"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "work_status",
+        "topic": "Work",
+        "subtype": "Status update",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 7,
+        "kind": "work_status",
+        "topic": "Work",
+        "subtype": "Status update",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "before_matches": true,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1456,
+          "completion_tokens": 128,
+          "total_tokens": 1584
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.888,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:30:52 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "993",
+              "x-ratelimit-remaining-tokens": "6421",
+              "x-ratelimit-reset-requests": "10m4.8s",
+              "x-ratelimit-reset-tokens": "11.842s",
+              "x-request-id": "req_01m25dxjt7eevs2gxz870vay7r"
+            },
+            "status": "ok",
+            "latency_seconds": 0.888
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-support-receipt",
+      "email": {
+        "id": "org-support-receipt",
+        "sender": "help@sampledesk.example.test",
+        "subject": "Request SD-318 has been received",
+        "body": "Hello Alex, we received your report about the CSV preview and opened request SD-318. A support specialist will investigate and respond in this thread. This automatic acknowledgement does not require another reply or troubleshooting step."
+      },
+      "expected": {
+        "kind": "support_receipt",
+        "topic": "Support",
+        "subtype": "Receipt",
+        "important": false
+      },
+      "proposal": {
+        "action": "archive",
+        "reason": "The email is an automated receipt confirming a support request was opened, with no new information or required action.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "acknowledgement_only",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "This automatic acknowledgement does not require another reply or troubleshooting step.",
+        "label_kind": "support_receipt"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "support_receipt",
+        "topic": "Support",
+        "subtype": "Receipt",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 8,
+        "kind": "support_receipt",
+        "topic": "Support",
+        "subtype": "Receipt",
+        "important": false,
+        "source": "Your preference",
+        "rule_id": 5
+      },
+      "before_matches": true,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1458,
+          "completion_tokens": 124,
+          "total_tokens": 1582
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 1.095,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:31:13 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "992",
+              "x-ratelimit-remaining-tokens": "6405",
+              "x-ratelimit-reset-requests": "11m31.2s",
+              "x-ratelimit-reset-tokens": "11.962s",
+              "x-request-id": "req_01m25dy73hejhaft26eve9bhtn"
+            },
+            "status": "ok",
+            "latency_seconds": 1.095
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-support-response",
+      "email": {
+        "id": "org-support-response",
+        "sender": "help@sampledesk.example.test",
+        "subject": "SD-318: CSV preview fix is available",
+        "body": "Hi Alex, we found the CSV preview issue and released a fix to the test workspace. Please reload the page and try the preview again. Reply with the browser version if the problem continues; this is the substantive support response to SD-318."
+      },
+      "expected": {
+        "kind": "support_response",
+        "topic": "Support",
+        "subtype": "Response",
+        "important": false
+      },
+      "proposal": {
+        "action": "none",
+        "reason": "The email is a substantive support response that requests a specific action (replying with the browser version) if the issue persists, requiring human judgment.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": true,
+        "pattern": "unknown",
+        "requires_action": true,
+        "has_deadline": false,
+        "significant_change": true,
+        "sensitive": false,
+        "pattern_evidence": "Reply with the browser version if the problem continues",
+        "label_kind": "support_response"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "support_response",
+        "topic": "Support",
+        "subtype": "Response",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 9,
+        "kind": "support_response",
+        "topic": "Support",
+        "subtype": "Response",
+        "important": false,
+        "source": "Your preference",
+        "rule_id": 4
+      },
+      "before_matches": true,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1468,
+          "completion_tokens": 127,
+          "total_tokens": 1595
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.87,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:31:34 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "991",
+              "x-ratelimit-remaining-tokens": "6404",
+              "x-ratelimit-reset-requests": "12m57.599s",
+              "x-ratelimit-reset-tokens": "11.97s",
+              "x-request-id": "req_01m25dyvqwe38rpt19esg5qe5v"
+            },
+            "status": "ok",
+            "latency_seconds": 0.869
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-travel",
+      "email": {
+        "id": "org-travel",
+        "sender": "booking@fictional-rail.example.test",
+        "subject": "Your fictional rail reservation is confirmed",
+        "body": "Hello Alex, your synthetic rail reservation for October 8 is confirmed. Departure is 08:40 local time and your seat is 7C. Keep this itinerary for reference; no payment, reply, or additional confirmation is requested."
+      },
+      "expected": {
+        "kind": "travel_confirmation",
+        "topic": "Travel",
+        "subtype": "Booking",
+        "important": false
+      },
+      "proposal": {
+        "action": "label",
+        "reason": "The email confirms a travel booking and requires no action.",
+        "label": "AI: Travel Confirmation",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "unknown",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "your synthetic rail reservation for October 8 is confirmed",
+        "label_kind": "travel_confirmation"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "travel_confirmation",
+        "topic": "Travel",
+        "subtype": "Booking",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 10,
+        "kind": "travel_confirmation",
+        "topic": "Travel",
+        "subtype": "Booking",
+        "important": false,
+        "source": "Your preference",
+        "rule_id": 3
+      },
+      "before_matches": true,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1464,
+          "completion_tokens": 115,
+          "total_tokens": 1579
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.696,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:31:55 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "990",
+              "x-ratelimit-remaining-tokens": "6408",
+              "x-ratelimit-reset-requests": "14m24s",
+              "x-ratelimit-reset-tokens": "11.94s",
+              "x-request-id": "req_01m25dzg4web09ysd7fk7xfp4b"
+            },
+            "status": "ok",
+            "latency_seconds": 0.696
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-community",
+      "email": {
+        "id": "org-community",
+        "sender": "events@prototype-club.example.test",
+        "subject": "Optional interface critique evening",
+        "body": "Hi Alex, our volunteer prototype club is holding an optional interface critique evening next Thursday. Members may bring a sketch or simply listen. The event is free and unrelated to your work projects; reply only if you want a place."
+      },
+      "expected": {
+        "kind": "community_event",
+        "topic": "Community",
+        "subtype": "Event",
+        "important": false
+      },
+      "proposal": {
+        "action": "label",
+        "reason": "The email is an invitation to an optional community event with no mandatory action or deadline.",
+        "label": "AI: Community Event",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": false,
+        "pattern": "unknown",
+        "requires_action": false,
+        "has_deadline": false,
+        "significant_change": false,
+        "sensitive": false,
+        "pattern_evidence": "our volunteer prototype club is holding an optional interface critique evening next Thursday",
+        "label_kind": "community_event"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "community_event",
+        "topic": "Community",
+        "subtype": "Event",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 11,
+        "kind": "community_event",
+        "topic": "Community",
+        "subtype": "Event",
+        "important": false,
+        "source": "Your preference",
+        "rule_id": 2
+      },
+      "before_matches": true,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1456,
+          "completion_tokens": 124,
+          "total_tokens": 1580
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.813,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:32:16 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "989",
+              "x-ratelimit-remaining-tokens": "6416",
+              "x-ratelimit-reset-requests": "15m50.4s",
+              "x-ratelimit-reset-tokens": "11.88s",
+              "x-request-id": "req_01m25e04awe6btjv4hv7tc7a5f"
+            },
+            "status": "ok",
+            "latency_seconds": 0.813
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-service-failure",
+      "email": {
+        "id": "org-service-failure",
+        "sender": "automation@fictional-build.example.test",
+        "subject": "Preview validation failed",
+        "body": "Preview validation stopped because four documentation links could not be resolved. No preview was published and the previous build remains available. Review the failed-link report and rerun validation after correcting the references."
+      },
+      "expected": {
+        "kind": "service_failure",
+        "topic": "Services",
+        "subtype": "Failure",
+        "important": false
+      },
+      "proposal": {
+        "action": "none",
+        "reason": "The email reports a failed automated process requiring human intervention to correct links and rerun validation.",
+        "label": "",
+        "text": "",
+        "recipient": "",
+        "notify": false,
+        "suspicious": false,
+        "needs_human": true,
+        "pattern": "unknown",
+        "requires_action": true,
+        "has_deadline": false,
+        "significant_change": true,
+        "sensitive": false,
+        "pattern_evidence": "Preview validation stopped because four documentation links could not be resolved.",
+        "label_kind": "service_failure"
+      },
+      "kind_matches": true,
+      "before": {
+        "action_id": 1,
+        "kind": "service_failure",
+        "topic": "Services",
+        "subtype": "Failure",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "after": {
+        "action_id": 12,
+        "kind": "service_failure",
+        "topic": "Services",
+        "subtype": "Failure",
+        "important": false,
+        "source": "Agent suggestion",
+        "rule_id": null
+      },
+      "before_matches": true,
+      "after_matches": true,
+      "call": {
+        "model": "qwen/qwen3.8-27b",
+        "prompt_version": "triage-v7",
+        "status": "ok",
+        "usage": {
+          "prompt_tokens": 1447,
+          "completion_tokens": 118,
+          "total_tokens": 1565
+        },
+        "response_model": "qwen/qwen3.8-27b",
+        "latency_seconds": 0.985,
+        "http_attempts": [
+          {
+            "attempt": 1,
+            "route": "chat/completions",
+            "http_status": 200,
+            "headers": {
+              "date": "Thu, 10 Sep 2026 10:32:37 GMT",
+              "content-type": "application/json",
+              "x-ratelimit-limit-requests": "1000",
+              "x-ratelimit-limit-tokens": "8000",
+              "x-ratelimit-remaining-requests": "988",
+              "x-ratelimit-remaining-tokens": "6416",
+              "x-ratelimit-reset-requests": "17m16.8s",
+              "x-ratelimit-reset-tokens": "11.88s",
+              "x-request-id": "req_01m25e0rnhegnr11cdqjkjbfpq"
+            },
+            "status": "ok",
+            "latency_seconds": 0.985
+          }
+        ]
+      }
+    }
+  ]
+}

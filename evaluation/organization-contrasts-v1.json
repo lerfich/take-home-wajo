@@ -1,0 +1,126 @@
+{
+  "version": "organization-contrasts-v1",
+  "description": "New synthetic contrasts for topic/subtype/importance transfer. Expectations are not sent to the model.",
+  "cases": [
+    {
+      "id": "org-interview-1",
+      "sender": "talent@maple-interface.example.test",
+      "subject": "Choose a time for your product engineering interview",
+      "body": "Hi Alex, we would like to invite you to the next stage for our Product Engineer role. Please reply with either Tuesday at 09:00 UTC or Wednesday at 14:00 UTC for a 40-minute interview. We will send the meeting link after you choose.",
+      "expected_kind": "job_interview",
+      "expected_topic": "Applications",
+      "expected_subtype": "Interview",
+      "expected_important": true
+    },
+    {
+      "id": "org-interview-2",
+      "sender": "recruiting@blueharbor.example.test",
+      "subject": "Invitation to discuss your frontend application",
+      "body": "Hello Alex, your application has moved forward and the team would like to meet you. Send two available time slots for a 30-minute technical conversation next week, including your time zone. This is an interview invitation rather than a receipt or final decision.",
+      "expected_kind": "job_interview",
+      "expected_topic": "Applications",
+      "expected_subtype": "Interview",
+      "expected_important": true
+    },
+    {
+      "id": "org-review-1",
+      "sender": "mira@northwind-team.example.test",
+      "subject": "Please review the onboarding empty state",
+      "body": "Hi Alex, I have prepared two variants for the onboarding empty state. Could you review the wording and recommend which primary action we should use before tomorrow's handoff? We are waiting for your feedback before implementation.",
+      "expected_kind": "work_review_request",
+      "expected_topic": "Work",
+      "expected_subtype": "Review request",
+      "expected_important": true
+    },
+    {
+      "id": "org-review-2",
+      "sender": "devon@ridge-team.example.test",
+      "subject": "Feedback needed on export error handling",
+      "body": "Hello Alex, the proposed export flow now keeps the previous report visible after an error. Please review the interaction and tell us whether the retry button is clear enough. The team needs your decision before merging the change.",
+      "expected_kind": "work_review_request",
+      "expected_topic": "Work",
+      "expected_subtype": "Review request",
+      "expected_important": true
+    },
+    {
+      "id": "org-application-receipt",
+      "sender": "jobs@sunlit-studio.example.test",
+      "subject": "We received your frontend application",
+      "body": "Hi Alex, your application and portfolio for the Frontend Developer opening have been received. Our hiring team will review them and contact you if there is a next step. This is only a receipt; no response or additional document is needed.",
+      "expected_kind": "job_application_receipt",
+      "expected_topic": "Applications",
+      "expected_subtype": "Receipt",
+      "expected_important": false
+    },
+    {
+      "id": "org-application-outcome",
+      "sender": "careers@oak-product.example.test",
+      "subject": "Update on your product developer application",
+      "body": "Hello Alex, we have completed the hiring process and selected another candidate for this position. Your current application is now closed and no further action is required. Thank you for the time you spent speaking with us.",
+      "expected_kind": "job_outcome",
+      "expected_topic": "Applications",
+      "expected_subtype": "Outcome",
+      "expected_important": false
+    },
+    {
+      "id": "org-work-status",
+      "sender": "mira@northwind-team.example.test",
+      "subject": "Onboarding implementation status",
+      "body": "Hi team, the onboarding empty state and loading behavior are implemented in the test environment. I am finishing keyboard navigation this afternoon. This is a progress update and does not require review, feedback, or a decision from Alex.",
+      "expected_kind": "work_status",
+      "expected_topic": "Work",
+      "expected_subtype": "Status update",
+      "expected_important": false
+    },
+    {
+      "id": "org-support-receipt",
+      "sender": "help@sampledesk.example.test",
+      "subject": "Request SD-318 has been received",
+      "body": "Hello Alex, we received your report about the CSV preview and opened request SD-318. A support specialist will investigate and respond in this thread. This automatic acknowledgement does not require another reply or troubleshooting step.",
+      "expected_kind": "support_receipt",
+      "expected_topic": "Support",
+      "expected_subtype": "Receipt",
+      "expected_important": false
+    },
+    {
+      "id": "org-support-response",
+      "sender": "help@sampledesk.example.test",
+      "subject": "SD-318: CSV preview fix is available",
+      "body": "Hi Alex, we found the CSV preview issue and released a fix to the test workspace. Please reload the page and try the preview again. Reply with the browser version if the problem continues; this is the substantive support response to SD-318.",
+      "expected_kind": "support_response",
+      "expected_topic": "Support",
+      "expected_subtype": "Response",
+      "expected_important": false
+    },
+    {
+      "id": "org-travel",
+      "sender": "booking@fictional-rail.example.test",
+      "subject": "Your fictional rail reservation is confirmed",
+      "body": "Hello Alex, your synthetic rail reservation for October 8 is confirmed. Departure is 08:40 local time and your seat is 7C. Keep this itinerary for reference; no payment, reply, or additional confirmation is requested.",
+      "expected_kind": "travel_confirmation",
+      "expected_topic": "Travel",
+      "expected_subtype": "Booking",
+      "expected_important": false
+    },
+    {
+      "id": "org-community",
+      "sender": "events@prototype-club.example.test",
+      "subject": "Optional interface critique evening",
+      "body": "Hi Alex, our volunteer prototype club is holding an optional interface critique evening next Thursday. Members may bring a sketch or simply listen. The event is free and unrelated to your work projects; reply only if you want a place.",
+      "expected_kind": "community_event",
+      "expected_topic": "Community",
+      "expected_subtype": "Event",
+      "expected_important": false
+    },
+    {
+      "id": "org-service-failure",
+      "sender": "automation@fictional-build.example.test",
+      "subject": "Preview validation failed",
+      "body": "Preview validation stopped because four documentation links could not be resolved. No preview was published and the previous build remains available. Review the failed-link report and rerun validation after correcting the references.",
+      "expected_kind": "service_failure",
+      "expected_topic": "Services",
+      "expected_subtype": "Failure",
+      "expected_important": false
+    }
+  ]
+}
