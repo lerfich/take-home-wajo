@@ -1,5 +1,15 @@
 # Iteration 1 verification
 
+## September 10: follow-up audit and limits of previous claims
+
+The final independent evaluation remains pending until feature completion, real-mail piloting and resulting fixes. The earlier development measurements below retain their original results.
+
+Three Attention edge cases were reproduced in an isolated in-memory database: a disabled sender rule does not override an enabled general rule; enable/disable/enable records only the first two choices and incorrectly reports the last one as unchanged; an explicit `attention_cue=none` can fall back to a legacy label kind. These are open defects found after the 125-test suite; passing that suite did not cover them.
+
+Exact-sender Attention matching is an address filter, not sender authentication or an escalation policy. The contrast evaluator invokes Qwen without the copied Attention rules, then applies those rules locally. Therefore the other-account message's escalation cannot be attributed to a learned trusted-sender boundary. The regraded escalation expectations are development judgments made after inspecting outputs.
+
+The previous self-delivery check searched Inbox for the subject, which could also match the original incoming message. It does not establish that the specific sent reply was delivered to Inbox. Sent readback and exact approved-content verification remain supported; exact Inbox delivery needs a message/marker-and-body check. The original report is preserved as recorded, with this correction qualifying its self-delivery claim.
+
 ## September 10: exact-version live reply approval
 
 A new synthetic message addressed only to the connected test account exercised the complete live path with real Qwen and `triage-v9`. The model proposed a reply, Gmail verified draft revision 1, the user edited the body, and Gmail verified revision 2. Nothing was sent until the user personally clicked **Approve and send via Gmail** for that displayed revision. The worker then completed `send:2`; a read-only check confirmed the Sent label, the exact approved recipient/subject/body and self-delivery in Inbox. There was one send to the same test account and zero automatic sends or external recipients. See [exact-reply-approval-2026-09-10.json](reports/exact-reply-approval-2026-09-10.json).
