@@ -1,6 +1,6 @@
 """Shared policy and execution core. Local execution plus a durable outbox for bounded Gmail operations."""
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 import json
 import sqlite3
@@ -144,6 +144,12 @@ class Agent:
                 approved INTEGER NOT NULL DEFAULT 0, feedback_scope TEXT NOT NULL DEFAULT 'general',
                 error TEXT NOT NULL DEFAULT '', UNIQUE(action_id, operation));
         """)
+        binding_columns = {r["name"] for r in self.db.execute("PRAGMA table_info(gmail_bindings)")}
+        for name, declaration in (("thread_id", "TEXT NOT NULL DEFAULT ''"),
+                                  ("initial_unread", "INTEGER NOT NULL DEFAULT 1"),
+                                  ("source_role", "TEXT NOT NULL DEFAULT 'incoming'")):
+            if name not in binding_columns:
+                self.db.execute(f"ALTER TABLE gmail_bindings ADD COLUMN {name} {declaration}")
 
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS gmail_replies (
@@ -166,6 +172,8 @@ class Agent:
         initialize_skills(self.db)
         from .multi_labels import initialize as initialize_multi_labels
         initialize_multi_labels(self.db)
+        from .gmail_sync import initialize as initialize_gmail_sync
+        initialize_gmail_sync(self.db)
 
     def queue_gmail(self, action_id, operation, approved=False, scope="general"):
         if scope not in {"general", "sender"}:
@@ -286,28 +294,40 @@ class Agent:
             result["reply"]["sender"] = binding["account"] if binding else ""
         return result
 
-    def ingest(self, email: Email) -> dict:
+    def ingest(self, email: Email, retry_error=False) -> dict:
         """An incoming event triggers processing; no separate 'analyze' command."""
-        existing = self.db.execute("SELECT id FROM actions WHERE email_id=?", (email.id,)).fetchone()
+        existing = self.db.execute("SELECT id,status FROM actions WHERE email_id=?", (email.id,)).fetchone()
         if existing:
             saved = self.db.execute("SELECT id,sender,subject,body FROM emails WHERE id=?", (email.id,)).fetchone()
             if dict(saved) != asdict(email):
                 raise ValueError("An existing email ID cannot be reused for different content")
-            return self.get(existing["id"])
+            if not retry_error or existing["status"] != "error":
+                return self.get(existing["id"])
         label_preference = None
         draft_style_application = None
         original_label = ""
         surface = False
+        binding = self.db.execute("SELECT * FROM gmail_bindings WHERE email_id=?", (email.id,)).fetchone()
+        read_before_wajo = bool(binding is not None and not binding["initial_unread"])
+        suppressed_action = ""
         try:
             proposal = self.proposer.propose(email)
             validate(proposal)
+            if read_before_wajo:
+                suppressed_action = proposal.action if proposal.action != "label" else ""
+                keep_label = proposal.action == "label"
+                proposal = replace(proposal, action="label" if keep_label else "none",
+                                   label=proposal.label if keep_label else "", text="", recipient="", notify=False,
+                                   suspicious=False, needs_human=False, requires_action=False,
+                                   has_deadline=False, significant_change=False, sensitive=False,
+                                   reason="Already read in Gmail; organization only. " + proposal.reason)
             original_label = proposal.label
             from .label_preferences import choose
             proposal, label_preference = choose(self, proposal, email)
             from .draft_preferences import apply as apply_draft_style
             proposal, draft_style_application = apply_draft_style(self, proposal, email)
             from .attention import matches
-            surface = matches(self,email,proposal)
+            surface = False if read_before_wajo else matches(self,email,proposal)
             decision = decide(proposal)
             if decision.status == "pending" and proposal.action == "archive":
                 if surface:
@@ -322,18 +342,29 @@ class Agent:
         except Exception:
             # Do not log arbitrary provider exceptions: they can contain secrets.
             proposal = Proposal("none", "Proposal unavailable or invalid")
-            decision = Decision("escalate", "review_required", "error", "Model/provider failure; no action executed")
+            decision = (Decision("silent", "allowed", "error", "Analysis incomplete; retry scheduled")
+                        if read_before_wajo else
+                        Decision("escalate", "review_required", "error", "Model/provider failure; no action executed"))
         with self.db:
-            self.db.execute("INSERT INTO emails(id,sender,subject,body) VALUES(?,?,?,?)",
-                            (email.id, email.sender, email.subject, email.body))
-            cursor = self.db.execute("""INSERT INTO actions(email_id,proposal,autonomy,safety,status,reason)
-                                      VALUES(?,?,?,?,?,?)""",
-                                     (email.id, json.dumps(asdict(proposal), ensure_ascii=False),
-                                      decision.autonomy, decision.safety, decision.status, decision.reason))
-            action_id = cursor.lastrowid
+            if existing:
+                action_id = existing["id"]
+                for table in ("attention_items", "label_reviews", "email_organization", "draft_style_applications", "drafts"):
+                    self.db.execute(f"DELETE FROM {table} WHERE action_id=?", (action_id,))
+                self.db.execute("""UPDATE actions SET proposal=?,autonomy=?,safety=?,status=?,reason=?,revision=revision+1
+                                   WHERE id=?""", (json.dumps(asdict(proposal), ensure_ascii=False), decision.autonomy,
+                                   decision.safety, decision.status, decision.reason, action_id))
+                self.log(action_id, "analysis_retried", {"previous_status": "error"})
+            else:
+                self.db.execute("INSERT INTO emails(id,sender,subject,body) VALUES(?,?,?,?)",
+                                (email.id, email.sender, email.subject, email.body))
+                cursor = self.db.execute("""INSERT INTO actions(email_id,proposal,autonomy,safety,status,reason)
+                                          VALUES(?,?,?,?,?,?)""",
+                                         (email.id, json.dumps(asdict(proposal), ensure_ascii=False),
+                                          decision.autonomy, decision.safety, decision.status, decision.reason))
+                action_id = cursor.lastrowid
             if proposal.action in {"draft", "send"} and proposal.text.strip():
                 from .draft_preferences import record_version
-                record_version(self, action_id, 1, proposal.text)
+                record_version(self, action_id, self.get(action_id)["revision"], proposal.text)
             if surface:
                 self.db.execute("INSERT INTO attention_items VALUES(?,'Your attention preference applies',0)",(action_id,))
             from .label_preferences import register
@@ -355,10 +386,13 @@ class Agent:
                         decision = Decision("escalate", "review_required", "escalated", "Reply needs a valid recipient, subject and body")
                     self.db.execute("UPDATE actions SET autonomy=?,safety=?,status=?,reason=? WHERE id=?",
                                     (decision.autonomy, decision.safety, decision.status, decision.reason, action_id))
+            if suppressed_action:
+                self.log(action_id, "read_mail_action_suppressed", {"proposed_action": suppressed_action})
             self.log(action_id, "decision", asdict(decision))
             if decision.status == "ready":
                 self._execute(action_id)
-            elif decision.status in {"blocked", "escalated", "error"}:
+            elif (decision.status in {"blocked", "escalated"}
+                  or (decision.status == "error" and decision.autonomy == "escalate")):
                 self.log(action_id, "notification", {"reason": decision.reason, "requires_response": decision.autonomy == "escalate"})
         return self.get(action_id)
 

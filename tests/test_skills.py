@@ -113,7 +113,8 @@ class SkillsTests(unittest.TestCase):
         self.assertFalse(matches(self.agent, self.agent.email_for(self.other['id']), self.p))
         self.assertFalse(matches(self.agent, self.email, replace(self.p, suspicious=True)))
         with self.agent.db:
-            self.agent.db.execute('INSERT INTO gmail_bindings VALUES(?,?,?,?,?,?)', ('trip', 'other-account@example.test', 'm', 'test', 'Wajo-Test', 1))
+            self.agent.db.execute('''INSERT INTO gmail_bindings(email_id,account,message_id,label_id,label_name,initial_inbox)
+                                     VALUES(?,?,?,?,?,?)''', ('trip', 'other-account@example.test', 'm', 'test', 'Wajo-Test', 1))
         self.assertFalse(matches(self.agent, self.email, self.p))
 
     def test_organization_and_draft_apply_without_sending(self):

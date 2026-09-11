@@ -77,7 +77,8 @@ class LabelLearningTests(unittest.TestCase):
         self.agent.close();self.agent=Agent(self.path,Fixed(self.p))
         self.assertEqual(self.ingest(2)['proposal']['label'],'AI: Applications')
         with self.agent.db:
-            self.agent.db.execute("INSERT INTO gmail_bindings VALUES('3','other@example.test','m3','label','Wajo-Test',1)")
+            self.agent.db.execute("""INSERT INTO gmail_bindings(email_id,account,message_id,label_id,label_name,initial_inbox)
+                                   VALUES('3','other@example.test','m3','label','Wajo-Test',1)""")
         self.assertEqual(self.ingest(3)['proposal']['label'],'AI: Work')
 
     def test_stale_review_cannot_duplicate_feedback_and_can_correct_later(self):

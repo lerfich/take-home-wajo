@@ -65,8 +65,9 @@ class GmailTests(unittest.TestCase):
 
     def test_only_inline_plain_text_and_exact_address(self):
         self.assertEqual(message_fields(payload()), {"sender": "test@example.test", "subject": "Test", "body": "Synthetic receipt"})
-        with self.assertRaises(ValueError):
-            message_fields({"payload": {"mimeType": "text/html", "body": {"data": ""}}})
+        html = base64.urlsafe_b64encode(b"<p>Hello <strong>there</strong></p>").decode()
+        self.assertEqual(message_fields({"payload": {"mimeType": "text/html", "headers": [
+            {"name": "From", "value": "test@example.test"}], "body": {"data": html}}})["body"], "Hello\nthere")
 
     def test_import_deduplicates_and_never_writes_gmail(self):
         with tempfile.TemporaryDirectory() as directory:

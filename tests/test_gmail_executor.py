@@ -109,6 +109,13 @@ class GmailExecutionTests(unittest.TestCase):
         self.assertTrue(result["conflict"])
         self.assertEqual(self.api.users.return_value.messages.return_value.modify.call_count, before)
 
+    def test_stage_c_binding_allows_exact_account_message_without_test_label(self):
+        binding = {**self.binding, "label_id": "", "label_name": ""}
+        self.labels = [{"id":"ai","name":"AI: Work","type":"user"}]
+        result = self.executor.apply(binding, "label", "AI: Work")
+        self.assertTrue(result["verified"])
+        self.assertIn("ai", self.ids)
+
     def test_two_label_resolution_unknown_reconciles_without_repeating_write(self):
         self.labels += [{"id":"travel","name":"AI: Travel","type":"user"},
                         {"id":"personal","name":"AI: Personal","type":"user"}]

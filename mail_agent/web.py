@@ -1,7 +1,7 @@
 """Loopback-only local UI. Same policy core; background local inbox processing."""
 import argparse
 import errno
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import asdict
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -10,6 +10,7 @@ from pathlib import Path
 import secrets
 import sqlite3
 import threading
+import time
 import uuid
 
 from .core import Agent, Email, PATTERNS, Proposal, learnable
@@ -31,6 +32,9 @@ class Application:
         self.stop = threading.Event()
         self.wakeup = threading.Event()
         self.lock = threading.Lock()
+        self.analysis_limit = 7
+        self.analysis_threads = []
+        self.label_review_lock = threading.Lock()
         from .gmail_connection import GmailConnection
         self.gmail_connection = GmailConnection(self, gmail_token or connection_token or Path("data/gmail-token.json"),
                                                  gmail_credentials or Path("data/gmail-credentials.json"))
@@ -40,6 +44,13 @@ class Application:
                 created_at TEXT NOT NULL, diagnostics TEXT NOT NULL DEFAULT '[]')""")
             if "processing_mode" not in {r["name"] for r in db.execute("PRAGMA table_info(incoming_jobs)")}:
                 db.execute("ALTER TABLE incoming_jobs ADD COLUMN processing_mode TEXT NOT NULL DEFAULT 'triage'")
+            job_columns = {r["name"] for r in db.execute("PRAGMA table_info(incoming_jobs)")}
+            if "attempts" not in job_columns:
+                db.execute("ALTER TABLE incoming_jobs ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0")
+            if "next_retry_at" not in job_columns:
+                db.execute("ALTER TABLE incoming_jobs ADD COLUMN next_retry_at TEXT NOT NULL DEFAULT ''")
+            if "completed_at" not in job_columns:
+                db.execute("ALTER TABLE incoming_jobs ADD COLUMN completed_at TEXT NOT NULL DEFAULT ''")
             # Only local operations: a completed core event is idempotently returned.
             if recover_jobs:
                 db.execute("UPDATE incoming_jobs SET status='queued' WHERE status='processing'")
@@ -81,9 +92,12 @@ class Application:
             cursor = db.execute("INSERT OR IGNORE INTO incoming_jobs(id,email,status,created_at) VALUES(?,?,'queued',?)",
                        (email.id, json.dumps(asdict(email)), datetime.now(timezone.utc).isoformat()))
             if cursor.rowcount and gmail_binding is not None:
-                db.execute("INSERT INTO gmail_bindings VALUES(?,?,?,?,?,?)",
+                db.execute("""INSERT INTO gmail_bindings(email_id,account,message_id,label_id,label_name,initial_inbox,
+                           thread_id,initial_unread,source_role) VALUES(?,?,?,?,?,?,?,?,?)""",
                            (email.id, gmail_binding["account"], gmail_binding["message_id"],
-                            gmail_binding["label_id"], gmail_binding["label_name"], gmail_binding["initial_inbox"]))
+                            gmail_binding.get("label_id", ""), gmail_binding.get("label_name", ""),
+                            gmail_binding["initial_inbox"], gmail_binding.get("thread_id", ""),
+                            gmail_binding.get("initial_unread", 1), gmail_binding.get("source_role", "incoming")))
             if cursor.rowcount:
                 db.execute("UPDATE incoming_jobs SET processing_mode=? WHERE id=?", (processing_mode,email.id))
         self.wakeup.set()
@@ -92,37 +106,69 @@ class Application:
     def work(self):
         if not self.demo and self.gmail_connection.token_path.is_file():
             self.gmail_connection.start("check", {})
+        self.analysis_threads = [threading.Thread(target=self.analysis_work, daemon=True,
+                                                  name=f"wajo-analysis-{i + 1}")
+                                 for i in range(self.analysis_limit)]
+        for thread in self.analysis_threads:
+            thread.start()
         while not self.stop.is_set():
             if self.gmail_token:
                 with self.lock:
                     if self.run_gmail():
                         continue
+            if not self.demo:
+                self.gmail_connection.poll_if_due()
+            self.wakeup.wait(1)
+            self.wakeup.clear()
+        for thread in self.analysis_threads:
+            thread.join(3)
+
+    def analysis_work(self):
+        while not self.stop.is_set():
+            now = datetime.now(timezone.utc)
             with self.connect() as db:
+                db.execute("BEGIN IMMEDIATE")
+                db.execute("""UPDATE incoming_jobs SET status='queued' WHERE status='error'
+                              AND next_retry_at!='' AND next_retry_at<=?""", (now.isoformat(),))
                 row = db.execute("SELECT * FROM incoming_jobs WHERE status='queued' ORDER BY created_at LIMIT 1").fetchone()
                 if row:
-                    db.execute("UPDATE incoming_jobs SET status='processing' WHERE id=?", (row["id"],))
+                    db.execute("UPDATE incoming_jobs SET status='processing',attempts=attempts+1 WHERE id=?", (row["id"],))
             if row is None:
                 self.wakeup.wait(1)
                 self.wakeup.clear()
                 continue
             provider = None
             try:
-                from .label_provider import LabelProposer
-                provider_class = LabelProposer if row["processing_mode"] == "label_review" else GroqProposer
-                provider = provider_class.from_env(Path(__file__).resolve().parents[1] / ".env")
-                agent = self.agent(provider)
-                try:
-                    result = agent.ingest(Email(**json.loads(row["email"])))
-                finally:
-                    agent.close()
-                status = "error" if result["status"] == "error" else "done"
-                diagnostics = provider.calls
+                in_scope = True
+                if self.gmail_connection.token_path.is_file():
+                    from .gmail_sync import refresh_before_analysis
+                    in_scope = refresh_before_analysis(self.gmail_connection.token_path, self, row["id"])
+                if not in_scope:
+                    status = "done"
+                    diagnostics = [{"status": "skipped", "reason": "Message left the incoming-mail scope."}]
+                else:
+                    from .label_provider import LabelProposer
+                    provider_class = LabelProposer if row["processing_mode"] == "label_review" else GroqProposer
+                    provider = provider_class.from_env(Path(__file__).resolve().parents[1] / ".env")
+                    guard = self.label_review_lock if row["processing_mode"] == "label_review" else nullcontext()
+                    with guard:
+                        agent = self.agent(provider)
+                        try:
+                            result = agent.ingest(Email(**json.loads(row["email"])), retry_error=True)
+                        finally:
+                            agent.close()
+                    status = "error" if result["status"] == "error" else "done"
+                    diagnostics = provider.calls
             except Exception:
                 status = "error"
                 diagnostics = [{"status": "error", "error": "Processing unavailable. Check the local Groq configuration."}]
             with self.connect() as db:
-                db.execute("UPDATE incoming_jobs SET status=?,diagnostics=? WHERE id=?",
-                           (status, json.dumps(diagnostics, ensure_ascii=False), row["id"]))
+                attempts = db.execute("SELECT attempts FROM incoming_jobs WHERE id=?", (row["id"],)).fetchone()[0]
+                delay = min(3600, 60 * (2 ** min(attempts - 1, 6)))
+                retry_at = datetime.fromtimestamp(time.time() + delay, timezone.utc).isoformat() if status == "error" else ""
+                completed = datetime.now(timezone.utc).isoformat() if status == "done" else ""
+                db.execute("UPDATE incoming_jobs SET status=?,diagnostics=?,next_retry_at=?,completed_at=? WHERE id=?",
+                           (status, json.dumps(diagnostics, ensure_ascii=False), retry_at, completed, row["id"]))
             if row["processing_mode"] == "label_review":
                 # Pace the explicit review batch on the free provider tier.
                 self.stop.wait(20)
@@ -156,8 +202,12 @@ class Application:
             state = agent.snapshot()
             state['skills'] = listing(agent)
             state['label_conflicts'] = [dict(r) for r in agent.db.execute("SELECT * FROM label_conflicts WHERE status='open'")]
+            bindings = {r["email_id"]: dict(r) for r in agent.db.execute("SELECT * FROM gmail_bindings")}
             email_map = {e["id"]: e for e in state["emails"]}
             for action in state["actions"]:
+                binding = bindings.get(action["email_id"])
+                action["thread_id"] = binding["thread_id"] if binding and binding["thread_id"] else action["email_id"]
+                action["initial_unread"] = bool(binding["initial_unread"]) if binding else True
                 action["reply"] = agent.get(action["id"])["reply"]
                 p = Proposal(**json.loads(action["proposal"]))
                 action["proposal"] = asdict(p)
@@ -207,6 +257,14 @@ class Application:
             agent.close()
         with self.connect() as db:
             state["jobs"] = [dict(row) for row in db.execute("SELECT * FROM incoming_jobs ORDER BY created_at")]
+            state["gmail_messages"] = [dict(row) for row in db.execute("""SELECT account,message_id,thread_id,role,state,
+                unread,labels,internal_date,sender,subject,body,error,attempts,retry_at,fetched_at,wajo_key
+                FROM gmail_message_cache WHERE role!='excluded' ORDER BY internal_date DESC,message_id""")]
+            managed_drafts = {r[0] for r in db.execute("SELECT message_key FROM gmail_replies")}
+            for message in state["gmail_messages"]:
+                message["managed"] = message["role"] == "draft" and message["wajo_key"] in managed_drafts
+        from .gmail_sync import public as sync_public
+        state["gmail_sync"] = sync_public(self, self.gmail_connection.snapshot().get("account"))
         state.update(mode="scripted" if self.demo else "groq", csrf=self.csrf,
                      patterns=sorted(PATTERNS), gmail_enabled=bool(self.gmail_token),
                      gmail_connection=self.gmail_connection.snapshot())
@@ -228,6 +286,17 @@ class Application:
             return self.gmail_connection.start(connection_routes[route], data)
         if route == "/api/ingest":
             return self.enqueue(data)
+        if route in {"/api/gmail/import-pause", "/api/gmail/import-resume", "/api/gmail/sync-toggle"}:
+            account = data.get("account")
+            if type(account) is not str or account != self.gmail_connection.snapshot().get("account"):
+                raise ValueError("The displayed Gmail account changed. Refresh and try again.")
+            from .gmail_sync import set_enabled, set_history_status
+            if route == "/api/gmail/sync-toggle":
+                return set_enabled(self, account, data.get("enabled"))
+            result = set_history_status(self, account, "paused" if route.endswith("pause") else "running")
+            if route.endswith("resume"):
+                self.gmail_connection.resume_history(account)
+            return result
         with self.lock:
             if route == "/api/gmail-check":
                 if not self.gmail_token:

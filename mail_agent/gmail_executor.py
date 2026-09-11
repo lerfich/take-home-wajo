@@ -13,19 +13,24 @@ class GmailExecutor:
         self.api = api
 
     def inspect(self, binding):
-        if binding["label_name"] != "Wajo-Test":
-            raise ScopeError("Live writes are restricted to Wajo-Test")
         account = self.api.users().getProfile(userId="me").execute()["emailAddress"].casefold()
         if account != binding["account"]:
             raise ScopeError("Connected Gmail account differs from the imported account")
         labels = self.api.users().labels().list(userId="me").execute().get("labels", [])
-        if not any(x["id"] == binding["label_id"] and x["name"] == binding["label_name"] for x in labels):
-            raise ScopeError("The selected test label was removed or renamed")
+        # Legacy imports remain bound to their exact synthetic test label. New
+        # stage-C bindings deliberately use an empty label scope and rely on the
+        # exact account/message binding plus current special-folder checks.
+        if binding["label_name"]:
+            if binding["label_name"] != "Wajo-Test":
+                raise ScopeError("Legacy live writes are restricted to Wajo-Test")
+            if not any(x["id"] == binding["label_id"] and x["name"] == binding["label_name"] for x in labels):
+                raise ScopeError("The selected test label was removed or renamed")
         message = self.api.users().messages().get(
             userId="me", id=binding["message_id"], format="minimal").execute()
         ids = set(message.get("labelIds", []))
-        if binding["label_id"] not in ids or ids.intersection({"TRASH", "SPAM", "DRAFT"}):
-            raise ScopeError("Message is outside the selected test label or is in Trash, Spam or Drafts")
+        if ((binding["label_id"] and binding["label_id"] not in ids)
+                or ids.intersection({"TRASH", "SPAM", "DRAFT", "SENT"})):
+            raise ScopeError("Message is outside its saved scope or is in Sent, Trash, Spam or Drafts")
         return labels, ids
 
     @staticmethod

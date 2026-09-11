@@ -22,7 +22,7 @@ class GmailConnectionTests(unittest.TestCase):
         self.connection = self.app.gmail_connection
         self.api = MagicMock()
         self.users = self.api.users.return_value
-        self.users.getProfile.return_value.execute.return_value = {"emailAddress": "owner@example.test"}
+        self.users.getProfile.return_value.execute.return_value = {"emailAddress": "owner@example.test", "historyId": "10"}
         self.users.labels.return_value.list.return_value.execute.return_value = {
             "labels": [{"id": "test-label", "name": "Wajo-Test"}]}
 
@@ -39,6 +39,10 @@ class GmailConnectionTests(unittest.TestCase):
 
     def consent(self, **changes):
         return {"allow_groq": True, "account": "owner@example.test", "live": True, "limit": 10, **changes}
+
+    def modern_consent(self, **changes):
+        return {"allow_groq": True, "account": "owner@example.test", "live": True,
+                "history_mode": "new", "label_ids": [], **changes}
 
     def check(self):
         with patch("mail_agent.gmail.service", return_value=self.api):
@@ -85,6 +89,47 @@ class GmailConnectionTests(unittest.TestCase):
         messages.send.assert_not_called()
         with self.app.connect() as db:
             self.assertEqual(db.execute("SELECT count(*) FROM gmail_bindings").fetchone()[0], 1)
+
+    def test_modern_sync_loads_labels_and_new_only_needs_no_test_label(self):
+        self.users.labels.return_value.list.return_value.execute.return_value = {"labels": [
+            {"id": "INBOX", "name": "INBOX", "type": "system"},
+            {"id": "work", "name": "Work", "type": "user"}]}
+        checked = self.check()
+        self.assertFalse(checked["label_ready"])
+        self.assertEqual({x["name"] for x in checked["labels"]}, {"INBOX", "Work"})
+        with patch("mail_agent.gmail.service", return_value=self.api):
+            state = self.run_operation("sync", self.modern_consent(label_ids=["work"]))
+        self.assertEqual(state["status"], "connected")
+        sync = self.app.state()["gmail_sync"]["settings"]
+        self.assertEqual(sync["history_mode"], "new")
+        self.assertEqual(sync["history_labels"], ["work"])
+        self.assertEqual(sync["history_status"], "done")
+        self.users.messages.return_value.list.assert_not_called()
+
+    def test_modern_sync_rejects_invalid_scope_before_background_work(self):
+        self.check()
+        with patch("mail_agent.gmail.service") as service:
+            for changes in [{"history_mode": "week"}, {"label_ids": "work"},
+                            {"label_ids": [1]}, {"extra": True}]:
+                with self.assertRaises(ValueError):
+                    self.app.mutate("/api/gmail/sync", self.modern_consent(**changes))
+            service.assert_not_called()
+
+    def test_automatic_poll_rechecks_account_and_backs_off_without_reading_history(self):
+        self.users.labels.return_value.list.return_value.execute.return_value = {"labels": []}
+        self.check()
+        with patch("mail_agent.gmail.service", return_value=self.api):
+            self.run_operation("sync", self.modern_consent())
+            self.users.getProfile.return_value.execute.return_value = {
+                "emailAddress": "other@example.test", "historyId": "11"}
+            self.assertTrue(self.connection.poll_if_due())
+            self.connection.thread.join(3)
+        self.assertIn("try again", self.connection.snapshot()["error"])
+        self.users.history.return_value.list.assert_not_called()
+        with self.app.connect() as db:
+            row = db.execute("SELECT history_id,next_poll_at FROM gmail_sync_settings").fetchone()
+        self.assertEqual(row["history_id"], "10")
+        self.assertTrue(row["next_poll_at"])
 
     def test_changed_account_blocks_message_reads(self):
         self.check()

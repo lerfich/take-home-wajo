@@ -1,7 +1,7 @@
-"""Optional Gmail connection with explicit OAuth access profiles. Imports use local execution unless --gmail-live is explicitly selected.
+"""Optional Gmail connection with explicit OAuth access profiles and legacy CLI import.
 
 The executor supports labels/archive/restore, saved drafts and exact-version approved sends. OAuth consent is granted by the user.
-Only the explicitly selected test label is imported and passed to Groq.
+The standalone CLI imports one selected test label; the web synchronizer is implemented in gmail_sync.py.
 """
 import argparse
 import base64
@@ -9,6 +9,7 @@ from email.utils import parseaddr
 import json
 import os
 from pathlib import Path
+from html.parser import HTMLParser
 
 from .web import Application
 
@@ -70,9 +71,19 @@ def service(token_path):
     return build("gmail", "v1", credentials=credentials, cache_discovery=False)
 
 
+class _TextExtractor(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+
+    def handle_data(self, data):
+        if data.strip():
+            self.parts.append(data.strip())
+
+
 def plain_body(payload):
-    """Only inline text/plain; no attachments, remote loads or HTML execution."""
-    pieces = []
+    """Prefer inline text/plain and safely reduce inline HTML to text; skip attachments."""
+    plain, html = [], []
     def visit(part, depth=0):
         if depth > 20:
             raise ValueError("MIME nesting too deep")
@@ -81,11 +92,17 @@ def plain_body(payload):
         if part.get("mimeType") == "text/plain":
             data = part.get("body", {}).get("data", "")
             if data:
-                pieces.append(base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)).decode("utf-8", errors="replace"))
+                plain.append(base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)).decode("utf-8", errors="replace"))
+        elif part.get("mimeType") == "text/html":
+            data = part.get("body", {}).get("data", "")
+            if data:
+                parser = _TextExtractor()
+                parser.feed(base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)).decode("utf-8", errors="replace"))
+                html.append("\n".join(parser.parts))
         for child in part.get("parts", []):
             visit(child, depth + 1)
     visit(payload)
-    return "\n".join(pieces).strip()
+    return "\n".join(plain or html).strip()
 
 
 def message_fields(message):
