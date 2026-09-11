@@ -32,7 +32,7 @@ class Proposal:
     sensitive: bool = True
     pattern_evidence: str = ""
     label_kind: str = "unknown"
-    attention_cue: str = "unknown"
+    attention_cue: str = ""  # Missing legacy field; explicit none/unknown stay authoritative.
     attention_evidence: str = ""
 
 
@@ -84,7 +84,7 @@ def validate(proposal: Proposal) -> None:
     if proposal.label_kind not in set(LABEL_KINDS) | {"unknown"}:
         raise ValueError("Invalid label situation type")
     from .attention import ATTENTION_CUES
-    if proposal.attention_cue not in set(ATTENTION_CUES) | {"unknown"}:
+    if proposal.attention_cue not in set(ATTENTION_CUES) | {"unknown", ""}:
         raise ValueError("Invalid attention cue")
 
 
@@ -162,6 +162,10 @@ class Agent:
         initialize_organization(self.db)
         from .draft_preferences import initialize as initialize_draft_preferences
         initialize_draft_preferences(self.db)
+        from .skills import initialize as initialize_skills
+        initialize_skills(self.db)
+        from .multi_labels import initialize as initialize_multi_labels
+        initialize_multi_labels(self.db)
 
     def queue_gmail(self, action_id, operation, approved=False, scope="general"):
         if scope not in {"general", "sender"}:
@@ -185,6 +189,30 @@ class Agent:
         rules = list(self.db.execute("SELECT * FROM archive_rules WHERE scope IN ('*',?) AND pattern IN ('*',?)", (sender, p.pattern)))
         if rules:
             return {"mode": "keep", "rules": [dict(r) for r in rules]}
+        from .skills import choose as choose_skill, archive_evidence
+        skill = choose_skill(self, 'archive', email, p)
+        if skill:
+            if skill['config']['mode'] == 'keep':
+                return {'mode': 'keep', 'skill_id': skill['id']}
+            evidence = archive_evidence(self, skill)
+            return {'mode': 'notify' if len(evidence) >= 3 else 'ask', 'approval_ids': evidence,
+                    'threshold': 3, 'skill_id': skill['id']}
+        # A suggested/paused/deleted managed archive skill must not fall through
+        # to implicit legacy learning from the same web feedback.
+        from .label_preferences import account_for
+        managed = self.db.execute("SELECT 1 FROM audit WHERE event='skills_archive_managed' AND details=?",
+            (json.dumps({'account': account_for(self, email.id)}, ensure_ascii=False),)).fetchone()
+        if managed:
+            account = account_for(self, email.id)
+            rows = [r for r in self.db.execute(
+                "SELECT * FROM preference_feedback WHERE scope IN ('*',?) AND pattern=? ORDER BY id",
+                (sender, p.pattern)) if account_for(self, self.email_for(r['action_id']).id) == account]
+            scope = sender if any(r['scope'] == sender for r in rows) else '*'
+            scoped = [r for r in rows if r['scope'] == scope]
+            last_negative = max((r['id'] for r in scoped if not r['positive']), default=0)
+            evidence = [r['action_id'] for r in scoped if r['positive'] and r['id'] > last_negative]
+            return {'mode': 'ask', 'reason': 'No active reviewed archive skill matches',
+                    'scope': scope, 'pattern': p.pattern, 'approval_ids': evidence, 'threshold': 3}
         if not learnable(p, email):
             return {"mode": "ask", "reason": "Not eligible for archive learning"}
         rows = list(self.db.execute("SELECT * FROM preference_feedback WHERE scope IN ('*',?) AND pattern=? ORDER BY id", (sender, p.pattern)))
@@ -407,13 +435,20 @@ class Agent:
         if p.action == "archive" and self.preference(p, self.email_for(action_id))["mode"] == "keep":
             raise ValueError("Explicit preference requires keeping this email in inbox")
         email_id = row["email_id"]  # Server-bound scope, never chosen by the model.
+        if p.action == 'label':
+            from .multi_labels import targets, current, conflict
+            wanted = targets(self, action_id, p.label)
+            if len(set(current(self, email_id)) | set(wanted)) > 2:
+                conflict(self, action_id, wanted)
+                self.db.execute("UPDATE actions SET status='pending',reason='Choose two additional labels before applying this action' WHERE id=?", (action_id,))
+                return
         if row["transport"] == "gmail" and p.action != "none":
             if p.action not in {"label", "archive"}:
                 raise ValueError("Gmail operation is not implemented")
             self.queue_gmail(action_id, p.action, approved, scope)
             return
         if p.action == "label":
-            self.db.execute("INSERT OR IGNORE INTO labels VALUES(?,?)", (email_id, p.label))
+            self.db.executemany("INSERT OR IGNORE INTO labels VALUES(?,?)", [(email_id, x) for x in wanted])
         elif p.action == "archive":
             self.db.execute("UPDATE emails SET archived=1 WHERE id=?", (email_id,))
         elif p.action == "draft":
@@ -428,4 +463,4 @@ class Agent:
 
     def snapshot(self) -> dict:
         return {table: [dict(row) for row in self.db.execute(f"SELECT * FROM {table}")]
-                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items", "attention_feedback", "organization_feedback", "organization_rules", "email_organization", "draft_style_feedback", "draft_style_rules", "draft_style_applications", "draft_edit_versions")}
+                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items", "attention_feedback", "organization_feedback", "organization_rules", "email_organization", "draft_style_feedback", "draft_style_rules", "draft_style_applications", "draft_edit_versions", "skills", "skill_examples", "skill_legacy_links", "skill_feedback_seen", "skill_draft_seen", "label_targets", "label_conflicts")}

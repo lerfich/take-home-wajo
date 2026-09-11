@@ -135,11 +135,16 @@ def save(agent, action_id, revision, scope):
 
 
 def choose(agent, proposal, email):
+    from .skills import choose as choose_skill
+    skill = choose_skill(agent, 'draft', email, proposal)
+    if skill:
+        return dict(skill['config'], id=-skill['id'])
     if (proposal.action not in {"draft", "send"} or proposal.suspicious or proposal.needs_human
             or proposal.label_kind not in LABEL_KINDS or not proposal.pattern_evidence.strip()
             or proposal.pattern_evidence not in email.body):
         return None
     row = agent.db.execute("""SELECT * FROM draft_style_rules WHERE account=? AND kind=?
+        AND NOT EXISTS (SELECT 1 FROM skill_legacy_links l WHERE l.family='draft' AND l.legacy_key=CAST(draft_style_rules.id AS TEXT))
         AND active=1 AND scope IN ('*',?) ORDER BY (scope='*') ASC LIMIT 1""",
         (account_for(agent, email.id), proposal.label_kind, email.sender.casefold())).fetchone()
     if not row:

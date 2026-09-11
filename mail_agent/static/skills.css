@@ -1,0 +1,16 @@
+.skill-card{border:1px solid #d6e4df;border-radius:12px;padding:18px;margin:12px 0;background:#fff}
+.skill-card h3{font-size:16px;line-height:1.5;margin:10px 0}
+.skill-card p,.skill-card small{line-height:1.6;overflow-wrap:anywhere}
+.skill-card .decision-buttons{margin-top:14px;flex-wrap:wrap}
+.skill-refinements{border:1px solid #d6e4df;border-radius:8px;padding:12px;margin:12px 0}
+.skill-refinements summary{cursor:pointer;font-weight:600;color:#167a70}
+.skill-refinements form{padding-top:10px}
+.skill-refinements label{display:block;margin:10px 0;font-size:13px}
+.skill-refinements input:not([type=checkbox]),.skill-refinements select,.skill-refinements textarea{display:block;width:100%;border:1px solid #c8d6d1;border-radius:6px;padding:9px;margin-top:5px;background:white;font:inherit}
+.skill-refinements small{display:block;line-height:1.6;color:#52645e}
+.skill-refinements button{margin-top:12px}
+.label-conflict{border:2px solid #b97820;background:#fff8ec;border-radius:8px;padding:16px;margin-bottom:18px}
+.label-conflict label{display:flex;align-items:center;gap:8px;margin:12px 0}
+.label-conflict small{display:block;margin-top:8px;line-height:1.6}
+.skill-card button:focus-visible,.skill-refinements summary:focus-visible{outline:3px solid #167a70;outline-offset:3px}
+@media(max-width:650px){.skill-card{padding:12px}.skill-card .decision-buttons button{flex:1}}

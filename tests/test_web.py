@@ -13,6 +13,23 @@ from mail_agent.web import create_server
 
 
 class WebTests(unittest.TestCase):
+    def test_attention_state_exposes_disabled_effective_exception(self):
+        from mail_agent.attention import set_rule
+        class Fixed:
+            def propose(self, email):
+                return Proposal('label', 'Booking', label='AI: Travel',
+                                attention_cue='personal_commitment', attention_evidence='Confirmed')
+        agent = self.server.app.agent(Fixed())
+        try:
+            row = agent.ingest(Email('attention-1', 'one@example.test', 'Trip', 'Confirmed'))
+            set_rule(agent, row['id'], True, 'similar')
+            set_rule(agent, row['id'], False, 'sender')
+        finally:
+            agent.close()
+        action = next(r for r in self.server.app.state()['actions'] if r['id'] == row['id'])
+        self.assertEqual(action['attention_effective_rule']['scope'], 'one@example.test')
+        self.assertEqual(action['attention_effective_rule']['enabled'], 0)
+
     def test_duplicate_start_does_not_reset_processing_queue(self):
         self.server.app.demo = False
         self.server.app.enqueue({"sender": "test@example.test", "subject": "Test", "body": "Synthetic"})
@@ -137,9 +154,15 @@ class WebTests(unittest.TestCase):
         self.assertEqual(edited["status"], "pending")
         self.assertIn("concise", row["draft_style_preview"]["summary"])
         saved = self.post("/api/draft-style", {"action_id": action["id"], "revision": 2, "scope": "similar"})
-        self.assertTrue(saved["saved"])
+        self.assertTrue(saved["suggested"])
         state = self.get()
-        self.assertEqual(len(state["draft_style_rules"]), 1)
+        self.assertEqual(len(state["draft_style_rules"]), 0)
+        skill = next(s for s in state['skills'] if s['family'] == 'draft')
+        self.assertEqual(skill['status'], 'suggested')
+        data = {'skill_id': skill['id'], 'scope': 'similar', 'exclusions': []}
+        preview = self.post('/api/skills/preview', data)
+        self.post('/api/skills/save', dict(data, token=preview['token'], reviewed=[e['id'] for e in preview['examples']]))
+        state = self.get()
         self.assertEqual(state["sent"], [])
         row = next(a for a in state["actions"] if a["id"] == action["id"])
         self.assertTrue(row["draft_style_saved"])
@@ -164,7 +187,7 @@ class WebTests(unittest.TestCase):
         self.assertEqual(row["draft_style_preview"]["basis"], "confirmed")
         saved = self.post("/api/draft-style", {"action_id": action["id"], "revision": 2,
                           "scope": "similar"})
-        self.assertTrue(saved["saved"])
+        self.assertTrue(saved["suggested"])
         self.assertEqual(self.get()["sent"], [])
 
     def test_gmail_routes_require_csrf_and_return_async_status(self):

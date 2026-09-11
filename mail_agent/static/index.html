@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wajo — Your inbox under control</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head>
 <body>
 <aside class="sidebar"><a class="brand" href="/" aria-label="Wajo home"><span class="brand-mark">w</span>wajo<span class="brand-dot">.</span></a><div class="workspace-label">YOUR EMAIL AGENT</div>
-<nav aria-label="Navigation"><button class="nav-item active" id="nav-mail"><span>▤</span> Inbox <span id="nav-count" class="nav-count">0</span></button><button class="nav-item" id="nav-memory"><span>◎</span> Preferences</button><button class="nav-item" id="nav-labels"><span>◇</span> Review labels <span id="label-review-count" class="nav-count">0</span></button></nav>
+<nav aria-label="Navigation"><button class="nav-item active" id="nav-mail"><span>▤</span> Inbox <span id="nav-count" class="nav-count">0</span></button><button class="nav-item" id="nav-memory"><span>◎</span> Preferences <span id="skill-suggestion-count" class="nav-count hidden">0</span></button><button class="nav-item" id="nav-labels"><span>◇</span> Review labels <span id="label-review-count" class="nav-count">0</span></button></nav>
 <div class="side-note"><span class="pulse"></span><strong>Autonomy<br>with your permission</strong><p>The agent learns your preferences.<br>You stay in control.</p></div>
 <div class="profile"><span class="avatar">U</span><div>Personal inbox<small>Local mailbox</small></div></div></aside>
 <main><header><div><div class="eyebrow">WORKSPACE</div><h1>Your inbox under control</h1><p class="subtitle">Keep important mail in sight. Let your agent handle the routine.</p></div><div class="header-actions"><span class="connection" id="mode">Connecting…</span><button class="primary" id="new-email">＋ Add email</button><button class="primary hidden" id="load-demo">Load sample cases</button></div></header>
@@ -24,4 +24,13 @@
 <div class="gmail-sync-section"><div class="section-heading"><h2>Sync selected emails</h2><span class="badge" id="gmail-mode">Local simulation</span></div><p>Current scope: <strong>Wajo-Test</strong>. Apply this Gmail label only to synthetic emails. Attachments are not downloaded.</p><p id="gmail-scope-note"></p><p id="gmail-effects"></p>
 <form id="gmail-sync-form"><label>Messages per sync<select id="gmail-limit"><option value="10">Up to 10</option><option value="25">Up to 25</option><option value="50">Up to 50</option></select></label><label class="consent"><input type="checkbox" id="gmail-consent" required><span>I allow the sender, subject and body of these synthetic emails to be sent to Groq for analysis.</span></label><button class="primary" id="gmail-sync" disabled>Sync emails</button></form>
 <div id="gmail-result" class="gmail-result hidden" role="status"></div><p class="gmail-footnote">Manual sync only. This step checks one page; repeating it may find the same emails. Automatic checks and pagination are next. Queued emails are processed while the local server is running.</p></div></dialog>
+<dialog id="skill-dialog" aria-labelledby="skill-title">
+<div class="skill-heading"><div><div class="eyebrow">SUGGESTED SKILL · NOT ACTIVE YET</div><h2 id="skill-title">Review suggested skill</h2></div><button class="secondary" id="skill-close">Close</button></div>
+<div class="skill-rule"><div><strong id="skill-rule-title"></strong><p id="skill-cue"></p></div><label>Apply to<select id="skill-scope"><option value="similar">All senders</option><option value="sender">This sender only</option></select></label></div>
+<p id="skill-error" role="alert"></p><div id="skill-content"></div>
+<div class="skill-footer"><button class="secondary" id="skill-back">Previous</button><span id="skill-progress" aria-live="polite"></span><button class="primary" id="skill-next">Next example</button><button class="primary hidden" id="skill-save">Save skill</button></div>
+<p class="skill-footnote">Skills affect future matching emails. No historical action is repeated. Every send still requires separate approval.</p>
+</dialog>
+<script defer src="/skills.js"></script>
+<link rel="stylesheet" href="/skills.css">
 </body></html>

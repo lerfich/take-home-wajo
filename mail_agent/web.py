@@ -148,21 +148,27 @@ class Application:
     def state(self):
         agent = self.agent()
         try:
+            from .skills import collect, listing
+            collect(agent)
             # Keep all tables in this response on one SQLite snapshot while the
             # background worker may commit a newly processed email.
             agent.db.execute("BEGIN")
             state = agent.snapshot()
+            state['skills'] = listing(agent)
+            state['label_conflicts'] = [dict(r) for r in agent.db.execute("SELECT * FROM label_conflicts WHERE status='open'")]
             email_map = {e["id"]: e for e in state["emails"]}
             for action in state["actions"]:
                 action["reply"] = agent.get(action["id"])["reply"]
                 p = Proposal(**json.loads(action["proposal"]))
                 action["proposal"] = asdict(p)
                 from .label_preferences import account_for
-                from .attention import cue_for
+                from .attention import cue_for, effective_rule
                 email = email_map[action["email_id"]]
                 keys = {"email": "email:" + action["email_id"], "similar": "*", "sender": email["sender"].casefold()}
                 attention_cue = cue_for(Email(**{k: email[k] for k in ("id", "sender", "subject", "body")}), p)
                 action["attention_cue"] = attention_cue
+                action["attention_effective_rule"] = effective_rule(
+                    agent, Email(**{k: email[k] for k in ("id", "sender", "subject", "body")}), p)
                 action["attention_scopes"] = [scope for scope, key in keys.items() if any(
                     r["enabled"] and r["account"] == account_for(agent, action["email_id"])
                     and r["scope"] == key and (scope == "email" or r["cue"] == attention_cue)
@@ -181,6 +187,9 @@ class Application:
                     saved_style = agent.db.execute(
                         "SELECT id FROM draft_style_feedback WHERE action_id=? AND revision=? LIMIT 1",
                         (action["id"], action["revision"])).fetchone()
+                    saved_skill = agent.db.execute("SELECT id FROM skills WHERE family='draft' AND origin=? AND status='active'",
+                        ('draft:' + str(action['id']) + ':' + str(action['revision']),)).fetchone()
+                    saved_style = saved_style or saved_skill
                     if saved_style:
                         action["draft_style_saved"] = True
                         action["draft_style_note"] = "Draft style saved for future matching drafts."
@@ -190,6 +199,10 @@ class Application:
                             action["draft_style_preview"] = draft_style_preview(agent, action["id"], action["revision"])
                         except ValueError as exc:
                             action["draft_style_note"] = str(exc)
+            from .skills import legacy_managed
+            for family, table in [('labels', 'label_rules'), ('organization', 'organization_rules'), ('draft', 'draft_style_rules')]:
+                state[table] = [r for r in state[table] if not legacy_managed(agent, family, r['id'])]
+            state['attention_rules'] = [r for r in state['attention_rules'] if not legacy_managed(agent, 'attention', json.dumps([r['account'], r['kind'], r['scope']]))]
         finally:
             agent.close()
         with self.connect() as db:
@@ -204,6 +217,11 @@ class Application:
         return state
 
     def mutate(self, route, data):
+        # Feedback changes this email. Future behavior requires Skills review;
+        # a caller cannot opt out of that boundary with a JSON flag.
+        if route in {'/api/attention', '/api/organization', '/api/label-review', '/api/draft-style',
+                     '/api/approve', '/api/reject', '/api/correct'}:
+            data = dict(data, propose_skill=True)
         connection_routes = {"/api/gmail/connect": "connect", "/api/gmail/status": "check",
                              "/api/gmail/sync": "sync"}
         if route in connection_routes:
@@ -220,6 +238,11 @@ class Application:
                 return {"checked": True}
             agent = self.agent()
             try:
+                if data.get('propose_skill') and route in {'/api/approve', '/api/reject', '/api/correct'}:
+                    from .label_preferences import account_for
+                    email = agent.email_for(data.get('action_id'))
+                    with agent.db:
+                        agent.log(None, 'skills_archive_managed', {'account': account_for(agent, email.id)})
                 if route == "/api/demo" and self.demo:
                     return [agent.ingest(email) for email, _ in CASES]
                 if route == "/api/label-review":
@@ -229,14 +252,32 @@ class Application:
                     if row["transport"] == "gmail" and not self.gmail_token:
                         raise ValueError("Start the server in Gmail live mode to update Gmail labels")
                     from .label_preferences import submit
-                    result = submit(agent, data["action_id"], data["revision"], data.get("label"), data.get("scope", "email"), data.get("mode", "replace"))
+                    result = submit(agent, data["action_id"], data["revision"], data.get("label"),
+                                    'email' if data.get('propose_skill') else data.get("scope", "email"), data.get("mode", "replace"))
                     self.wakeup.set()
                     return result
                 if route == "/api/attention":
                     if type(data.get('action_id')) is not int:
                         raise ValueError('Invalid email action')
                     from .attention import set_rule
-                    return set_rule(agent,data['action_id'],data.get('enabled'),data.get('scope','email'))
+                    return set_rule(agent,data['action_id'],data.get('enabled'),
+                                    'email' if data.get('propose_skill') else data.get('scope','email'))
+                if route in {'/api/skills/preview', '/api/skills/save'}:
+                    if 'skill_id' in data:
+                        from .skills import preview, save
+                        return (preview if route.endswith('/preview') else save)(agent, data)
+                    raise ValueError('Review a suggested skill from saved feedback first')
+                if route == '/api/skills/manage':
+                    from .skills import manage
+                    return manage(agent, data)
+                if route == '/api/labels/resolve':
+                    row = agent.get(data.get('action_id'))
+                    if row['transport'] == 'gmail' and not self.gmail_token:
+                        raise ValueError('Gmail live mode is required to resolve Gmail labels')
+                    from .multi_labels import resolve
+                    result = resolve(agent, data)
+                    self.wakeup.set()
+                    return result
                 if route == "/api/attention-seen":
                     if type(data.get('action_id')) is not int:
                         raise ValueError('Invalid email action')
@@ -248,7 +289,7 @@ class Application:
                         raise ValueError("Invalid email action")
                     from .organization import submit
                     return submit(agent, data["action_id"], data.get("topic"), data.get("subtype"),
-                                  data.get("important"), data.get("scope", "email"))
+                                  data.get("important"), 'email' if data.get('propose_skill') else data.get("scope", "email"))
                 if route == "/api/organization-rule-pause":
                     if type(data.get("rule_id")) is not int:
                         raise ValueError("Invalid preference ID")
@@ -257,6 +298,12 @@ class Application:
                 if route == "/api/draft-style":
                     if type(data.get("action_id")) is not int or type(data.get("revision")) is not int:
                         raise ValueError("The displayed draft and version are required")
+                    if data.get('propose_skill'):
+                        from .skills import collect
+                        from .draft_preferences import preview as preview_style
+                        preview_style(agent, data['action_id'], data['revision'])
+                        collect(agent)
+                        return {'suggested': True}
                     from .draft_preferences import save
                     return save(agent, data["action_id"], data["revision"], data.get("scope"))
                 if route == "/api/draft-style-rule-pause":
@@ -322,6 +369,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, self.server.app.state())
         files = {"/": ("index.html", "text/html; charset=utf-8"),
                  "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+                 "/skills.js": ("skills.js", "text/javascript; charset=utf-8"),
+                 "/skills.css": ("skills.css", "text/css; charset=utf-8"),
                  "/style.css": ("style.css", "text/css; charset=utf-8")}
         if self.path not in files:
             return self.send(404, {"error": "Not found"})

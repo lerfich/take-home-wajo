@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from mail_agent.core import Agent, Email, Proposal
 from mail_agent.web import Application
 from mail_agent.gmail_executor import GmailExecutor, ScopeError, run_one, recover
+from mail_agent.multi_labels import conflict as label_conflict, resolve as resolve_labels
 
 class Fixed:
     def __init__(self, p): self.p = p
@@ -95,6 +96,51 @@ class GmailExecutionTests(unittest.TestCase):
                 with self.assertRaises(ScopeError):
                     self.executor.apply(binding,"archive")
         self.api.users.return_value.messages.return_value.modify.assert_not_called()
+
+    def test_two_ai_labels_apply_together_and_third_is_a_conflict(self):
+        self.labels += [{"id":"travel","name":"AI: Travel","type":"user"},
+                        {"id":"personal","name":"AI: Personal","type":"user"}]
+        result = self.executor.apply(self.binding, "label", ["AI: Travel", "AI: Personal"])
+        self.assertTrue(result["verified"])
+        self.assertEqual(self.ids.intersection({"travel", "personal"}), {"travel", "personal"})
+        self.ids.add("ai")
+        before = self.api.users.return_value.messages.return_value.modify.call_count
+        result = self.executor.apply(self.binding, "label", ["AI: Travel", "AI: Personal"])
+        self.assertTrue(result["conflict"])
+        self.assertEqual(self.api.users.return_value.messages.return_value.modify.call_count, before)
+
+    def test_two_label_resolution_unknown_reconciles_without_repeating_write(self):
+        self.labels += [{"id":"travel","name":"AI: Travel","type":"user"},
+                        {"id":"personal","name":"AI: Personal","type":"user"}]
+        self.agent.proposer = Fixed(Proposal("label", "Travel", label="AI: Travel",
+            label_kind="travel_confirmation", pattern_evidence="Receipt only"))
+        row = self.agent.ingest(self.email)
+        run_one(self.path, self.executor)
+        self.assertEqual(self.agent.get(row["id"])["status"], "executed")
+        self.ids.add("ai")
+
+        with self.agent.db:
+            label_conflict(self.agent, row["id"], ["AI: Travel", "AI: Personal"],
+                           ["AI: Travel", "AI: Work"])
+        resolve_labels(self.agent, {"action_id": row["id"], "revision": 1,
+                                    "labels": ["AI: Travel", "AI: Personal"]})
+
+        messages = self.api.users.return_value.messages.return_value
+        writes_before = messages.modify.call_count
+        def uncertain(**kwargs):
+            self.ids.update(kwargs["body"].get("addLabelIds", []))
+            self.ids.difference_update(kwargs["body"].get("removeLabelIds", []))
+            raise TimeoutError("uncertain after write")
+        messages.modify.side_effect = uncertain
+        run_one(self.path, self.executor)
+        op = next(x for x in self.agent.snapshot()["gmail_operations"]
+                  if x["operation"].startswith("labels-set:"))
+        self.assertEqual(op["status"], "unknown", op["error"])
+        self.assertEqual(messages.modify.call_count, writes_before + 1)
+
+        run_one(self.path, self.executor, op["id"], True)
+        self.assertEqual(messages.modify.call_count, writes_before + 1)
+        self.assertEqual(self.agent.get(row["id"])["status"], "executed")
 
     def test_legacy_import_stays_local_and_live_send_stages_draft(self):
         email=Email("legacy","x@example.test","Test","Test")

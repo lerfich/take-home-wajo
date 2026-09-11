@@ -13,9 +13,16 @@ async function post(path, data){
   if(busy) return null;
   busy=true;error('');
   try {
-    const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':state.csrf},body:JSON.stringify(data)});
+    const feedbackPaths=['/api/attention','/api/organization','/api/label-review','/api/draft-style','/api/approve','/api/reject','/api/correct','/api/edit'];
+    const previousSkills=new Set((state.skills||[]).map(s=>s.id));
+    const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':state.csrf},body:JSON.stringify({...data,propose_skill:feedbackPaths.includes(path)})});
     const result=await response.json();if(!response.ok)throw Error(result.error||'Operation failed');
-    await refresh(true);return result;
+    await refresh(true);
+    if(feedbackPaths.includes(path)){
+      const suggestion=(state.skills||[]).find(s=>s.source_id===data.action_id&&s.status==='suggested'&&!previousSkills.has(s.id));
+      if(suggestion)await openSkillReview({skill_id:suggestion.id,scope:data.scope==='sender'?'sender':'similar'});
+    }
+    return result;
   }catch(e){error(e.message);return null}finally{busy=false}
 }
 async function refresh(force=false){
@@ -34,7 +41,11 @@ function render(){
   const demo=state.mode==='scripted';$('#mode').textContent=demo?'Sample cases · no AI':(state.gmail_enabled?'Qwen · Gmail live':'Qwen · Groq');
   $('#new-email').classList.toggle('hidden',demo);$('#load-demo').classList.toggle('hidden',!demo);
   $('#mode-note').textContent=demo?'Sample cases: emails and decisions are predefined; no AI model is called. All mail actions are simulated locally.':state.gmail_enabled?'Gmail live: new live imports can apply AI labels, archive and restore messages in Wajo-Test. Each decision shows its execution mode. Replies are saved as Gmail drafts. Sending requires approval of the displayed version.':'Local mode: simulation actions stay local. Live Gmail actions remain paused until the server is started without --local-simulation.';
-  $('#nav-count').textContent=state.emails.length;renderMail();renderMemory();renderGmail();
+  $('#nav-count').textContent=state.emails.length;
+  const suggestions=(state.skills||[]).filter(s=>s.status==='suggested').length;
+  $('#skill-suggestion-count').textContent=suggestions;
+  $('#skill-suggestion-count').classList.toggle('hidden',!suggestions);
+  renderMail();renderMemory();renderGmail();
 }
 function renderMail(){
   if(!state)return;
@@ -88,6 +99,7 @@ function renderDetail(row){
   $('#detail').innerHTML=`<div class="detail-heading"><span>EMAIL # ${row.id}</span>${badge(row)}</div><h2>${esc(row.email.subject)}</h2><div class="organization-summary"><span>${esc(row.organization.topic)}</span><span>${esc(row.organization.subtype)}</span>${row.organization.important?'<span class="important-chip">Important</span>':''}<small>${esc(row.organization.source)}</small></div><div class="sender-row"><span class="avatar">${esc(row.email.sender[0].toUpperCase())}</span><div>${esc(row.email.sender)}<small>${row.transport==='gmail'?'Source: connected Gmail':'Source: local inbox copy'}</small></div></div><p class="email-body">${esc(row.email.body)}</p><div class="decision"><p><strong>${esc(transport)}</strong></p><p>${esc(row.reason)}</p><div class="decision-title">✦ Agent decision · ${esc(actions[p.action]||p.action)}</div><p>${esc(p.reason)}</p><div class="decision-meta">${esc(explanation)}<br>Pattern: ${esc(patterns[p.pattern]||p.pattern)}${p.label?`<br>Label: ${esc(p.label)}`:''}${flags.length&&p.pattern_evidence?`<br>${esc(flags.map(f=>f[1]).join(' · '))}`:''}</div>${p.pattern_evidence?`<blockquote class="reason-quote">${esc(p.pattern_evidence)}</blockquote>`:''}${replyPreview}${!reply&&p.text?`<div class="send-preview">${p.recipient?`Recipient: ${esc(p.recipient)}<br>`:''}${esc(p.text)}</div>`:''}${controls}${editor}${draftStyleForm(row)}${organizationForm(row)}${labelReviewForm(row)}${attentionForm(row)}<div class="decision-buttons"><button class="secondary" id="keep-sender">Always keep mail from this sender</button></div></div><details class="history"><summary>Decision history · ${history.length} entries</summary>${history.map(a=>`<div class="history-item">${esc(events[a.event]||a.event)}<small>${esc(new Date(a.created_at).toLocaleString('en-US'))}</small><details><summary>Details</summary><pre>${esc(JSON.stringify(JSON.parse(a.details),null,2))}</pre></details></div>`).join('')}</details>`;
   $('#detail').scrollTop=previousDetailScroll;
   bindDraftStyle(row);bindOrganization(row);bindLabelReview(row);bindAttention(row);
+  renderLabelConflict(row);
   $('#gmail-check')?.addEventListener('click',async()=>{if(await post('/api/gmail-check',{operation_id:operation.id}))notify('Gmail status checked. Review the result above.')});
   const scopeValue=()=>$('#feedback-scope')?.value||'general';
   for(const [id,route,message] of [['approve','approve','Action approved'],['reject','reject','Action rejected'],['correct','correct','Email restored. Correction saved']]){
@@ -112,7 +124,13 @@ function draftStyleForm(row){
   return `<form id="draft-style-form" class="label-review-form"><div class="eyebrow">${confirmed?'CONFIRM DRAFT STYLE':'LEARN FROM YOUR EDIT'}</div><h3>${confirmed?'Does this style work for you?':'Your draft style'}</h3><p>${esc(p.summary)}</p>${wording}<small>${confirmed?'The body matches the agent’s suggestion. Save this only if its writing style is what you want for similar drafts.':'Wajo will also use this wording change as an example of your tone. Situation-specific facts, recipients and promises are not copied.'} Sending always requires approval.</small><label>Use this style for<select id="draft-style-scope"><option value="similar">Future drafts for this kind of email</option><option value="sender">This kind of email from ${esc(row.email.sender)} only</option></select></label><button class="secondary">${confirmed?'This style works for me':'Use this style for future drafts'}</button></form>`;
 }
 function bindDraftStyle(row){
-  $('#draft-style-form')?.addEventListener('submit',async e=>{e.preventDefault();const r=await post('/api/draft-style',{action_id:row.id,revision:row.revision,scope:$('#draft-style-scope').value});if(r)notify('Draft style saved. Every future send will still require approval.')});
+  $('#draft-style-form')?.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const existing=(state.skills||[]).find(s=>s.family==='draft'&&s.source_id===row.id&&s.status==='suggested');
+    if(existing){await openSkillReview({skill_id:existing.id,scope:$('#draft-style-scope').value});return}
+    const r=await post('/api/draft-style',{action_id:row.id,revision:row.revision,scope:$('#draft-style-scope').value});
+    if(r)notify('Draft style suggestion is ready for review. Every send still requires approval.');
+  });
 }
 
 function organizationForm(row){
@@ -127,22 +145,28 @@ function bindOrganization(row){
   $('#organization-form').addEventListener('submit',async e=>{
     e.preventDefault();
     const result=await post('/api/organization',{action_id:row.id,topic:$('#organization-topic').value,subtype:$('#organization-subtype').value,important:$('#organization-important').checked,scope:$('#organization-scope').value});
-    if(result)notify('Organization preference saved. Action permissions are unchanged.');
+    if(result)notify('This email was updated. Future behavior stays inactive until you save the suggested skill.');
   });
 }
 
 function attentionForm(row){
  const item=(state.attention_items||[]).find(x=>x.action_id===row.id&&!x.seen);
- const scopes=row.attention_scopes||[];
+ const effective=row.attention_effective_rule;
+ const scopes=effective?.enabled?[effective.scope]:[];
  const cue=!['none','unknown'].includes(row.attention_cue)?state.attention_cues?.[row.attention_cue]:null;
  return `<form id="attention-form" class="label-review-form"><div class="eyebrow">VISIBILITY PREFERENCE</div><label class="attention-toggle"><input type="checkbox" id="attention-enabled" ${scopes.length?'checked':''}> Keep this in Needs attention</label><p>This controls what you want to see. It does not mark the email Important, create a notification, change escalation, or approve an action. Matching future emails will not be archived automatically.</p><label>Use this visibility preference for<select id="attention-scope"><option value="email">This email only</option>${cue?`<option value="similar">Future emails with this reason · ${esc(cue)}</option><option value="sender">This reason from ${esc(row.email.sender)}</option>`:''}</select></label><button class="secondary">Save visibility preference</button>${item?'<button type="button" class="secondary" id="attention-seen">Clear from Needs attention</button>':''}</form>`;
 }
 function bindAttention(row){
- const scopes=row.attention_scopes||[];
+ const rule=row.attention_effective_rule;
+ const scopes=rule?[rule.scope==='*'?'similar':rule.scope.startsWith('email:')?'email':'sender']:[];
  if($('#attention-scope')){
    $('#attention-scope').value=scopes.includes('sender')?'sender':scopes.includes('similar')?'similar':'email';
  }
- $('#attention-form')?.addEventListener('submit',async e=>{e.preventDefault();if(await post('/api/attention',{action_id:row.id,enabled:$('#attention-enabled').checked,scope:$('#attention-scope').value}))notify('Attention preference saved')});
+ $('#attention-form')?.addEventListener('submit',async e=>{
+   e.preventDefault();
+   const payload={action_id:row.id,enabled:$('#attention-enabled').checked,scope:$('#attention-scope').value};
+   if(await post('/api/attention',payload))notify('This email was updated. Future behavior stays inactive until you save the suggested skill.');
+ });
  $('#attention-seen')?.addEventListener('click',()=>post('/api/attention-seen',{action_id:row.id}));
 }
 function labelReviewForm(row){
@@ -159,10 +183,9 @@ function bindLabelReview(row){
   $('#review-mode').addEventListener('change',()=>{
     const add=$('#review-mode').value==='add';
     $('#review-label').value=add?'':row.labelReview.current_label;
-    $('#review-scope').disabled=add;
-    if(add)$('#review-scope').value='email';
+    $('#review-scope').disabled=false;
     $('#review-mode-note').textContent=add?'Adds one more label. All existing labels stay.':'Replaces '+row.labelReview.current_label+' only. Other labels stay.';
-    $('#review-scope-note').textContent=add?'Additional labels currently apply to this email only. No future preference is saved.':'Only this email changes. No preference will be saved.';
+    $('#review-scope-note').textContent='This email changes first. A suggested skill is inactive until you review and activate it.';
     $('#review-scope').value='email';updateReviewButton();
   });
   $('#review-scope').addEventListener('change',()=>{$('#review-scope-note').textContent=$('#review-scope').value==='email'?'Only this email changes. No preference will be saved.':'Save an explicit preference for this situation. Existing emails will not be relabeled automatically; sending and archiving permissions stay unchanged.'});
@@ -181,8 +204,9 @@ function bindLabelReview(row){
 
 function renderMemory(){
   if(!state)return;
-  const attentionRules=[...new Map((state.attention_rules||[]).filter(r=>r.enabled).map(r=>[`${r.account}|${r.cue}|${r.scope}`,r])).values()];
-  $('#attention-rules').innerHTML=attentionRules.map(r=>`<div class="rule-row"><span><strong>Needs attention</strong><br>${esc(state.attention_cues?.[r.cue]||'This email only')} · ${esc(r.scope==='*'?'All senders':r.scope.startsWith('email:')?'One email':r.scope)}<br><small>Visibility only. It does not change importance, escalation or permission.</small></span></div>`).join('')||'<p>No saved attention preferences yet. Choose an email and save a visibility preference.</p>';
+  renderSkills();
+  const attentionRules=[...new Map((state.attention_rules||[]).map(r=>[`${r.account}|${r.cue}|${r.scope}`,r])).values()];
+  $('#attention-rules').innerHTML=attentionRules.map(r=>`<div class="rule-row"><span><strong>${r.enabled?'Needs attention':'Attention off · exception'}</strong><br>${esc(state.attention_cues?.[r.cue]||'This email only')} · ${esc(r.scope==='*'?'All senders':r.scope.startsWith('email:')?'One email':r.scope)}<br><small>Visibility only. It does not change importance, escalation or permission.</small></span></div>`).join('')||'<p>No saved attention preferences yet. Choose an email and save a visibility preference.</p>';
   $('#draft-style-rules').innerHTML=(state.draft_style_rules||[]).filter(r=>r.active).map(r=>`<div class="rule-row"><span><strong>${esc(r.length)} · ${r.greeting==='include'?'greeting':'no greeting'} · ${r.signoff==='include'?'sign-off':'no sign-off'}</strong><br>${esc(state.label_kinds[r.kind]||r.kind)} · ${esc(r.scope==='*'?'All senders':r.scope)}<br><small>Improves draft wording only. Sending still requires approval.</small></span><button class="secondary" data-pause-draft-style="${r.id}">Pause</button></div>`).join('')||'<p>No confirmed draft style yet. Edit a generated draft, save it, then review the style Wajo found.</p>';
   $('#draft-style-rules').querySelectorAll('button').forEach(b=>b.addEventListener('click',async()=>{if(await post('/api/draft-style-rule-pause',{rule_id:Number(b.dataset.pauseDraftStyle)}))notify('Draft style preference paused.')}));
   $('#organization-rules').innerHTML=(state.organization_rules||[]).filter(r=>r.active).map(r=>`<div class="rule-row"><span><strong>${esc(r.topic)} · ${esc(r.subtype)}${r.important?' · Important':''}</strong><br>${esc(state.label_kinds[r.kind]||r.kind)} · ${esc(r.scope==='*'?'All senders':r.scope)}<br><small>Explicit preference #${r.feedback_id}. It does not grant action permission.</small></span><button class="secondary" data-pause-organization="${r.id}">Pause</button></div>`).join('')||'<p>No saved organization preferences yet. Choose a future scope while organizing an email.</p>';

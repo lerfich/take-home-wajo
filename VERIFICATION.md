@@ -1,5 +1,33 @@
 # Iteration 1 verification
 
+## September 11: stage B Skills completed on synthetic data and mocks
+
+**145 tests passed** in the latest full run. A shared, account-bound Skills layer now covers Needs attention, Topic/Subtype/Important, up to two additional AI labels, draft style, and conservative archive preferences. Feedback creates a **Suggested** skill that has no future effect until every displayed example is reviewed and the exact current preview token is saved. The same deterministic matcher is used for preview and live application. Tests cover positive, negative and unknown outcomes, sender/account boundaries, literal refinements, exclusions, stale reviews, atomic activation, restart, Pause/Resume/Delete, legacy migration, archive corrections and the three-approval threshold. Sending remains outside Skills and still requires exact-version approval.
+
+Additional-label tests cover transfer of two labels, local third-label conflict, explicit selection of exactly two, preserving existing labels until that choice, Gmail application of two labels, and refusing a third Gmail AI label before any message mutation. Gmail label-set resolution is durable and uses read-only reconciliation after an unknown result; it is covered by policy/mocked transport tests, not a new live Gmail write.
+
+The in-app browser exercised the clean scripted demo at `127.0.0.1:8766` on `data/stage-b-demo.sqlite3`: label, organization, draft-style and archive feedback each opened a Suggested skill; supported meaning, contains/excludes, result settings and up-to-two-label editing were visible; closing left suggestions inactive; a previously reviewed Attention skill covered full review, activation, Pause and Resume, and Delete exposed a separate irreversible confirmation. Archive preview showed **1 of 3 real approvals** and kept asking. The edited reply remained **Approval needed**; the demo database has 7 actions, 4 suggested skills, 0 sent rows and 0 Gmail operations. Browser console warning/error inspection returned no entries.
+
+A temporary copy of `data/web-groq.sqlite3` retained **46 actions before and after** migration, produced 21 active Skills from previously active rules, produced zero retrospective suggestions from old one-email feedback, and had zero queued/processing Gmail operations. The production database was not modified and no server was listening on port 8765. No Gmail mutation, model call, private-mail import or send was performed for this verification. This is development verification, not the final independent evaluation or a private-mail pilot. The general assignment UX remains intentionally scheduled for stage F after real use.
+
+## Stage B: first Attention skill preview
+
+135 tests passed in 7.833 seconds. The preview uses an isolated SQLite copy and the existing Attention matcher, with already processed examples from the same account. Tests cover zero preview mutations, review-before-save, stale state rejection, account isolation, email exclusions, and atomic rollback of a skill plus exclusions after a simulated failure. JavaScript syntax checks pass.
+
+The selected two-column dialog was tested in the in-app browser on a separate synthetic database (`skills-design-demo.sqlite3`, port 8766): positive/negative/unknown outcomes, an email-only exclusion, resetting review after changes, all four example confirmations, final save, reopening, and scope changes. Saving showed the success message and one visible Attention item; no Gmail operations were queued. Browser console error inspection returned no entries. The production database and Gmail were not modified. The demo server remains available on port 8766.
+
+This is the first Attention integration, not completion of stage B. It does not yet offer skills automatically after ordinary feedback, generate new contrasts, support arbitrary semantic corrections, manage Pause/Resume/Delete, or apply the dialog to the other preference types. A saved existing classification is not a new model-quality measurement. Existing direct preference routes remain available. Narrow-layout inspection confirmed stacked columns, but the browser's viewport screenshot had capture artifacts, so exact mobile visual QA remains incomplete.
+
+## September 10: stage A stabilization completed
+
+130 tests passed in 7.754 seconds. Regression coverage now includes email → sender → general Attention precedence with disabled exceptions; enable/disable/enable history and repeated-save idempotency; state changes from another example; explicit none/unknown versus a missing legacy cue; legacy rule migration; restart and duplicate ingestion without historical execution. Existing cross-topic semantic transfer tests also pass. Missing legacy cue fields use an empty-string sentinel; already stored explicit unknown/none values remain authoritative. Historical proposal JSON and feedback are not rewritten or reconstructed.
+
+The state API exposes the effective rule, and the form uses it for its checkbox and scope. Disabled exceptions are displayed in Preferences. The state API regression, JavaScript syntax check and isolated form execution passed for enabled/disabled sender overrides. This is focused UI verification, not a full browser usability test.
+
+A SQLite backup of the existing database retained an identical snapshot after reopening: 46 actions, 4 Attention rules and 7 Attention feedback entries. The original database was not modified. No server was listening on port 8765; all 63 stored Gmail operations were done. The server remains stopped.
+
+A4: a read-only Gmail get by the saved sent_id of the previously approved revision 2 returned the same ID, matching X-Wajo-Reply-Key, exact approved headers and plain-text body, and both SENT and INBOX labels on that specific message. This establishes current Inbox membership of the reply itself. No Gmail write, send, retry, import or model call was performed. This supplements the original self-delivery report without rewriting it. These checks are development verification on synthetic mail, not final independent evaluation or a private-mail pilot.
+
 ## September 10: follow-up audit and limits of previous claims
 
 The final independent evaluation remains pending until feature completion, real-mail piloting and resulting fixes. The earlier development measurements below retain their original results.

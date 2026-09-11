@@ -64,10 +64,17 @@ def suggested(proposal):
 
 def choose(agent, proposal, email):
     result = suggested(proposal)
+    from .skills import choose as choose_skill
+    skill = choose_skill(agent, 'organization', email, proposal)
+    if skill:
+        result.update({k: skill['config'][k] for k in ('topic', 'subtype', 'important')})
+        result.update(source='Reviewed skill', rule_id=-skill['id'])
+        return result
     if not _eligible(proposal, email):
         return result
     row = agent.db.execute("""SELECT * FROM organization_rules
         WHERE account=? AND kind=? AND active=1 AND scope IN ('*',?)
+        AND NOT EXISTS (SELECT 1 FROM skill_legacy_links l WHERE l.family='organization' AND l.legacy_key=CAST(organization_rules.id AS TEXT))
         ORDER BY (scope='*') ASC LIMIT 1""",
         (account_for(agent, email.id), proposal.label_kind, email.sender.casefold())).fetchone()
     if row:

@@ -34,27 +34,36 @@ class GmailExecutor:
             return "INBOX" not in ids
         if operation == "restore":
             return "INBOX" in ids
-        target = next((x["id"] for x in labels if x["name"] == label and x.get("type") == "user"), None)
-        return target is not None and target in ids
+        names = label if isinstance(label, list) else [label]
+        return all(any(x['id'] in ids and x['name'] == name and x.get('type') == 'user' for x in labels) for name in names)
 
     def apply(self, binding, operation, label="", check_only=False):
         if operation not in {"label", "archive", "restore"}:
             raise ScopeError("Only labels, archive and restore are implemented")
-        if operation == "label" and (not label.startswith("AI: ") or not label[4:].strip()
-                                      or len(label) > 100 or any(ord(c) < 32 for c in label)):
-            raise ScopeError("Invalid AI label")
+        names = label if isinstance(label, list) else [label]
+        if operation == 'label':
+            from .label_preferences import normalize_label
+            if not 1 <= len(names) <= 2 or any(normalize_label(x) != x for x in names):
+                raise ScopeError('Invalid AI label set')
         labels, ids = self.inspect(binding)
+        if operation == 'label':
+            existing = sorted(x['name'] for x in labels if x.get('type') == 'user'
+                              and x['id'] in ids and x['name'].startswith('AI: '))
+            if len(set(existing) | set(names)) > 2:
+                return {'verified': False, 'conflict': True, 'existing': existing}
         if self.desired(operation, label, labels, ids):
             return {"verified": True, "already_present": True}
         if check_only:
             return {"verified": False}
         if operation == "label":
-            target = next((x["id"] for x in labels if x["name"] == label and x.get("type") == "user"), None)
-            if target is None:
-                target = self.api.users().labels().create(userId="me", body={
-                    "name": label, "labelListVisibility": "labelShow",
-                    "messageListVisibility": "show"}).execute()["id"]
-            body = {"addLabelIds": [target]}
+            targets = []
+            for name in names:
+                target = next((x['id'] for x in labels if x['name'] == name and x.get('type') == 'user'), None)
+                if target is None:
+                    target = self.api.users().labels().create(userId='me', body={
+                        'name': name, 'labelListVisibility': 'labelShow', 'messageListVisibility': 'show'}).execute()['id']
+                targets.append(target)
+            body = {'addLabelIds': targets}
         elif operation == "archive":
             body = {"removeLabelIds": ["INBOX"]}
         else:
@@ -91,6 +100,9 @@ def run_one(db_path, executor, operation_id=None, check_only=False):
         if candidate is not None and candidate["operation"].startswith("label-review:"):
             from .label_preferences import run_review
             return run_review(agent, executor, candidate, check_only)
+        if candidate is not None and candidate['operation'].startswith('labels-set:'):
+            from .multi_labels import run_resolution
+            return run_resolution(agent, executor, candidate, check_only)
         if candidate is not None and candidate["operation"].split(":")[0] in {"draft", "send"}:
             from .gmail_replies import run_operation
             return run_operation(agent, executor, candidate, check_only)
@@ -136,9 +148,16 @@ def run_one(db_path, executor, operation_id=None, check_only=False):
             agent.db.execute("UPDATE gmail_operations SET status='processing',error='' WHERE id=?", (row["id"],))
             agent.log(action["id"], "gmail_started", {"operation": row["operation"], "check_only": check_only})
         # Read-only status checks deliberately do not require old learning permission.
-        result = executor.apply(dict(binding), row["operation"], p.label, check_only=check_only)
+        from .multi_labels import targets, conflict
+        wanted = targets(agent, action['id'], p.label) if p.action == 'label' else [p.label]
+        result = executor.apply(dict(binding), row["operation"], wanted if len(wanted) > 1 else wanted[0], check_only=check_only)
         with agent.db:
             agent.db.execute("BEGIN IMMEDIATE")
+            if result.get('conflict'):
+                conflict(agent, action['id'], wanted, result['existing'])
+                agent.db.execute("UPDATE gmail_operations SET status='error',error='Choose two additional labels' WHERE id=?", (row['id'],))
+                agent.db.execute("UPDATE actions SET status='error' WHERE id=?", (action['id'],))
+                return True
             if not result["verified"]:
                 status = "error" if check_only else "unknown"
                 agent.db.execute("UPDATE gmail_operations SET status=?,error=? WHERE id=?",
@@ -150,7 +169,7 @@ def run_one(db_path, executor, operation_id=None, check_only=False):
             if operation in {"archive", "restore"}:
                 agent.db.execute("UPDATE emails SET archived=? WHERE id=?", (int(operation == "archive"), action["email_id"]))
             else:
-                agent.db.execute("INSERT OR IGNORE INTO labels VALUES(?,?)", (action["email_id"], p.label))
+                agent.db.executemany("INSERT OR IGNORE INTO labels VALUES(?,?)", [(action['email_id'], x) for x in wanted])
             status = "corrected" if operation == "restore" else "executed"
             agent.db.execute("UPDATE actions SET status=? WHERE id=?", (status, action["id"]))
             agent.db.execute("UPDATE gmail_operations SET status='done',error='' WHERE id=?", (row["id"],))

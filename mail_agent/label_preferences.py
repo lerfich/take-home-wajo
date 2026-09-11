@@ -65,11 +65,18 @@ def account_for(agent, email_id):
 
 
 def choose(agent, proposal, email):
+    from .skills import choose as choose_skill
+    skill = choose_skill(agent, 'labels', email, proposal)
+    if skill:
+        names = skill['config']['labels']
+        return replace(proposal, label=names[0]), {'id': -skill['id'], 'feedback_id': skill['source_id'],
+            'kind': proposal.label_kind, 'label': names[0], 'labels': names, 'skill_revision': skill['revision']}
     if (proposal.action != "label" or proposal.suspicious or proposal.needs_human
             or proposal.label_kind not in LABEL_KINDS or not proposal.pattern_evidence.strip()
             or proposal.pattern_evidence not in email.body):
         return proposal, None
     row = agent.db.execute("""SELECT * FROM label_rules WHERE account=? AND kind=? AND active=1
+                            AND NOT EXISTS (SELECT 1 FROM skill_legacy_links l WHERE l.family='labels' AND l.legacy_key=CAST(label_rules.id AS TEXT))
                             AND scope IN ('*',?) ORDER BY (scope='*') ASC LIMIT 1""",
                            (account_for(agent, email.id), proposal.label_kind, email.sender.casefold())).fetchone()
     if row:
@@ -85,6 +92,10 @@ def register(agent, action_id, original_label, proposal, preference):
                      (action_id, original_label, proposal.label, proposal.label_kind,
                       preference["id"] if preference else None, basis))
     if preference:
+        if preference.get('labels'):
+            import json
+            agent.db.execute('INSERT OR REPLACE INTO label_targets VALUES(?,?,?)',
+                (action_id, json.dumps(preference['labels']), -preference['id']))
         agent.log(action_id, "label_preference_applied", {"rule_id": preference["id"],
                   "feedback_id": preference["feedback_id"], "kind": proposal.label_kind, "label": proposal.label})
 
@@ -96,7 +107,9 @@ def current_rule_valid(agent, action_id):
     from .core import Proposal
     action = agent.get(action_id)
     _, rule = choose(agent, Proposal(**action["proposal"]), agent.email_for(action_id))
-    return bool(rule and rule["id"] == review["preference_id"] and rule["label"] == review["current_label"])
+    from .multi_labels import targets
+    return bool(rule and rule["id"] == review["preference_id"] and rule["label"] == review["current_label"]
+                and rule.get('labels', [rule['label']]) == targets(agent, action_id, rule['label']))
 
 
 def submit(agent, action_id, revision, label, scope, mode="replace"):
@@ -117,6 +130,13 @@ def submit(agent, action_id, revision, label, scope, mode="replace"):
                 or p.action != "label" or decide(p).status != "ready"):
             raise ValueError("This label is not ready for review, or the displayed version changed")
         email = agent.email_for(action_id)
+        from .multi_labels import current, conflict
+        existing = current(agent, email.id)
+        wanted = set(existing) | {name}
+        if mode == 'replace' and review['current_label'] != name:
+            wanted.discard(review['current_label'])
+        if len(wanted) > 2:
+            return conflict(agent, action_id, [name], existing)
         if scope != "email" and (p.label_kind not in LABEL_KINDS or not p.pattern_evidence.strip()
                                   or p.pattern_evidence not in email.body):
             raise ValueError("This email has no supported, evidenced situation type. Review this email only.")
@@ -191,6 +211,18 @@ def run_review(agent, executor, candidate, check_only):
         def find(name):
             return next((x["id"] for x in labels if x["name"] == name and x.get("type") == "user"),None)
         old_id,new_id = find(old),find(new)
+        existing = sorted(x['name'] for x in labels if x.get('type') == 'user' and x['id'] in ids and x['name'].startswith('AI: '))
+        wanted = set(existing) | {new}
+        if feedback['mode'] == 'replace' and old != new:
+            wanted.discard(old)
+        if len(wanted) > 2:
+            from .multi_labels import conflict
+            with agent.db:
+                conflict(agent, action['id'], [new], existing)
+                agent.db.execute("UPDATE gmail_operations SET status='error',error='Choose two additional labels' WHERE id=?", (row['id'],))
+                agent.db.execute("UPDATE actions SET status='error' WHERE id=?", (action['id'],))
+                agent.db.execute("UPDATE label_feedback SET status='conflict' WHERE id=?", (feedback['id'],))
+            return True
         verified = new_id in ids and (feedback["mode"] == "add" or old == new or old_id not in ids)
         if not verified and not check_only:
             if old_id not in ids:
