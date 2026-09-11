@@ -32,7 +32,14 @@ class Application:
         self.stop = threading.Event()
         self.wakeup = threading.Event()
         self.lock = threading.Lock()
-        self.analysis_limit = 7
+        self.analysis_condition = threading.Condition()
+        self.analysis_inflight = 0
+        self.account_switching = False
+        # Keep the UI responsive without reproducing the seven-request burst
+        # that exhausted the selected free Groq model's shared token budget.
+        # Provider Retry-After remains authoritative when four requests still
+        # reach the minute limit together.
+        self.analysis_limit = 4
         self.analysis_threads = []
         self.label_review_lock = threading.Lock()
         from .gmail_connection import GmailConnection
@@ -93,11 +100,12 @@ class Application:
                        (email.id, json.dumps(asdict(email)), datetime.now(timezone.utc).isoformat()))
             if cursor.rowcount and gmail_binding is not None:
                 db.execute("""INSERT INTO gmail_bindings(email_id,account,message_id,label_id,label_name,initial_inbox,
-                           thread_id,initial_unread,source_role) VALUES(?,?,?,?,?,?,?,?,?)""",
+                           thread_id,initial_unread,source_role,has_attachments) VALUES(?,?,?,?,?,?,?,?,?,?)""",
                            (email.id, gmail_binding["account"], gmail_binding["message_id"],
                             gmail_binding.get("label_id", ""), gmail_binding.get("label_name", ""),
                             gmail_binding["initial_inbox"], gmail_binding.get("thread_id", ""),
-                            gmail_binding.get("initial_unread", 1), gmail_binding.get("source_role", "incoming")))
+                            gmail_binding.get("initial_unread", 1), gmail_binding.get("source_role", "incoming"),
+                            gmail_binding.get("has_attachments", 0)))
             if cursor.rowcount:
                 db.execute("UPDATE incoming_jobs SET processing_mode=? WHERE id=?", (processing_mode,email.id))
         self.wakeup.set()
@@ -112,7 +120,7 @@ class Application:
         for thread in self.analysis_threads:
             thread.start()
         while not self.stop.is_set():
-            if self.gmail_token:
+            if self.gmail_token and self.gmail_connection.snapshot()["status"] != "account_choice" and not self.account_switching:
                 with self.lock:
                     if self.run_gmail():
                         continue
@@ -125,6 +133,11 @@ class Application:
 
     def analysis_work(self):
         while not self.stop.is_set():
+            with self.analysis_condition:
+                if self.account_switching or self.gmail_connection.snapshot()["status"] == "account_choice":
+                    self.analysis_condition.wait(1)
+                    continue
+                self.analysis_inflight += 1
             now = datetime.now(timezone.utc)
             with self.connect() as db:
                 db.execute("BEGIN IMMEDIATE")
@@ -134,6 +147,9 @@ class Application:
                 if row:
                     db.execute("UPDATE incoming_jobs SET status='processing',attempts=attempts+1 WHERE id=?", (row["id"],))
             if row is None:
+                with self.analysis_condition:
+                    self.analysis_inflight -= 1
+                    self.analysis_condition.notify_all()
                 self.wakeup.wait(1)
                 self.wakeup.clear()
                 continue
@@ -165,10 +181,17 @@ class Application:
             with self.connect() as db:
                 attempts = db.execute("SELECT attempts FROM incoming_jobs WHERE id=?", (row["id"],)).fetchone()[0]
                 delay = min(3600, 60 * (2 ** min(attempts - 1, 6)))
-                retry_at = datetime.fromtimestamp(time.time() + delay, timezone.utc).isoformat() if status == "error" else ""
+                permanent_403 = any(
+                    attempt.get("http_status") == 403
+                    for call in diagnostics for attempt in call.get("http_attempts", []))
+                retry_at = (datetime.fromtimestamp(time.time() + delay, timezone.utc).isoformat()
+                            if status == "error" and not permanent_403 else "")
                 completed = datetime.now(timezone.utc).isoformat() if status == "done" else ""
                 db.execute("UPDATE incoming_jobs SET status=?,diagnostics=?,next_retry_at=?,completed_at=? WHERE id=?",
                            (status, json.dumps(diagnostics, ensure_ascii=False), retry_at, completed, row["id"]))
+            with self.analysis_condition:
+                self.analysis_inflight -= 1
+                self.analysis_condition.notify_all()
             if row["processing_mode"] == "label_review":
                 # Pace the explicit review batch on the free provider tier.
                 self.stop.wait(20)
@@ -207,6 +230,7 @@ class Application:
             for action in state["actions"]:
                 binding = bindings.get(action["email_id"])
                 action["thread_id"] = binding["thread_id"] if binding and binding["thread_id"] else action["email_id"]
+                action["account"] = binding["account"] if binding else "local"
                 action["initial_unread"] = bool(binding["initial_unread"]) if binding else True
                 action["reply"] = agent.get(action["id"])["reply"]
                 p = Proposal(**json.loads(action["proposal"]))
@@ -253,6 +277,10 @@ class Application:
             for family, table in [('labels', 'label_rules'), ('organization', 'organization_rules'), ('draft', 'draft_style_rules')]:
                 state[table] = [r for r in state[table] if not legacy_managed(agent, family, r['id'])]
             state['attention_rules'] = [r for r in state['attention_rules'] if not legacy_managed(agent, 'attention', json.dumps([r['account'], r['kind'], r['scope']]))]
+            connection = self.gmail_connection.snapshot()
+            from .superpowers import state as superpower_state
+            verified_account = connection.get("account") if connection.get("status") == "connected" else None
+            state["superpowers"] = superpower_state(agent, verified_account)
         finally:
             agent.close()
         with self.connect() as db:
@@ -264,10 +292,10 @@ class Application:
             for message in state["gmail_messages"]:
                 message["managed"] = message["role"] == "draft" and message["wajo_key"] in managed_drafts
         from .gmail_sync import public as sync_public
-        state["gmail_sync"] = sync_public(self, self.gmail_connection.snapshot().get("account"))
+        state["gmail_sync"] = sync_public(self, connection.get("account"))
         state.update(mode="scripted" if self.demo else "groq", csrf=self.csrf,
                      patterns=sorted(PATTERNS), gmail_enabled=bool(self.gmail_token),
-                     gmail_connection=self.gmail_connection.snapshot())
+                     gmail_connection=connection)
         from .label_preferences import LABEL_KINDS
         state["label_kinds"] = LABEL_KINDS
         from .attention import ATTENTION_CUES
@@ -284,6 +312,8 @@ class Application:
                              "/api/gmail/sync": "sync"}
         if route in connection_routes:
             return self.gmail_connection.start(connection_routes[route], data)
+        if route == "/api/gmail/account-choice":
+            return self.gmail_connection.resolve_account_switch(data)
         if route == "/api/ingest":
             return self.enqueue(data)
         if route in {"/api/gmail/import-pause", "/api/gmail/import-resume", "/api/gmail/sync-toggle"}:
@@ -339,6 +369,28 @@ class Application:
                 if route == '/api/skills/manage':
                     from .skills import manage
                     return manage(agent, data)
+                if route.startswith('/api/superpowers/'):
+                    connection = self.gmail_connection.snapshot()
+                    account = connection.get('account') if connection.get('status') == 'connected' else None
+                    if not account:
+                        raise ValueError('Connect and verify Gmail before changing Superpowers')
+                    from . import superpowers
+                    if route == '/api/superpowers/global':
+                        return superpowers.set_global(agent, data, account)
+                    if route == '/api/superpowers/seen':
+                        return superpowers.mark_seen(agent, data.get('id'), account)
+                    if route in {'/api/superpowers/disable', '/api/superpowers/improve'}:
+                        skill = superpowers.validate_skill_request(agent, data, account)
+                        with agent.db:
+                            superpowers.revoke_for_skill(agent, skill['id'], skill['revision'],
+                                'Auto-send disabled' if route.endswith('disable') else 'Draft Skill improvement requested',
+                                current_account=account)
+                            if route.endswith('improve'):
+                                agent.db.execute("UPDATE skills SET status='suggested',revision=revision+1 WHERE id=?",
+                                                 (skill['id'],))
+                                agent.log(skill['source_id'], 'skill_improvement_requested', {'skill_id': skill['id']})
+                        return {'saved': True, 'skill_id': skill['id']}
+                    raise ValueError('Unknown Superpowers operation')
                 if route == '/api/labels/resolve':
                     row = agent.get(data.get('action_id'))
                     if row['transport'] == 'gmail' and not self.gmail_token:

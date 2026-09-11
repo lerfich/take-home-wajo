@@ -20,7 +20,8 @@ class GmailConnection:
         self.info = {"status": "unchecked" if self.token_path.is_file() else "disconnected",
                      "account": None, "access": None, "label_ready": False,
                      "checked_at": None, "operation": None, "error": None,
-                     "last_sync": None, "last_poll": None, "labels": [], "auth_url": None}
+                     "last_sync": None, "last_poll": None, "labels": [], "auth_url": None,
+                     "previous_account": None, "switch_counts": None}
 
     def snapshot(self):
         with self.lock:
@@ -55,12 +56,14 @@ class GmailConnection:
                 if legacy and (type(data["limit"]) is not int or not 1 <= data["limit"] <= 50):
                     raise ValueError("Choose between 1 and 50 messages per sync.")
                 if modern:
-                    from .gmail_sync import HISTORY_MODES
+                    from .gmail_sync import HISTORY_MODES, MAX_HISTORY_LABELS
                     if data["history_mode"] not in HISTORY_MODES:
                         raise ValueError("Choose how much existing mail to import.")
                     if (type(data["label_ids"]) is not list
                             or any(type(value) is not str for value in data["label_ids"])):
                         raise ValueError("Choose Gmail labels from the displayed list.")
+                    if len(data["label_ids"]) > MAX_HISTORY_LABELS:
+                        raise ValueError(f"Choose no more than {MAX_HISTORY_LABELS} Gmail labels.")
                 if self.app.gmail_token and self.info["access"] != "manage":
                     raise ValueError("Reconnect Gmail to grant access for live mail actions.")
             elif operation != "check" or data:
@@ -72,19 +75,84 @@ class GmailConnection:
 
     def _inspect(self, api):
         from .gmail import MANAGE_SCOPE
+        from .gmail_sync import active_account, local_data_counts, set_active_account
         profile = api.users().getProfile(userId="me").execute()
         account = profile["emailAddress"].casefold()
         labels = api.users().labels().list(userId="me").execute().get("labels", [])
         # Expose only the access profile, never credentials or raw Google errors.
         scopes = json.loads(self.token_path.read_text()).get("scopes", [])
+        with self.app.connect() as db:
+            previous = active_account(db)
+            if previous is None:
+                set_active_account(db, account)
+            counts = local_data_counts(db) if previous and previous != account else None
+        status = "account_choice" if counts is not None else "connected"
         with self.lock:
-            self.info.update(status="connected", account=account,
+            self.info.update(status=status, account=account,
                              access="manage" if MANAGE_SCOPE in scopes else "readonly",
                              label_ready=any(label.get("name") == "Wajo-Test" for label in labels),
                              labels=[{"id": x.get("id", ""), "name": x.get("name", ""),
                                       "type": x.get("type", "system")} for x in labels
                                      if x.get("id") and x.get("name")],
-                             checked_at=datetime.now(timezone.utc).isoformat())
+                             checked_at=datetime.now(timezone.utc).isoformat(),
+                             previous_account=previous if counts is not None else None,
+                             switch_counts=counts)
+
+    def resolve_account_switch(self, data):
+        if set(data) != {"account", "previous_account", "choice"}:
+            raise ValueError("Choose how to handle the previous account data.")
+        if data["choice"] not in {"keep", "fresh"}:
+            raise ValueError("Choose Keep previous data or Start fresh.")
+        with self.lock:
+            if self.info["operation"]:
+                raise ValueError("A Gmail connection or sync is already running. Wait for it to finish.")
+            if (self.info["status"] != "account_choice" or data["account"] != self.info["account"]
+                    or data["previous_account"] != self.info["previous_account"]):
+                raise ValueError("The connected account changed. Review the choice again.")
+            account = self.info["account"]
+            expected_counts = self.info["switch_counts"]
+            self.info["operation"] = "account_switch"
+        from .gmail_sync import clear_local_data, local_data_counts, set_active_account
+        try:
+            with self.app.analysis_condition:
+                self.app.account_switching = True
+                while self.app.analysis_inflight:
+                    self.app.analysis_condition.wait(1)
+            with self.app.lock:
+                with self.app.connect() as db:
+                    before = local_data_counts(db)
+                    if before != expected_counts:
+                        with self.lock:
+                            self.info["switch_counts"] = before
+                        raise ValueError("Local data changed. Review the updated deletion counts and confirm again.")
+                    previous = data["previous_account"]
+                    if data["choice"] == "fresh":
+                        clear_local_data(db)
+                    else:
+                        db.execute("""UPDATE incoming_jobs SET status='paused_account' WHERE id IN
+                            (SELECT j.id FROM incoming_jobs j JOIN gmail_bindings b ON b.email_id=j.id
+                             WHERE b.account=? AND j.status='queued')""", (previous,))
+                        db.execute("""UPDATE gmail_operations SET status='account_paused' WHERE status='queued'
+                            AND action_id IN (SELECT a.id FROM actions a JOIN gmail_bindings b ON b.email_id=a.email_id
+                                              WHERE b.account=?)""", (previous,))
+                        db.execute("""UPDATE incoming_jobs SET status='queued' WHERE id IN
+                            (SELECT j.id FROM incoming_jobs j JOIN gmail_bindings b ON b.email_id=j.id
+                             WHERE b.account=? AND j.status='paused_account')""", (account,))
+                        db.execute("""UPDATE gmail_operations SET status='queued' WHERE status='account_paused'
+                            AND action_id IN (SELECT a.id FROM actions a JOIN gmail_bindings b ON b.email_id=a.email_id
+                                              WHERE b.account=?)""", (account,))
+                    set_active_account(db, account)
+            with self.lock:
+                self.info.update(status="connected", previous_account=None, switch_counts=None,
+                                 last_sync=None, last_poll=None, error=None)
+            return {"choice": data["choice"], "removed": before if data["choice"] == "fresh" else None}
+        finally:
+            with self.app.analysis_condition:
+                self.app.account_switching = False
+                self.app.analysis_condition.notify_all()
+            with self.lock:
+                self.info["operation"] = None
+            self.app.wakeup.set()
 
     def _run(self, operation, data):
         from .gmail import authorize, service

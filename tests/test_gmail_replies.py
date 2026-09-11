@@ -16,6 +16,11 @@ class Fixed:
     def propose(self, email): return self.p
 
 
+class Styled(Fixed):
+    def rewrite_draft(self, email, proposal, rule):
+        return proposal.text
+
+
 class ReplyTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -233,3 +238,68 @@ class ReplyTests(unittest.TestCase):
         self.assertEqual(self.agent.get(action["id"])["status"],"error")
         self.users.drafts.return_value.update.assert_not_called()
         self.users.drafts.return_value.send.assert_not_called()
+
+    def test_revoked_manual_send_and_automatic_unknown_preserve_delivery_safety(self):
+        from mail_agent import superpowers
+        proposal = Proposal("send", "Routine support acknowledgement", text="Thanks, received.",
+            recipient="sender@example.test", label_kind="support_response",
+            pattern_evidence="Please confirm", sensitive=False, requires_action=False,
+            has_deadline=False, significant_change=False)
+        self.agent.proposer = Styled(proposal)
+        source = self.agent.ingest(Email("skill-source", "sender@example.test", "Source", "Please confirm this update"))
+        with self.agent.db:
+            skill_id = self.agent.db.execute("""INSERT INTO skills
+                (family,account,source_id,status,revision,config,origin) VALUES('draft',?,?, 'active',2,?,?)""",
+                ("owner@example.test", source["id"], json.dumps({"scope": "similar", "kind": "support_response",
+                 "contains": "", "excludes": "", "length": "brief", "greeting": "omit", "signoff": "omit"}),
+                 "reply-integration")).lastrowid
+
+        def incoming(suffix):
+            email = Email("gmail:owner@example.test:" + suffix, "sender@example.test", "Synthetic",
+                          "Please confirm receipt.")
+            self.app.enqueue(dict(sender=email.sender, subject=email.subject, body=email.body), email.id,
+                dict(self.binding, message_id="original", thread_id="thread", initial_unread=1,
+                     source_role="incoming"))
+            row = self.agent.ingest(email)
+            self.assertEqual(self.agent.db.execute(
+                "SELECT skill_id FROM superpower_applications WHERE action_id=?", (row["id"],)).fetchone()[0],
+                skill_id)
+            run_one(self.path, self.executor)
+            return self.agent.get(row["id"])
+
+        revoked = incoming("revoked-manual")
+        superpowers.revoke_for_action(self.agent, revoked["id"], "Draft changed")
+        self.agent.approve(revoked["id"], revoked["revision"]); run_one(self.path, self.executor)
+        self.assertEqual(self.agent.get(revoked["id"])["status"], "executed")
+        self.assertTrue(self.agent.get(revoked["id"])["reply"]["sent_id"])
+
+        first = incoming("manual-one")
+        self.agent.approve(first["id"], first["revision"]); run_one(self.path, self.executor)
+        second = incoming("manual-two")
+        self.agent.approve(second["id"], second["revision"]); run_one(self.path, self.executor)
+        self.assertEqual(superpowers.state(self.agent, "owner@example.test")["rules"][0]["count"], 2)
+        superpowers.set_global(self.agent, {"enabled": True, "reviewed_rules": True}, "owner@example.test")
+
+        automatic = incoming("automatic")
+        self.assertEqual(automatic["status"], "executing")
+        operation = self.agent.db.execute("SELECT * FROM gmail_operations WHERE action_id=? AND operation LIKE 'send:%'",
+                                          (automatic["id"],)).fetchone()
+        self.assertTrue(operation["automatic"])
+        run_one(self.path, self.executor)
+        self.assertEqual(self.agent.get(automatic["id"])["status"], "executed")
+        journal = superpowers.state(self.agent, "owner@example.test")["autosent"]
+        self.assertEqual((len(journal), journal[0]["delivery_status"], journal[0]["seen"]), (1, "delivered", False))
+
+        uncertain = incoming("automatic-unknown")
+        sends_before = self.users.drafts.return_value.send.call_count
+        self.users.drafts.return_value.send.side_effect = TimeoutError("no response")
+        run_one(self.path, self.executor)
+        operation = self.agent.db.execute(
+            "SELECT * FROM gmail_operations WHERE action_id=? AND operation LIKE 'send:%'",
+            (uncertain["id"],)).fetchone()
+        self.assertEqual(self.agent.get(uncertain["id"])["status"], "unknown")
+        self.assertEqual(superpowers.state(self.agent, "owner@example.test")["autosent"][0]["delivery_status"],
+                         "unknown")
+        run_one(self.path, self.executor, operation["id"], True)
+        self.assertFalse(run_one(self.path, self.executor))
+        self.assertEqual(self.users.drafts.return_value.send.call_count, sends_before + 1)

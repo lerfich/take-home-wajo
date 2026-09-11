@@ -1,4 +1,4 @@
-"""Reviewed, account-bound skills. This module never executes mail operations.
+"""Reviewed portable skills. This module never executes mail operations.
 
 The deterministic matcher is shared by preview and live preference selection.
 Free-text refinements are explicitly literal conditions, not unverified LLM rules.
@@ -172,8 +172,6 @@ def match(agent, skill, email, proposal, exclusions=()):
     from .core import learnable
     from .attention import cue_for
     c = skill['config']; family = skill['family']
-    if account_for(agent, email.id) != skill['account']:
-        return 'no-match', 'This email belongs to another account.'
     source = agent.email_for(skill['source_id'])
     if c['scope'] == 'sender' and email.sender.casefold() != source.sender.casefold():
         return 'no-match', 'The sender is outside this skill.'
@@ -198,7 +196,7 @@ def match(agent, skill, email, proposal, exclusions=()):
         return 'no-match', 'This skill only adjusts an eligible label action.'
     if family == 'draft' and proposal.action not in {'draft', 'send'}:
         return 'no-match', 'There is no draft to style.'
-    return 'match', 'The evidenced meaning, account and scope match.'
+    return 'match', 'The evidenced meaning and scope match.'
 
 
 def choose(agent, family, email, proposal, *, candidate=None, candidate_exclusions=()):
@@ -357,7 +355,7 @@ def preview(agent, data):
     candidates = [skill['source_id']]
     for row in rows:
         email = agent.email_for(row['id'])
-        if row['id'] == skill['source_id'] or account_for(agent, email.id) != skill['account']:
+        if row['id'] == skill['source_id']:
             continue
         outcome, _ = match(agent, skill, email, Proposal(**agent.get(row['id'])['proposal']))
         if len(groups[outcome]) < 2:
@@ -408,7 +406,7 @@ def preview(agent, data):
     return dict(token=token, examples=examples, title=title(skill), config=skill['config'], family=skill['family'],
         cue=ATTENTION_CUES.get(skill['config']['kind'], LABEL_KINDS.get(skill['config']['kind'], skill['config']['kind'])),
         scope='All senders' if skill['config']['scope'] == 'similar' else agent.email_for(skill['source_id']).sender,
-        note='Real processed examples from this account; saved classifications, no model calls or mail changes. Missing contrasts are not invented. This is not an evaluation.')
+        note='Real processed examples across saved accounts; saved classifications, no model calls or mail changes. Missing contrasts are not invented. This is not an evaluation.')
 
 
 def save(agent, data):
@@ -421,6 +419,9 @@ def save(agent, data):
         if type(reviewed) is not list or any(type(x) is not int for x in reviewed) or set(reviewed) != {e['id'] for e in result['examples']}:
             raise ValueError('Review every displayed example before activation')
         skill = get(agent, data['skill_id'])
+        if skill['family'] == 'draft':
+            from .superpowers import revoke_for_skill
+            revoke_for_skill(agent, skill['id'], skill['revision'], 'Draft Skill changed')
         agent.db.execute("UPDATE skills SET config=?,status='active',revision=revision+1 WHERE id=?",
                          (json.dumps(result['config']), skill['id']))
         agent.db.execute('DELETE FROM skill_examples WHERE skill_id=?', (skill['id'],))
@@ -440,6 +441,9 @@ def manage(agent, data):
         if data.get('revision') != skill['revision']:
             raise ValueError('The skill changed. Refresh before managing it.')
         if operation == 'delete':
+            if skill['family'] == 'draft':
+                from .superpowers import revoke_for_skill
+                revoke_for_skill(agent, skill['id'], skill['revision'], 'Draft Skill deleted')
             agent.db.execute('DELETE FROM skill_examples WHERE skill_id=?', (skill['id'],))
             agent.db.execute('DELETE FROM skills WHERE id=?', (skill['id'],))
             # Remove the source feedback from active training, retaining the
@@ -454,6 +458,9 @@ def manage(agent, data):
             expected = 'active' if operation == 'pause' else 'paused'
             if skill['status'] != expected:
                 raise ValueError('Only a reviewed skill can be paused or resumed')
+            if skill['family'] == 'draft' and operation == 'pause':
+                from .superpowers import revoke_for_skill
+                revoke_for_skill(agent, skill['id'], skill['revision'], 'Draft Skill paused')
             agent.db.execute('UPDATE skills SET status=?,revision=revision+1 WHERE id=?',
                 ('paused' if operation == 'pause' else 'active', skill['id']))
             agent.log(skill['source_id'], 'skill_' + operation, {'skill_id': skill['id']})

@@ -199,6 +199,12 @@ def run_operation(agent, executor, operation, check_only):
             if p.action not in {"send", "draft"} or decide(p).status not in {"ready", "pending"}:
                 raise ScopeError("Policy blocks reply execution")
             validate_reply(reply["recipient"], reply["subject"], reply["text"])
+            if kind == "send" and row.get("automatic"):
+                from .superpowers import validate_automatic_send
+                try:
+                    validate_automatic_send(agent, action, reply, binding)
+                except ValueError as exc:
+                    raise ScopeError(str(exc)) from exc
             if kind == "send" and (not row["approved"] or not reply["approved_hash"] or
                     hashlib.sha256(reply["raw"].encode()).hexdigest() != reply["approved_hash"]):
                 raise ScopeError("Exact reply approval is missing or invalid")
@@ -273,10 +279,19 @@ def run_operation(agent, executor, operation, check_only):
             if kind == "send":
                 agent.db.execute("INSERT INTO sent VALUES(?,?,?,?,?)",
                     (action["id"], action["email_id"], reply["recipient"], reply["subject"], reply["text"]))
+                from .superpowers import record_successful_send
+                if row.get("automatic"):
+                    record_successful_send(agent, action, reply, found, True)
+                elif agent.db.execute("SELECT 1 FROM superpower_applications WHERE action_id=? AND revoked_at=''",
+                                      (action["id"],)).fetchone():
+                    record_successful_send(agent, action, reply, found, False)
                 agent.log(action["id"], "notification", {"action": "send", "transport": "gmail",
                     "recipient": reply["recipient"], "subject": reply["subject"], "text": reply["text"], "sent_id": found})
             agent.log(action["id"], "gmail_draft_saved" if kind == "draft" else "executed",
                       {"action": kind, "revision": row["revision"], "transport": "gmail", "check_only": check_only})
+            if kind == "draft" and not check_only:
+                from .superpowers import maybe_queue_auto_send
+                maybe_queue_auto_send(agent, action["id"])
         return True
     except Exception as exc:
         agent.db.rollback()
@@ -288,4 +303,7 @@ def run_operation(agent, executor, operation, check_only):
             agent.db.execute("UPDATE gmail_operations SET status=?,error=? WHERE id=?", (status, reason, row["id"]))
             agent.db.execute("UPDATE actions SET status=?,reason=? WHERE id=?", (status, reason, row["action_id"]))
             agent.log(row["action_id"], "gmail_" + status, {"operation": row["operation"], "reason": reason})
+            if row.get("automatic"):
+                from .superpowers import record_failed_auto
+                record_failed_auto(agent, row["action_id"], status)
         return True

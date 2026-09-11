@@ -8,6 +8,7 @@ HISTORY_MODES = {"last30": 30, "last100": 100, "all": None, "new": 0}
 PAGE_SIZE = 25
 INCOMPLETE_RETRY = timedelta(hours=1)
 POLL_INTERVAL = timedelta(minutes=1)
+MAX_HISTORY_LABELS = 10
 
 
 def now_iso(now=None):
@@ -32,10 +33,15 @@ def initialize(db):
         error TEXT NOT NULL DEFAULT '', attempts INTEGER NOT NULL DEFAULT 0,
         retry_at TEXT NOT NULL DEFAULT '', fetched_at TEXT NOT NULL DEFAULT '',
         PRIMARY KEY(account,message_id));
+      CREATE TABLE IF NOT EXISTS gmail_account_state (
+        singleton INTEGER PRIMARY KEY CHECK(singleton=1), active_account TEXT NOT NULL,
+        updated_at TEXT NOT NULL);
     """)
     columns = {r["name"] for r in db.execute("PRAGMA table_info(gmail_message_cache)")}
     if "wajo_key" not in columns:
         db.execute("ALTER TABLE gmail_message_cache ADD COLUMN wajo_key TEXT NOT NULL DEFAULT ''")
+    if "history_labels" not in columns:
+        db.execute("ALTER TABLE gmail_message_cache ADD COLUMN history_labels TEXT NOT NULL DEFAULT '[]'")
 
 
 def public_settings(db, account=None):
@@ -51,6 +57,69 @@ def public_settings(db, account=None):
     result.pop("history_id", None)
     result.pop("page_token", None)
     return result
+
+
+def active_account(db):
+    row = db.execute("SELECT active_account FROM gmail_account_state WHERE singleton=1").fetchone()
+    if row:
+        return row["active_account"]
+    legacy = db.execute("SELECT account FROM gmail_sync_settings ORDER BY updated_at DESC LIMIT 1").fetchone()
+    if legacy:
+        return legacy["account"]
+    # Databases created before the resumable sync settings still have durable
+    # Gmail bindings.  They are enough to require an explicit account choice;
+    # silently adopting a newly connected account could mix two mailboxes.
+    binding = db.execute("SELECT account FROM gmail_bindings ORDER BY rowid DESC LIMIT 1").fetchone()
+    return binding["account"] if binding else None
+
+
+def set_active_account(db, account):
+    db.execute("""INSERT INTO gmail_account_state(singleton,active_account,updated_at) VALUES(1,?,?)
+                  ON CONFLICT(singleton) DO UPDATE SET active_account=excluded.active_account,
+                  updated_at=excluded.updated_at""", (account, now_iso()))
+
+
+def local_data_counts(db):
+    groups = {
+        "emails": ("emails",),
+        "actions": ("actions",),
+        "feedback": ("preference_feedback", "label_feedback", "attention_feedback",
+                     "organization_feedback", "draft_style_feedback"),
+        "skills": ("skills",),
+        "drafts_and_sent": ("drafts", "sent", "gmail_replies"),
+        "labels_and_rules": ("labels", "archive_rules", "label_rules", "attention_rules",
+                             "organization_rules", "draft_style_rules"),
+        "jobs_and_operations": ("incoming_jobs", "gmail_operations", "gmail_message_cache"),
+        "gmail_state": ("gmail_bindings", "gmail_sync_settings"),
+        "superpowers": ("autosent_journal", "superpower_confirmations", "superpower_revocations",
+                        "superpower_applications", "superpower_settings"),
+        "supporting_state": ("label_conflicts", "label_targets", "skill_examples",
+                             "skill_legacy_links", "skill_feedback_seen", "skill_draft_seen",
+                             "draft_style_applications", "draft_edit_versions", "email_organization",
+                             "attention_items", "label_reviews"),
+        "audit": ("audit",),
+    }
+    result = {name: sum(db.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+                        for table in tables) for name, tables in groups.items()}
+    result["total_records"] = sum(result.values())
+    return result
+
+
+def clear_local_data(db):
+    """Clear Wajo's local mail-derived state. This never calls or mutates Gmail."""
+    tables = (
+        "autosent_journal", "superpower_confirmations", "superpower_revocations",
+        "superpower_applications", "superpower_settings",
+        "gmail_operations", "gmail_replies", "label_conflicts", "label_targets",
+        "skill_examples", "skill_legacy_links", "skill_feedback_seen", "skill_draft_seen",
+        "skills", "draft_style_applications", "draft_edit_versions", "draft_style_rules",
+        "draft_style_feedback", "email_organization", "organization_rules", "organization_feedback",
+        "attention_items", "attention_rules", "attention_feedback", "label_rules", "label_feedback",
+        "label_reviews", "preference_feedback", "archive_rules", "sent", "drafts", "labels",
+        "audit", "gmail_bindings", "actions", "emails", "incoming_jobs",
+        "gmail_message_cache", "gmail_sync_settings")
+    for table in tables:
+        db.execute(f"DELETE FROM {table}")
 
 
 def progress(row):
@@ -70,6 +139,8 @@ def configure(api, app, data):
         raise ValueError("Choose how much existing mail to import.")
     if type(data["label_ids"]) is not list or any(type(x) is not str for x in data["label_ids"]):
         raise ValueError("Choose Gmail labels from the displayed list.")
+    if len(data["label_ids"]) > MAX_HISTORY_LABELS:
+        raise ValueError(f"Choose no more than {MAX_HISTORY_LABELS} Gmail labels.")
     profile = api.users().getProfile(userId="me").execute()
     account = profile["emailAddress"].casefold()
     if account != data["account"]:
@@ -81,6 +152,9 @@ def configure(api, app, data):
     timestamp = now_iso()
     signature = json.dumps(selected)
     with app.connect() as db:
+        if active_account(db) not in {None, account}:
+            raise ValueError("Choose how to handle the previous account before syncing.")
+        set_active_account(db, account)
         old = db.execute("SELECT * FROM gmail_sync_settings WHERE account=?", (account,)).fetchone()
         same = old and old["history_mode"] == data["history_mode"] and old["history_labels"] == signature
         if same:
@@ -177,15 +251,16 @@ def defer_poll(app, account, now=None):
                    ((timestamp + POLL_INTERVAL).isoformat(), timestamp.isoformat(), account))
 
 
-def _cache_incomplete(app, account, item, now=None):
+def _cache_incomplete(app, account, item, now=None, history_labels=()):
     timestamp = now or datetime.now(timezone.utc)
     retry = (timestamp + INCOMPLETE_RETRY).isoformat()
     with app.connect() as db:
-        db.execute("""INSERT INTO gmail_message_cache(account,message_id,thread_id,state,error,attempts,retry_at)
-                      VALUES(?,?,?,'incomplete','Message could not be fully loaded.',1,?)
+        db.execute("""INSERT INTO gmail_message_cache(account,message_id,thread_id,state,error,attempts,retry_at,history_labels)
+                      VALUES(?,?,?,'incomplete','Message could not be fully loaded.',1,?,?)
                       ON CONFLICT(account,message_id) DO UPDATE SET state='incomplete',
-                      error='Message could not be fully loaded.',attempts=attempts+1,retry_at=excluded.retry_at""",
-                   (account, item["id"], item.get("threadId", ""), retry))
+                      error='Message could not be fully loaded.',attempts=attempts+1,retry_at=excluded.retry_at,
+                      history_labels=excluded.history_labels""",
+                   (account, item["id"], item.get("threadId", ""), retry, json.dumps(list(history_labels))))
 
 
 def _cache_context(app, account, message, fields, role, unread):
@@ -215,6 +290,9 @@ def fetch_one(api, app, account, item, selected_history_labels=(), now=None):
         message.setdefault("id", item["id"])
         ids = set(message.get("labelIds", []))
         if selected_history_labels and not ids.intersection(selected_history_labels):
+            with app.connect() as db:
+                db.execute("DELETE FROM gmail_message_cache WHERE account=? AND message_id=? AND state='incomplete'",
+                           (account, item["id"]))
             return "skipped"
         if ids.intersection({"SPAM", "TRASH"}):
             role = "excluded"
@@ -233,14 +311,16 @@ def fetch_one(api, app, account, item, selected_history_labels=(), now=None):
         unread = "UNREAD" in ids
         if role == "incoming":
             event_id = f"gmail:{account}:{item['id']}"
+            from .gmail import has_attachments
             binding = {"account": account, "message_id": item["id"], "label_id": "", "label_name": "",
                        "initial_inbox": int("INBOX" in ids), "thread_id": message.get("threadId", ""),
-                       "initial_unread": int(unread), "source_role": role}
+                       "initial_unread": int(unread), "source_role": role,
+                       "has_attachments": int(has_attachments(message.get("payload", {})))}
             app.enqueue(fields, event_id=event_id, gmail_binding=binding)
         _cache_context(app, account, message, fields, role, unread)
         return "imported" if role == "incoming" else "context"
     except Exception:
-        _cache_incomplete(app, account, item, now)
+        _cache_incomplete(app, account, item, now, selected_history_labels)
         return "incomplete"
 
 
@@ -292,12 +372,13 @@ def run_history(api, app, account, now=None):
 def retry_incomplete(api, app, account, now=None):
     timestamp = now or datetime.now(timezone.utc)
     with app.connect() as db:
-        rows = list(db.execute("""SELECT message_id,thread_id FROM gmail_message_cache
+        rows = list(db.execute("""SELECT message_id,thread_id,history_labels FROM gmail_message_cache
                     WHERE account=? AND state='incomplete' AND retry_at<=? ORDER BY retry_at""",
                                (account, timestamp.isoformat())))
     retried = 0
     for row in rows:
-        if fetch_one(api, app, account, {"id": row["message_id"], "threadId": row["thread_id"]}, now=timestamp) != "incomplete":
+        labels = json.loads(row["history_labels"])
+        if fetch_one(api, app, account, {"id": row["message_id"], "threadId": row["thread_id"]}, labels, timestamp) != "incomplete":
             retried += 1
     return retried
 

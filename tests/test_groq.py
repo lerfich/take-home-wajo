@@ -87,6 +87,15 @@ class GroqTests(unittest.TestCase):
             self.assertIn("tokens per minute", self.provider.http_attempts[0]["body"])
             self.assertEqual(self.provider.http_attempts[1]["status"], "ok")
 
+    def test_bare_403_is_not_retried(self):
+        denied = HTTPError("https://example.test", 403, "Denied", {},
+                           io.BytesIO(b'{"error":{"message":"Access denied"}}'))
+        with patch("mail_agent.groq_provider.build_opener") as opener:
+            opener.return_value.open.side_effect = denied
+            with self.assertRaisesRegex(ProviderError, "Groq HTTP 403"):
+                self.provider.models()
+            self.assertEqual(opener.return_value.open.call_count, 1)
+
     def test_retry_is_bounded_and_long_retry_after_is_respected(self):
         for retry_after, count in (("0", 3), ("3600", 1)):
             self.provider.http_attempts.clear()

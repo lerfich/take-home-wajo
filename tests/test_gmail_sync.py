@@ -111,6 +111,25 @@ class GmailSyncTests(unittest.TestCase):
         self.assertEqual(self.app.state()["gmail_messages"][0]["state"], "complete")
         self.assertEqual(len(self.app.state()["jobs"]), 1)
 
+    def test_incomplete_history_retry_preserves_original_label_filter_after_restart(self):
+        start = datetime(2026, 9, 11, 12, tzinfo=timezone.utc)
+        self.config(labels=["work"])
+        self.users.messages.return_value.list.return_value.execute.return_value = {
+            "messages": [{"id": "temporarily-broken", "threadId": "thread"}]}
+        self.users.messages.return_value.get.return_value.execute.side_effect = RuntimeError("private")
+        self.assertFalse(history_step(self.api, self.app, "owner@example.test", start))
+
+        restarted = Application(self.app.db_path, recover_jobs=False,
+            connection_token=Path(self.directory.name) / "missing-token.json",
+            gmail_credentials=Path(self.directory.name) / "missing-client.json")
+        self.users.messages.return_value.get.return_value.execute.side_effect = None
+        self.users.messages.return_value.get.return_value.execute.return_value = message(
+            "temporarily-broken", ["INBOX", "UNREAD", "other"])
+        self.assertEqual(retry_incomplete(self.api, restarted, "owner@example.test",
+                                         start + timedelta(hours=1)), 1)
+        self.assertEqual(restarted.state()["jobs"], [])
+        self.assertEqual(restarted.state()["gmail_messages"], [])
+
     def test_new_mail_ignores_history_label_filter_and_advances_cursor(self):
         self.config(mode="new", labels=["work"])
         self.users.history.return_value.list.return_value.execute.return_value = {
@@ -122,6 +141,25 @@ class GmailSyncTests(unittest.TestCase):
         self.assertEqual(len(self.app.state()["jobs"]), 1)
         with self.app.connect() as db:
             self.assertEqual(db.execute("SELECT history_id FROM gmail_sync_settings").fetchone()[0], "12")
+
+    def test_history_labels_are_or_after_last_30_selection_and_attachments_are_recorded(self):
+        self.config(labels=["work", "other"])
+        self.users.messages.return_value.list.return_value.execute.return_value = {
+            "messages": [{"id": "work-mail"}, {"id": "other-mail"}, {"id": "none"}]}
+        attached = message("work-mail", ["INBOX", "UNREAD", "work"])
+        attached["payload"] = {"mimeType": "multipart/mixed", "headers": attached["payload"]["headers"],
+            "parts": [{"mimeType": "text/plain", "body": {"data": base64.urlsafe_b64encode(b"Body").decode()}},
+                      {"mimeType": "application/pdf", "filename": "terms.pdf",
+                       "body": {"attachmentId": "private"}}]}
+        self.users.messages.return_value.get.return_value.execute.side_effect = [
+            attached, message("other-mail", ["INBOX", "UNREAD", "other"]),
+            message("none", ["INBOX", "UNREAD"])]
+        history_step(self.api, self.app, "owner@example.test")
+        self.users.messages.return_value.list.assert_called_with(userId="me", maxResults=25)
+        with self.app.connect() as db:
+            bindings = {row["message_id"]: row for row in db.execute("SELECT * FROM gmail_bindings")}
+        self.assertEqual(set(bindings), {"work-mail", "other-mail"})
+        self.assertTrue(bindings["work-mail"]["has_attachments"])
 
     def test_sent_and_user_drafts_are_context_not_agent_jobs(self):
         self.users.messages.return_value.get.return_value.execute.side_effect = [
@@ -276,21 +314,21 @@ class GmailSyncTests(unittest.TestCase):
         finally:
             agent.close()
 
-    def test_analysis_pool_never_exceeds_seven_messages(self):
+    def test_analysis_pool_never_exceeds_four_messages(self):
         class Blocking:
             def __init__(self):
                 self.calls = []
                 self.active = 0
                 self.maximum = 0
                 self.lock = threading.Lock()
-                self.seven = threading.Event()
+                self.four = threading.Event()
                 self.release = threading.Event()
             def propose(self, email):
                 with self.lock:
                     self.active += 1
                     self.maximum = max(self.maximum, self.active)
-                    if self.active == 7:
-                        self.seven.set()
+                    if self.active == 4:
+                        self.four.set()
                 self.release.wait(3)
                 with self.lock:
                     self.active -= 1
@@ -303,9 +341,9 @@ class GmailSyncTests(unittest.TestCase):
         with patch("mail_agent.groq_provider.GroqProposer.from_env", return_value=provider):
             self.app.worker.start()
             try:
-                self.assertTrue(provider.seven.wait(3))
+                self.assertTrue(provider.four.wait(3))
                 time.sleep(.1)
-                self.assertEqual(provider.maximum, 7)
+                self.assertEqual(provider.maximum, 4)
             finally:
                 provider.release.set()
                 deadline = time.monotonic() + 4
@@ -315,4 +353,4 @@ class GmailSyncTests(unittest.TestCase):
                     time.sleep(.05)
                 self.app.stop.set(); self.app.wakeup.set(); self.app.worker.join(4)
         self.assertTrue(all(x["status"] == "done" for x in self.app.state()["jobs"]))
-        self.assertEqual(provider.maximum, 7)
+        self.assertEqual(provider.maximum, 4)

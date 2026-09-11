@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch, ANY
 
 from mail_agent.gmail import MANAGE_SCOPE, READONLY_SCOPE
+from mail_agent.core import Email
 from mail_agent.web import Application
 
 
@@ -110,10 +111,129 @@ class GmailConnectionTests(unittest.TestCase):
         self.check()
         with patch("mail_agent.gmail.service") as service:
             for changes in [{"history_mode": "week"}, {"label_ids": "work"},
-                            {"label_ids": [1]}, {"extra": True}]:
+                            {"label_ids": [1]}, {"label_ids": [str(x) for x in range(11)]}, {"extra": True}]:
                 with self.assertRaises(ValueError):
                     self.app.mutate("/api/gmail/sync", self.modern_consent(**changes))
             service.assert_not_called()
+
+    def test_account_switch_keep_pauses_old_writes_and_resumes_when_switching_back(self):
+        self.check()
+        with patch("mail_agent.gmail.service", return_value=self.api):
+            self.run_operation("sync", self.modern_consent())
+        agent = self.app.agent()
+        try:
+            action = agent.ingest(Email("old", "sender@example.test", "Old", "Old local message"))
+            with agent.db:
+                agent.db.execute("""INSERT INTO skills(family,account,source_id,status,config,origin)
+                                  VALUES('attention','owner@example.test',?,'active',?,'switch:test')""",
+                                 (action["id"], json.dumps({"enabled": True, "kind": "decision_required",
+                                  "scope": "similar", "contains": "", "excludes": ""})))
+                agent.db.execute("""INSERT INTO gmail_bindings
+                    (email_id,account,message_id,label_id,label_name,initial_inbox)
+                    VALUES(?,?,?,?,?,?)""", ("old", "owner@example.test", "old-message", "", "", 1))
+                agent.db.execute("UPDATE actions SET transport='gmail' WHERE id=?", (action["id"],))
+                agent.queue_gmail(action["id"], "archive")
+        finally:
+            agent.close()
+        self.users.getProfile.return_value.execute.return_value = {
+            "emailAddress": "other@example.test", "historyId": "11"}
+        switched = self.check()
+        self.assertEqual(switched["status"], "account_choice")
+        self.assertEqual(switched["previous_account"], "owner@example.test")
+        self.assertEqual(switched["switch_counts"]["emails"], 1)
+        self.assertEqual(switched["switch_counts"]["skills"], 1)
+        with self.assertRaisesRegex(ValueError, "connection"):
+            self.app.mutate("/api/gmail/sync", self.modern_consent(account="other@example.test"))
+        result = self.app.mutate("/api/gmail/account-choice", {
+            "account": "other@example.test", "previous_account": "owner@example.test", "choice": "keep"})
+        self.assertEqual(result["choice"], "keep")
+        self.assertIsNone(result["removed"])
+        self.assertEqual(self.connection.snapshot()["status"], "connected")
+        with self.app.connect() as db:
+            self.assertEqual(db.execute("SELECT active_account FROM gmail_account_state").fetchone()[0],
+                             "other@example.test")
+            self.assertEqual(db.execute("SELECT count(*) FROM emails").fetchone()[0], 1)
+            self.assertEqual(db.execute("SELECT count(*) FROM skills").fetchone()[0], 1)
+            operation = db.execute("SELECT status FROM gmail_operations WHERE action_id=?",
+                                   (action["id"],)).fetchone()
+            self.assertEqual(operation["status"], "account_paused")
+        self.users.messages.return_value.modify.assert_not_called()
+
+        self.users.getProfile.return_value.execute.return_value = {
+            "emailAddress": "owner@example.test", "historyId": "12"}
+        switched_back = self.check()
+        self.assertEqual(switched_back["status"], "account_choice")
+        self.app.mutate("/api/gmail/account-choice", {
+            "account": "owner@example.test", "previous_account": "other@example.test", "choice": "keep"})
+        with self.app.connect() as db:
+            self.assertEqual(db.execute("SELECT status FROM gmail_operations WHERE action_id=?",
+                                       (action["id"],)).fetchone()[0], "queued")
+
+    def test_legacy_binding_requires_account_choice_before_adopting_new_account(self):
+        agent = self.app.agent()
+        try:
+            action = agent.ingest(Email("legacy", "sender@example.test", "Old", "Old local message"))
+            with agent.db:
+                agent.db.execute("""INSERT INTO gmail_bindings
+                    (email_id,account,message_id,label_id,label_name,initial_inbox)
+                    VALUES(?,?,?,?,?,?)""", ("legacy", "legacy@example.test", "legacy-message", "", "", 1))
+        finally:
+            agent.close()
+        self.users.getProfile.return_value.execute.return_value = {
+            "emailAddress": "other@example.test", "historyId": "11"}
+        state = self.check()
+        self.assertEqual(state["status"], "account_choice")
+        self.assertEqual(state["previous_account"], "legacy@example.test")
+
+    def test_start_fresh_counts_and_atomically_clears_every_local_mail_table(self):
+        self.check()
+        with patch("mail_agent.gmail.service", return_value=self.api):
+            self.run_operation("sync", self.modern_consent())
+        agent = self.app.agent()
+        try:
+            action = agent.ingest(Email("old", "sender@example.test", "Old", "Old local message"))
+            with agent.db:
+                agent.db.execute("""INSERT INTO skills(family,account,source_id,config,origin)
+                                  VALUES('attention','owner@example.test',?,?, 'fresh:test')""",
+                                 (action["id"], json.dumps({"enabled": True, "kind": "decision_required",
+                                  "scope": "similar", "contains": "", "excludes": ""})))
+                skill_id = agent.db.execute("SELECT id FROM skills WHERE source_id=?", (action["id"],)).fetchone()[0]
+                agent.db.execute("""INSERT INTO superpower_applications
+                    (action_id,skill_id,skill_revision,account,applied_at)
+                    VALUES(?,?,?,?,?)""", (action["id"], skill_id, 1, "owner@example.test", "2026-09-12T00:00:00Z"))
+                agent.db.execute("""INSERT INTO superpower_settings
+                    (singleton,enabled,account,reviewed_at,updated_at) VALUES(1,1,?,?,?)""",
+                    ("owner@example.test", "2026-09-12T00:00:00Z", "2026-09-12T00:00:00Z"))
+        finally:
+            agent.close()
+        self.users.getProfile.return_value.execute.return_value = {
+            "emailAddress": "other@example.test", "historyId": "11"}
+        switched = self.check()
+        cleared_tables = (
+            "autosent_journal", "superpower_confirmations", "superpower_revocations",
+            "superpower_applications", "superpower_settings", "gmail_operations", "gmail_replies",
+            "label_conflicts", "label_targets", "skill_examples", "skill_legacy_links",
+            "skill_feedback_seen", "skill_draft_seen", "skills", "draft_style_applications",
+            "draft_edit_versions", "draft_style_rules", "draft_style_feedback", "email_organization",
+            "organization_rules", "organization_feedback", "attention_items", "attention_rules",
+            "attention_feedback", "label_rules", "label_feedback", "label_reviews",
+            "preference_feedback", "archive_rules", "sent", "drafts", "labels", "audit",
+            "gmail_bindings", "actions", "emails", "incoming_jobs", "gmail_message_cache",
+            "gmail_sync_settings")
+        with self.app.connect() as db:
+            exact_total = sum(db.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+                              for table in cleared_tables)
+        self.assertEqual(switched["switch_counts"]["total_records"], exact_total)
+        result = self.app.mutate("/api/gmail/account-choice", {
+            "account": "other@example.test", "previous_account": "owner@example.test", "choice": "fresh"})
+        self.assertEqual(result["removed"]["emails"], 1)
+        self.assertEqual(result["removed"]["skills"], 1)
+        with self.app.connect() as db:
+            self.assertEqual(db.execute("SELECT active_account FROM gmail_account_state").fetchone()[0],
+                             "other@example.test")
+            for table in cleared_tables:
+                self.assertEqual(db.execute(f"SELECT count(*) FROM {table}").fetchone()[0], 0)
+        self.users.messages.assert_not_called()
 
     def test_automatic_poll_rechecks_account_and_backs_off_without_reading_history(self):
         self.users.labels.return_value.list.return_value.execute.return_value = {"labels": []}

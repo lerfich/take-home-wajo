@@ -89,6 +89,9 @@ def recover(db_path):
                 agent.db.execute("UPDATE gmail_operations SET status='unknown',error=? WHERE id=?",
                                  ("Server stopped during Gmail operation. Check Gmail status.", row["id"]))
                 agent.db.execute("UPDATE actions SET status='unknown' WHERE id=?", (row["action_id"],))
+                if row["automatic"]:
+                    from .superpowers import record_failed_auto
+                    record_failed_auto(agent, row["action_id"], "unknown")
                 agent.log(row["action_id"], "gmail_unknown", {"operation": row["operation"], "reason": "Interrupted operation"})
     finally:
         agent.close()

@@ -7,6 +7,7 @@ import re
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 import time
+import threading
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
@@ -26,6 +27,11 @@ from .attention import ATTENTION_CUES
 FIELDS["attention_cue"] = {"type": "string", "enum": sorted(set(ATTENTION_CUES) | {"unknown"})}
 FIELDS["attention_evidence"] = {"type": "string"}
 SCHEMA = {"type": "object", "properties": FIELDS, "required": list(FIELDS), "additionalProperties": False}
+
+# Analysis jobs may be prepared concurrently, but the selected free Groq
+# token budget is shared. Keep the gate across provider-managed 429 retries so
+# waiting workers cannot create a retry storm.
+CHAT_RATE_GATE = threading.Lock()
 
 
 class ProviderError(ValueError):
@@ -167,7 +173,8 @@ class GroqProposer:
         record = {"model": self.model, "prompt_version": self.prompt_version}
         attempts_start = len(self.http_attempts)
         try:
-            result = self.request("chat/completions", payload)
+            with CHAT_RATE_GATE:
+                result = self.request("chat/completions", payload)
             choice = result["choices"][0]
             if choice["finish_reason"] != "stop" or choice["message"].get("refusal"):
                 raise ProviderError("Incomplete or refused model response")
@@ -216,7 +223,8 @@ Return English unless the current draft is clearly in another language."""
         record = {"model": self.model, "prompt_version": self.prompt_version, "kind": "draft_style_rewrite"}
         attempts_start = len(self.http_attempts)
         try:
-            result = self.request("chat/completions", payload)
+            with CHAT_RATE_GATE:
+                result = self.request("chat/completions", payload)
             choice = result["choices"][0]
             if choice["finish_reason"] != "stop" or choice["message"].get("refusal"):
                 raise ProviderError("Incomplete or refused draft rewrite")

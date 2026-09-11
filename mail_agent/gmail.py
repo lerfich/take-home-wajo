@@ -115,6 +115,13 @@ def message_fields(message):
     return {"sender": sender, "subject": headers.get("subject") or "(No subject)", "body": body}
 
 
+def has_attachments(payload):
+    """Detect attached MIME parts without downloading their bodies."""
+    if payload.get("filename") or payload.get("body", {}).get("attachmentId"):
+        return True
+    return any(has_attachments(part) for part in payload.get("parts", []))
+
+
 def import_label(api, app, label, limit, live=False, expected_account=None):
     """One bounded polling cycle. Repeated IDs are deduplicated in the local queue."""
     if live and label != "Wajo-Test":
@@ -145,7 +152,8 @@ def import_label(api, app, label, limit, live=False, expected_account=None):
                 if label_id not in ids or ids.intersection({"TRASH", "SPAM", "DRAFT"}):
                     raise ValueError("Message is outside the live test scope")
                 binding = {"account": account, "message_id": item["id"], "label_id": label_id,
-                           "label_name": label, "initial_inbox": int("INBOX" in ids)}
+                           "label_name": label, "initial_inbox": int("INBOX" in ids),
+                           "has_attachments": int(has_attachments(message.get("payload", {})))}
             app.enqueue(fields, event_id=event_id, gmail_binding=binding)
             result["queued"] += 1
         except ValueError:

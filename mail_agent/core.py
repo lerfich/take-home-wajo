@@ -144,10 +144,13 @@ class Agent:
                 approved INTEGER NOT NULL DEFAULT 0, feedback_scope TEXT NOT NULL DEFAULT 'general',
                 error TEXT NOT NULL DEFAULT '', UNIQUE(action_id, operation));
         """)
+        if "automatic" not in {r["name"] for r in self.db.execute("PRAGMA table_info(gmail_operations)")}:
+            self.db.execute("ALTER TABLE gmail_operations ADD COLUMN automatic INTEGER NOT NULL DEFAULT 0")
         binding_columns = {r["name"] for r in self.db.execute("PRAGMA table_info(gmail_bindings)")}
         for name, declaration in (("thread_id", "TEXT NOT NULL DEFAULT ''"),
                                   ("initial_unread", "INTEGER NOT NULL DEFAULT 1"),
-                                  ("source_role", "TEXT NOT NULL DEFAULT 'incoming'")):
+                                  ("source_role", "TEXT NOT NULL DEFAULT 'incoming'"),
+                                  ("has_attachments", "INTEGER NOT NULL DEFAULT 0")):
             if name not in binding_columns:
                 self.db.execute(f"ALTER TABLE gmail_bindings ADD COLUMN {name} {declaration}")
 
@@ -174,13 +177,16 @@ class Agent:
         initialize_multi_labels(self.db)
         from .gmail_sync import initialize as initialize_gmail_sync
         initialize_gmail_sync(self.db)
+        from .superpowers import initialize as initialize_superpowers
+        initialize_superpowers(self.db)
 
-    def queue_gmail(self, action_id, operation, approved=False, scope="general"):
+    def queue_gmail(self, action_id, operation, approved=False, scope="general", automatic=False):
         if scope not in {"general", "sender"}:
             raise ValueError("Feedback scope must be general or sender")
         row = self.get(action_id)
-        self.db.execute("""INSERT INTO gmail_operations(action_id,revision,operation,status,approved,feedback_scope)
-                           VALUES(?,?,?,'queued',?,?)""", (action_id, row["revision"], operation, int(approved), scope))
+        self.db.execute("""INSERT INTO gmail_operations(action_id,revision,operation,status,approved,feedback_scope,automatic)
+                           VALUES(?,?,?,'queued',?,?,?)""", (action_id, row["revision"], operation, int(approved), scope,
+                           int(automatic)))
         self.db.execute("UPDATE actions SET status=? WHERE id=?",
                         ("restoring" if operation == "restore" else "executing", action_id))
         self.log(action_id, "gmail_queued", {"operation": operation, "transport": "gmail"})
@@ -373,6 +379,8 @@ class Agent:
             register_organization(self, action_id, proposal, email)
             from .draft_preferences import register_application
             register_application(self, action_id, draft_style_application)
+            from .superpowers import bind_application
+            bind_application(self, action_id, draft_style_application)
             binding = self.db.execute("SELECT * FROM gmail_bindings WHERE email_id=?", (email.id,)).fetchone()
             if binding is not None:
                 self.db.execute("UPDATE actions SET transport='gmail' WHERE id=?", (action_id,))
@@ -425,6 +433,8 @@ class Agent:
             if row["status"] != "pending" or row["revision"] != revision:
                 raise ValueError("Rejection is stale or action is not pending")
             self.db.execute("UPDATE actions SET status='rejected' WHERE id=?", (action_id,))
+            from .superpowers import revoke_for_action
+            revoke_for_action(self, action_id, "Draft rejected")
             self.log(action_id, "rejected", {"revision": revision})
             self.record_feedback(action_id, False, scope)
         return self.get(action_id)
@@ -434,6 +444,8 @@ class Agent:
         with self.db:
             self.db.execute("BEGIN IMMEDIATE")
             row = self.get(action_id)
+            from .superpowers import revoke_for_action
+            revoke_for_action(self, action_id, "Draft changed")
             if row["transport"] == "gmail":
                 from .gmail_replies import revise
                 revise(self, action_id, text, recipient, subject)

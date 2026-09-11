@@ -105,7 +105,7 @@ class SkillsTests(unittest.TestCase):
         self.assertFalse(matches(self.agent, Email('new', self.email.sender, 'Cancelled', 'Confirmed reservation cancelled'), self.p))
         self.assertTrue(matches(self.agent, Email('future', self.email.sender, 'Trip', 'Confirmed RESERVATION'), self.p))
 
-    def test_sender_scope_and_account_are_not_authentication(self):
+    def test_sender_scope_is_exact_but_ordinary_skill_crosses_accounts(self):
         ident = self.suggest()
         data = dict(skill_id=ident, scope='sender', exclusions=[])
         result = skills.preview(self.agent, data)
@@ -115,7 +115,7 @@ class SkillsTests(unittest.TestCase):
         with self.agent.db:
             self.agent.db.execute('''INSERT INTO gmail_bindings(email_id,account,message_id,label_id,label_name,initial_inbox)
                                      VALUES(?,?,?,?,?,?)''', ('trip', 'other-account@example.test', 'm', 'test', 'Wajo-Test', 1))
-        self.assertFalse(matches(self.agent, self.email, self.p))
+        self.assertTrue(matches(self.agent, self.email, self.p))
 
     def test_organization_and_draft_apply_without_sending(self):
         ident = self.suggest('organization', {'topic': 'Plans', 'subtype': 'Booking', 'important': True})

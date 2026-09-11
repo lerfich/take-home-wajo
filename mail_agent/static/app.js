@@ -6,7 +6,7 @@ const autonomies = {silent:'No notification',notify:'Notify',ask:'Ask for approv
 const actions = {archive:'Archive email',label:'Apply label',draft:'Save draft',send:'Send reply',none:'No mail action',pay:'Payment request',delete:'Deletion request'};
 const statuses = {executing:'Gmail action queued',restoring:'Gmail restore queued',unknown:'Verification needed',pending:'Approval needed',executed:'Completed',blocked:'Blocked',escalated:'Needs your review',error:'Processing error',skipped:'Kept in inbox',rejected:'Rejected',corrected:'Restored to inbox'};
 const events = {gmail_draft_saved:'Gmail draft saved',gmail_queued:'Gmail operation queued',gmail_started:'Gmail verification started',gmail_unknown:'Verification needed',gmail_error:'Gmail operation stopped',gmail_unverified:'Gmail state not confirmed',decision:'Agent decision',approved:'You approved the action',rejected:'You rejected the action',executed:'Action completed',notification:'Notification',preference_feedback:'Feedback saved',learned_permission:'Learned preference applied',archive_corrected:'Archive corrected',revised:'Reply revised',organization_reviewed:'Organization reviewed',organization_preference_applied:'Organization preference applied',organization_rule_paused:'Organization preference paused',draft_style_saved:'Draft style saved',draft_style_applied:'Draft style applied',draft_style_fallback:'Draft style rewrite unavailable',draft_style_rule_paused:'Draft style paused'};
-let state, selected, filter='all', page='mail', signature='', busy=false;
+let state, selected, selectedAutosent, filter='all', page='mail', signature='', busy=false, detailOpen=false;
 function notify(text){$('#toast').textContent=text;$('#toast').classList.remove('hidden');setTimeout(()=>$('#toast').classList.add('hidden'),5000)}
 function error(text){$('#error').textContent=text;$('#error').classList.toggle('hidden',!text)}
 async function post(path, data){
@@ -15,7 +15,8 @@ async function post(path, data){
   try {
     const feedbackPaths=['/api/attention','/api/organization','/api/label-review','/api/draft-style','/api/approve','/api/reject','/api/correct','/api/edit'];
     const previousSkills=new Set((state.skills||[]).map(s=>s.id));
-    const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':state.csrf},body:JSON.stringify({...data,propose_skill:feedbackPaths.includes(path)})});
+    const payload={...data};if(feedbackPaths.includes(path))payload.propose_skill=true;
+    const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':state.csrf},body:JSON.stringify(payload)});
     const result=await response.json();if(!response.ok)throw Error(result.error||'Operation failed');
     await refresh(true);
     if(feedbackPaths.includes(path)){
@@ -34,9 +35,9 @@ async function refresh(force=false){
     if(force||sig!==signature){signature=sig;render()}
   }catch(e){error('Could not refresh the inbox. Check that the local server is running.')}
 }
-function setFilter(value){filter=value;renderMail()}
-function currentRows(){return state.actions.map(a=>({...a,email:state.emails.find(e=>e.id===a.email_id),labelReview:(state.label_reviews||[]).find(r=>r.action_id===a.id),threadId:a.thread_id||a.email_id})).filter(a=>a.email).reverse()}
-function groupThreads(rows){const groups=[];for(const row of rows){let group=groups.find(x=>x.threadId===row.threadId);if(!group){group={threadId:row.threadId,representative:row,members:[]};groups.push(group)}group.members.push(row)}return groups}
+function setFilter(value){filter=value;detailOpen=false;renderMail()}
+function currentRows(){return state.actions.map(a=>({...a,email:state.emails.find(e=>e.id===a.email_id),labelReview:(state.label_reviews||[]).find(r=>r.action_id===a.id),threadId:a.thread_id||a.email_id})).filter(a=>a.email).sort((a,b)=>Number(b.id)-Number(a.id))}
+function groupThreads(rows){const groups=[];for(const row of rows){const key=`${row.account||'local'}:${row.threadId}`;let group=groups.find(x=>x.key===key);if(!group){group={key,threadId:row.threadId,representative:row,members:[]};groups.push(group)}group.members.push(row)}return groups}
 function badge(row){const replyState=row.reply?(row.status==='executing'?'Saving or sending Gmail reply':row.status==='pending'?'Gmail draft · approval needed':row.status==='executed'?'Sent via Gmail':null):null;const style=['blocked','error','unknown'].includes(row.status)?row.status:row.autonomy;return `<span class="badge ${esc(style)}">${esc(replyState||statuses[row.status]||autonomies[row.autonomy])}</span>`}
 function render(){
   const demo=state.mode==='scripted';$('#mode').textContent=demo?'Sample cases · no AI':(state.gmail_enabled?'Qwen · Gmail live':'Qwen · Groq');
@@ -46,7 +47,7 @@ function render(){
   const suggestions=(state.skills||[]).filter(s=>s.status==='suggested').length;
   $('#skill-suggestion-count').textContent=suggestions;
   $('#skill-suggestion-count').classList.toggle('hidden',!suggestions);
-  renderMail();renderMemory();renderGmail();
+  renderMail();renderMemory();renderGmail();renderSuperpowers();
 }
 function renderMail(){
   if(!state)return;
@@ -70,12 +71,13 @@ function renderMail(){
   $('#list-count').textContent=threads.length;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('selected',b.dataset.filter===filter));
   $('#filter-label').classList.toggle('hidden',!['attention','escalated'].includes(filter));$('#filter-label').textContent=filter==='attention'?'Showing emails matched by your explicit visibility preferences. Importance and escalation are separate.':filter==='escalated'?'Showing situations where the agent cannot safely continue without human judgment.':' ';
-  if(!rows.some(r=>r.id===selected))selected=threads[0]?.representative.id;
+  if(!rows.some(r=>r.id===selected)){selected=threads[0]?.representative.id;detailOpen=false}
+  $('.mailbox').classList.toggle('detail-open',detailOpen);
   const cards=threads.map(group=>{const r=group.representative;const pending=group.members.filter(x=>['pending','escalated','unknown','error'].includes(x.status)).length;return `<button class="email-item ${r.id===selected?'selected':''}" data-id="${r.id}"><div class="email-top"><span class="email-sender">${esc(r.email.sender)}</span><span class="thread-count">${group.members.length} message${group.members.length===1?'':'s'}${pending?' · '+pending+' need review':''}</span></div><h3>${esc(r.email.subject)}</h3><p class="organization-line">${esc(r.organization.topic)} · ${esc(r.organization.subtype)}${r.organization.important?' · Important':''}</p><p class="email-preview">${esc(r.email.body)}</p>${r.labelReview?`<span class="badge label-chip">${esc(r.labelReview.current_label)}</span> <span class="badge">${r.labelReview.status==='reviewed'?'✓ Reviewed':r.status==='executed'?'To review':esc(statuses[r.status]||r.status)}</span>`:badge(r)}</button>`}).join('');
   const broken=filter==='all'?incomplete.map(x=>`<div class="email-item incomplete-email" aria-disabled="true"><div class="email-top"><span class="email-sender">! Incomplete Gmail message</span><span class="thread-count">Retry after ${x.retry_at?esc(new Date(x.retry_at).toLocaleTimeString('en-US')):'the next sync'}</span></div><h3>Message unavailable</h3><p class="email-preview">Wajo could not fully load this message. It cannot be opened or analyzed yet.</p></div>`).join(''):'';
   $('#email-list').innerHTML=cards+broken||'<div class="empty-list">No matching conversations.<br>Add an email or change the filter.</div>';
   $('#email-list').scrollTop=listScroll;
-  $('#email-list').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{selected=Number(b.dataset.id);renderMail();$('#detail').scrollTop=0}));
+  $('#email-list').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{selected=Number(b.dataset.id);detailOpen=true;renderMail();$('.mailbox').scrollIntoView({block:'start'})}));
   const jobs=state.jobs.filter(j=>j.status!=='done');
   $('#jobs').innerHTML=jobs.map(j=>{const e=JSON.parse(j.email);return `<div class="job">${esc(e.subject)}<br>${j.status==='error'?'Processing failed':j.status==='processing'?'The agent is reading…':'Queued for analysis'}${j.status==='error'?`<details><summary>Error details and attempts</summary><pre>${esc(JSON.stringify(JSON.parse(j.diagnostics),null,2))}</pre></details>`:''}</div>`}).join('');
   renderDetail(all.find(r=>r.id===selected));
@@ -110,6 +112,8 @@ function renderDetail(row){
   const readState=row.transport==='gmail'?(row.initial_unread?' · Unread when synchronized':' · Already read in Gmail'):'';
   $('#detail').innerHTML=`<div class="detail-heading"><span>EMAIL # ${row.id}${readState}</span>${badge(row)}</div><h2>${esc(row.email.subject)}</h2>${conversationView(row)}<div class="organization-summary"><span>${esc(row.organization.topic)}</span><span>${esc(row.organization.subtype)}</span>${row.organization.important?'<span class="important-chip">Important</span>':''}<small>${esc(row.organization.source)}</small></div><div class="sender-row"><span class="avatar">${esc(row.email.sender[0].toUpperCase())}</span><div>${esc(row.email.sender)}<small>${row.transport==='gmail'?'Source: connected Gmail':'Source: local inbox copy'}</small></div></div><p class="email-body">${esc(row.email.body)}</p><div class="decision"><p><strong>${esc(transport)}</strong></p><p>${esc(row.reason)}</p><div class="decision-title">✦ Agent decision · ${esc(actions[p.action]||p.action)}</div><p>${esc(p.reason)}</p><div class="decision-meta">${esc(explanation)}<br>Pattern: ${esc(patterns[p.pattern]||p.pattern)}${p.label?`<br>Label: ${esc(p.label)}`:''}${flags.length&&p.pattern_evidence?`<br>${esc(flags.map(f=>f[1]).join(' · '))}`:''}</div>${p.pattern_evidence?`<blockquote class="reason-quote">${esc(p.pattern_evidence)}</blockquote>`:''}${replyPreview}${!reply&&p.text?`<div class="send-preview">${p.recipient?`Recipient: ${esc(p.recipient)}<br>`:''}${esc(p.text)}</div>`:''}${controls}${editor}${draftStyleForm(row)}${organizationForm(row)}${labelReviewForm(row)}${attentionForm(row)}<div class="decision-buttons"><button class="secondary" id="keep-sender">Always keep mail from this sender</button></div></div><details class="history"><summary>Decision history · ${history.length} entries</summary>${history.map(a=>`<div class="history-item">${esc(events[a.event]||a.event)}<small>${esc(new Date(a.created_at).toLocaleString('en-US'))}</small><details><summary>Details</summary><pre>${esc(JSON.stringify(JSON.parse(a.details),null,2))}</pre></details></div>`).join('')}</details>`;
   $('#detail').scrollTop=previousDetailScroll;
+  $('#detail').insertAdjacentHTML('afterbegin','<button class="secondary detail-back" id="back-conversations">← All conversations</button>');
+  $('#back-conversations').addEventListener('click',()=>{detailOpen=false;renderMail();$('.mailbox').scrollIntoView({block:'start'})});
   bindDraftStyle(row);bindOrganization(row);bindLabelReview(row);bindAttention(row);
   renderLabelConflict(row);
   $('#gmail-check')?.addEventListener('click',async()=>{if(await post('/api/gmail-check',{operation_id:operation.id}))notify('Gmail status checked. Review the result above.')});
@@ -230,9 +234,85 @@ function renderMemory(){
   $('#rules').innerHTML=state.archive_rules.map((r,i)=>`<div class="rule-row"><span>${esc(r.scope==='*'?'All senders':r.scope)} · ${esc(r.pattern==='*'?'All email patterns':patterns[r.pattern])}</span><button class="secondary" data-remove-rule="${i}">Remove exception</button></div>`).join('');
   $('#rules').querySelectorAll('button').forEach(b=>b.addEventListener('click',async()=>{const r=state.archive_rules[Number(b.dataset.removeRule)];if(await post('/api/rule',{sender:r.scope,pattern:r.pattern,keep:false}))notify('Exception removed')}));
 }
-function navigate(next){page=next;$('#mail-view').classList.toggle('hidden',page!=='mail');$('#memory-view').classList.toggle('hidden',page!=='memory');$('#nav-mail').classList.toggle('active',page==='mail');$('#nav-memory').classList.toggle('active',page==='memory')}
+function renderSuperpowers(){
+  if(!state)return;
+  const powers=state.superpowers||{enabled:false,available:false,special_powers:[],autosent:[],unread_count:0};
+  const enabled=Boolean(powers.enabled),available=Boolean(powers.available);
+  $('#open-superpowers').classList.toggle('hidden',!available);
+  $('#open-superpowers').textContent=enabled?'Tune Wajo’s superpowers':'Want to give Wajo superpowers?';
+  document.querySelectorAll('.superpowers-nav').forEach(node=>node.classList.toggle('hidden',!enabled));
+  if(!enabled&&['special','autosent'].includes(page)){page='mail';selectedAutosent=undefined}
+  $('#mail-view').classList.toggle('hidden',page!=='mail');
+  $('#memory-view').classList.toggle('hidden',page!=='memory');
+  $('#special-view').classList.toggle('hidden',page!=='special'||!enabled);
+  $('#autosent-view').classList.toggle('hidden',page!=='autosent'||!enabled);
+  for(const [name,id] of [['mail','nav-mail'],['memory','nav-memory'],['special','nav-special'],['autosent','nav-autosent']])$('#'+id).classList.toggle('active',page===name);
+  const reviewMode=page==='mail'&&['label_review','label_reviewed'].includes(filter);
+  $('#nav-labels').classList.toggle('active',reviewMode);$('#nav-mail').classList.toggle('active',page==='mail'&&!reviewMode);
+
+  const unread=Number(powers.unread_count)||0;
+  $('#autosent-count').textContent=String(unread);
+  $('#autosent-count').classList.toggle('hidden',unread===0);
+  $('#autosent-count').classList.toggle('unread-flash',unread>0);
+  $('#autosent-account').textContent=powers.current_account||'Current Gmail account';
+  const qualified=(powers.special_powers||[]).filter(item=>item.qualified!==false);
+  $('#special-powers').innerHTML=qualified.map(item=>`<article class="special-card"><div class="special-card-head"><span class="special-spark" aria-hidden="true">✦</span><span class="badge notify">Ready to autosend</span></div><h2>${esc(item.title)}</h2><p>Qualified on ${esc(powers.current_account||'the current Gmail account')} for Skill revision ${esc(item.revision)}.</p><div class="qualification"><strong>${esc(item.confirmations)} confirmed sends</strong><small>Recipient, subject and text were unchanged</small></div><div class="decision-buttons"><button class="secondary" data-improve-power="${esc(item.skill_id)}" data-revision="${esc(item.revision)}">Improve Skill</button><button class="secondary danger-button" data-disable-power="${esc(item.skill_id)}" data-revision="${esc(item.revision)}">Disable auto-send</button></div></article>`).join('')||'<div class="empty special-empty"><div class="empty-icon">✦</div><h2>No qualified Draft Skills yet</h2><p>Send the same Skill’s drafts twice through Wajo without changing the recipient, subject or text. Qualification never bypasses safety checks.</p></div>';
+  $('#special-powers').querySelectorAll('[data-disable-power]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;const result=await post('/api/superpowers/disable',{skill_id:Number(button.dataset.disablePower),revision:Number(button.dataset.revision)});if(result)notify('Automatic sending disabled for this Skill revision.');else button.disabled=false}));
+  $('#special-powers').querySelectorAll('[data-improve-power]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;const skillId=Number(button.dataset.improvePower);const result=await post('/api/superpowers/improve',{skill_id:skillId,revision:Number(button.dataset.revision)});if(result){notify('Auto-send permission removed. Review changes before this Skill becomes active again.');navigate('memory');const skill=state.skills.find(x=>x.id===skillId);if(skill)await openSkillReview({skill_id:skill.id,scope:skill.config.scope})}else button.disabled=false}));
+
+  const sent=powers.autosent||[];
+  if(selectedAutosent!=null&&!sent.some(item=>String(item.id)===String(selectedAutosent)))selectedAutosent=undefined;
+  $('#autosent-total').textContent=String(sent.length);
+  $('#autosent-list').innerHTML=sent.map(item=>`<button class="autosent-item ${String(item.id)===String(selectedAutosent)?'selected':''} ${item.seen?'':'unread'}" data-autosent-id="${esc(item.id)}"><div class="email-top"><span class="email-sender">To: ${esc(item.recipient)}</span><span class="autosent-dot" aria-label="${item.seen?'Read':'Unread'}"></span></div><h3>${esc(item.subject||'(no subject)')}</h3><p class="email-preview">${esc(item.text)}</p><small>${esc(new Date(item.created_at).toLocaleString('en-US'))} · ${esc(item.delivery_status)}</small></button>`).join('')||'<div class="empty-list">No automatic replies have been sent.</div>';
+  $('#autosent-list').querySelectorAll('[data-autosent-id]').forEach(button=>button.addEventListener('click',()=>openAutosent(button.dataset.autosentId)));
+  renderAutosentDetail(sent.find(item=>String(item.id)===String(selectedAutosent)));
+}
+function renderAutosentDetail(item){
+  if(!item){$('#autosent-detail').innerHTML='<div class="empty"><div class="empty-icon">↗</div><h2>Select an autosent email</h2><p>Its exact recipient, subject, text, permission reason and Gmail delivery status will appear here.</p></div>';return}
+  $('#autosent-detail').innerHTML=`<div class="detail-heading"><span>AUTOMATIC REPLY</span><span>${esc(new Date(item.created_at).toLocaleString('en-US'))}</span></div><h2>${esc(item.subject||'(no subject)')}</h2><div class="autosent-facts"><div><small>Account</small><strong>${esc(item.account)}</strong></div><div><small>Recipient</small><strong>${esc(item.recipient)}</strong></div><div><small>Delivery status</small><strong>${esc(item.delivery_status)}</strong></div><div><small>Skill</small><strong>${esc(item.skill_title)}</strong></div></div><pre class="autosent-body">${esc(item.text)}</pre><div class="decision autosent-reason"><div class="decision-title">✦ Why Wajo was allowed to send</div><p>${esc(item.reason)}</p></div>`;
+}
+async function openAutosent(id){
+  selectedAutosent=id;renderSuperpowers();
+  const item=(state.superpowers?.autosent||[]).find(entry=>String(entry.id)===String(id));
+  if(item&&!item.seen){const result=await post('/api/superpowers/seen',{id:item.id});if(!result)notify('Could not mark this email as reviewed.')}
+}
+function navigate(next){
+  if(['special','autosent'].includes(next)&&!state?.superpowers?.enabled)return;
+  page=next;
+  $('#mail-view').classList.toggle('hidden',page!=='mail');$('#memory-view').classList.toggle('hidden',page!=='memory');$('#special-view').classList.toggle('hidden',page!=='special');$('#autosent-view').classList.toggle('hidden',page!=='autosent');
+  for(const [name,id] of [['mail','nav-mail'],['memory','nav-memory'],['special','nav-special'],['autosent','nav-autosent']])$('#'+id).classList.toggle('active',page===name);
+  const reviewMode=page==='mail'&&['label_review','label_reviewed'].includes(filter);
+  $('#nav-labels').classList.toggle('active',reviewMode);$('#nav-mail').classList.toggle('active',page==='mail'&&!reviewMode);
+}
 $('#nav-mail').addEventListener('click',()=>{navigate('mail');setFilter('all')});$('#back-mail').addEventListener('click',()=>navigate('mail'));$('#nav-memory').addEventListener('click',()=>navigate('memory'));
 $('#nav-labels').addEventListener('click',()=>{navigate('mail');$('#search').value='';setFilter('label_review')});
+$('#nav-special').addEventListener('click',()=>navigate('special'));
+$('#nav-autosent').addEventListener('click',()=>navigate('autosent'));
+$('#special-settings').addEventListener('click',openSuperpowersDialog);
+$('#open-superpowers').addEventListener('click',openSuperpowersDialog);
+$('#close-superpowers').addEventListener('click',()=>$('#superpowers-dialog').close());
+$('#superpowers-dialog').addEventListener('cancel',e=>{e.preventDefault();$('#superpowers-dialog').close()});
+function openSuperpowersDialog(){
+  const powers=state.superpowers||{};
+  $('#superpowers-toggle').checked=Boolean(powers.enabled);
+  $('#superpowers-toggle').disabled=!powers.available;
+  $('#superpowers-toggle-note').textContent=powers.available?'Allow qualified Draft Skills to send matching replies':'Connect and verify Gmail to make Superpowers available';
+  $('#superpowers-error').textContent='';$('#superpowers-error').classList.add('hidden');
+  $('#superpowers-dialog').showModal();
+}
+function animateSuperpowersOff(){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return Promise.resolve();
+  const nodes=[$('#nav-special'),$('#nav-autosent'),$('#special-view'),$('#autosent-view')].filter(node=>!node.classList.contains('hidden'));
+  nodes.forEach((node,index)=>node.classList.add(index%2?'power-fly-right':'power-fly-left'));
+  return new Promise(resolve=>setTimeout(()=>{nodes.forEach(node=>node.classList.remove('power-fly-left','power-fly-right'));resolve()},520));
+}
+$('#superpowers-toggle').addEventListener('change',async event=>{
+  const enabled=event.target.checked;event.target.disabled=true;
+  if(!enabled){$('#superpowers-dialog').close();await animateSuperpowersOff()}
+  const result=await post('/api/superpowers/global',{enabled,reviewed_rules:true});
+  if(result){notify(enabled?'Superpowers enabled. Qualified Skills can now autosend safely.':'Superpowers turned off. Every reply requires approval again.');if(enabled)$('#superpowers-dialog').close()}
+  else{event.target.checked=!enabled;event.target.disabled=false;if(!$('#superpowers-dialog').open)openSuperpowersDialog();$('#superpowers-error').textContent='Could not update Superpowers. Nothing changed.';$('#superpowers-error').classList.remove('hidden')}
+});
 $('#show-unreviewed').addEventListener('click',()=>setFilter('label_review'));
 $('#show-reviewed').addEventListener('click',()=>setFilter('label_reviewed'));
 document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>setFilter(b.dataset.filter)));
@@ -258,7 +338,7 @@ let gmailContext='',gmailLabelSignature='';
 function renderGmail(){
   const g=state.gmail_connection;if(!g)return;
   $('#gmail-strip').classList.toggle('hidden',state.mode==='scripted');
-  const running=Boolean(g.operation), connected=g.status==='connected',sync=state.gmail_sync?.settings;
+  const running=Boolean(g.operation), choosing=g.status==='account_choice', connected=g.status==='connected',sync=state.gmail_sync?.settings;
   const context=JSON.stringify([g.account,g.live,g.access]);
   if(context!==gmailContext){$('#gmail-consent').checked=false;gmailContext=context}
   const labelSignature=JSON.stringify([g.account,g.labels,sync?.history_labels]);
@@ -266,28 +346,34 @@ function renderGmail(){
     gmailLabelSignature=labelSignature;
     const selected=new Set(sync?.history_labels||[]);
     $('#gmail-label-options').innerHTML=(g.labels||[]).map(label=>`<label><input type="checkbox" value="${esc(label.id)}" ${selected.has(label.id)?'checked':''}><span>${esc(label.name)}</span></label>`).join('')||'<p>No Gmail labels are available.</p>';
+    $('#gmail-label-options').querySelectorAll('input').forEach(input=>input.addEventListener('change',updateGmailLabelLimit));
     if(sync)document.querySelector(`input[name="history"][value="${sync.history_mode}"]`).checked=true;
   }
-  $('#gmail-summary').textContent=connected?g.account:g.token_present?'Gmail connection saved':'Connect your Gmail';
+  updateGmailLabelLimit();
+  $('#gmail-summary').textContent=(connected||choosing)?g.account:g.token_present?'Gmail connection saved':'Connect your Gmail';
   $('#gmail-auth-link').classList.toggle('hidden',!g.auth_url);if(g.auth_url)$('#gmail-auth-link').href=g.auth_url;
-  $('#gmail-summary-note').textContent=running?({connect:'Waiting for Google sign-in…',check:'Checking your connection…',sync:'Synchronizing mail…',poll:'Checking for new mail…'}[g.operation]):connected?'Connected · '+(sync?.sync_enabled?'new mail sync on':'new mail sync paused')+' · '+(g.live?'Gmail actions enabled':'Local simulation'):'Connect an account and choose the initial history.';
-  $('#open-gmail').textContent=connected?'Gmail settings':g.token_present?'Check Gmail':'Connect Gmail';
-  $('#gmail-title').textContent=connected?'Gmail connected':g.token_present?'Your Gmail connection':'Connect Gmail';
-  $('#gmail-intro').textContent=connected?'Your account is connected. You can sync emails below.':g.token_present?'A saved connection is available. Check its status before signing in again.':'Connect your account through Google. Wajo never asks for your Gmail password.';
-  $('#gmail-account').textContent=connected?g.account:g.token_present?'Saved connection · verification needed':'No Gmail account connected';
-  $('#gmail-access').textContent=connected?(g.access==='manage'?'Read and manage access':'Read-only access'):'Check your connection or sign in with Google.';
+  $('#gmail-summary-note').textContent=running?({connect:'Waiting for Google sign-in…',check:'Checking your connection…',sync:'Synchronizing mail…',poll:'Checking for new mail…'}[g.operation]):choosing?'Choose what to do with data from the previous account.':connected?'Connected · '+(sync?.sync_enabled?'new mail sync on':'new mail sync paused')+' · '+(g.live?'Gmail actions enabled':'Local simulation'):'Connect an account and choose the initial history.';
+  $('#open-gmail').textContent=connected?'Gmail settings':choosing?'Review account change':g.token_present?'Check Gmail':'Connect Gmail';
+  $('#gmail-title').textContent=choosing?'Review account change':connected?'Gmail connected':g.token_present?'Your Gmail connection':'Connect Gmail';
+  $('#gmail-intro').textContent=choosing?'Google connected a different Gmail account. Wajo will not synchronize it until you choose what happens to previous local data.':connected?'Your account is connected. You can sync emails below.':g.token_present?'A saved connection is available. Check its status before signing in again.':'Connect your account through Google. Wajo never asks for your Gmail password.';
+  $('#gmail-account').textContent=(connected||choosing)?g.account:g.token_present?'Saved connection · verification needed':'No Gmail account connected';
+  $('#gmail-access').textContent=(connected||choosing)?(g.access==='manage'?'Read and manage access':'Read-only access'):'Check your connection or sign in with Google.';
   $('#gmail-progress').textContent=running?({connect:'Continue in your system browser. Google sign-in can take up to three minutes.',check:'Verifying Gmail access and loading labels…',sync:'Loading unique messages. You can pause after the current small page.',poll:'Checking the saved Gmail cursor for new mail…'}[g.operation]):g.checked_at&&connected?'Connection checked '+new Date(g.checked_at).toLocaleTimeString('en-US'):'';
   $('#gmail-error').textContent=g.error||'';$('#gmail-error').classList.toggle('hidden',!g.error);
   const needsAccess=connected&&g.live&&g.access!=='manage';
-  $('#gmail-connect').classList.toggle('hidden',(connected&&!needsAccess)||(g.token_present&&(g.status==='unchecked'||g.operation==='check')));
+  $('#gmail-connect').classList.toggle('hidden',choosing||(connected&&!needsAccess)||(g.token_present&&(g.status==='unchecked'||g.operation==='check')));
   $('#gmail-connect').textContent=needsAccess?'Grant Gmail action access':g.token_present?'Reconnect with Google':'Connect with Google';
-  $('#gmail-setup').classList.toggle('hidden',connected&&!needsAccess);
+  $('#gmail-setup').classList.toggle('hidden',(connected&&!needsAccess)||choosing);
   $('#gmail-connect').disabled=running||!g.client_ready;$('#gmail-status').disabled=running||!g.token_present;
   if(!g.client_ready&&!g.token_present)$('#gmail-setup').open=true;
   $('#gmail-mode').textContent=g.live?'Gmail · real actions':'Local simulation';
   $('#gmail-scope-note').textContent=connected?'Choose how much existing mail to load. Optional labels affect that initial history only; all later incoming mail is synchronized.':'Verify your account to enable synchronization.';
   $('#gmail-effects').textContent=g.live?'New emails may receive AI labels, be archived, or have replies saved as Gmail drafts under your permissions. Sending always requires approval of the exact saved version.':'Agent actions on new imports are simulated locally. Gmail messages will not be changed.';
   if(connected&&g.live&&g.access!=='manage')$('#gmail-scope-note').textContent='Reconnect with Google to grant access for live mail actions.';
+  $('#gmail-account-choice').classList.toggle('hidden',!choosing);
+  $('#gmail-connection-actions').classList.toggle('hidden',choosing);
+  $('#gmail-sync-form').classList.toggle('hidden',choosing);
+  if(choosing){const c=g.switch_counts||{};$('#gmail-account-choice-copy').textContent=`${g.previous_account} was active before ${g.account}. Choose once before synchronization.`;$('#gmail-fresh-counts').textContent=`Remove ${c.total_records||0} local records, including ${c.emails||0} emails, ${c.actions||0} actions, ${c.feedback||0} feedback records and ${c.skills||0} Skills. Nothing is deleted or changed in Gmail.`}
   $('#gmail-sync').disabled=running||!connected||(g.live&&g.access!=='manage')||!$('#gmail-consent').checked;
   $('#gmail-consent').disabled=running;
   $('#gmail-sync-controls').classList.toggle('hidden',!sync);
@@ -303,6 +389,11 @@ function renderGmail(){
   $('#gmail-result').classList.toggle('hidden',!r&&!incomplete);
   if(r||incomplete)$('#gmail-result').textContent=`${r?.completed_at?'Last Gmail check · '+new Date(r.completed_at).toLocaleString('en-US')+'. ':''}${r?.added??0} new items loaded. ${incomplete} incomplete messages are locked and will be retried hourly. These counts describe synchronization, not decision quality.`;
 }
+function updateGmailLabelLimit(){
+  const boxes=[...$('#gmail-label-options').querySelectorAll('input')],checked=boxes.filter(x=>x.checked);
+  $('#gmail-label-count').textContent=`${checked.length} of 10 selected`;
+  boxes.forEach(x=>x.disabled=!x.checked&&checked.length>=10);
+}
 $('#open-gmail').addEventListener('click',async()=>{
   $('#gmail-dialog').showModal();
   if(state.gmail_connection.token_present&&!state.gmail_connection.operation)await post('/api/gmail/status',{});
@@ -315,6 +406,7 @@ async function gmailPost(path,data){
 }
 $('#gmail-connect').addEventListener('click',()=>gmailPost('/api/gmail/connect',{}));
 $('#gmail-status').addEventListener('click',()=>gmailPost('/api/gmail/status',{}));
+$('#gmail-account-choice-form').addEventListener('submit',async e=>{e.preventDefault();const g=state.gmail_connection;const choice=new FormData(e.target).get('account-choice');if(await gmailPost('/api/gmail/account-choice',{account:g.account,previous_account:g.previous_account,choice}))notify(choice==='fresh'?'Previous local Wajo data removed. Gmail was not changed.':'Previous Wajo data kept in the shared timeline.')});
 $('#gmail-consent').addEventListener('change',renderGmail);
 $('#gmail-sync-form').addEventListener('submit',async e=>{
   e.preventDefault();const g=state.gmail_connection;
