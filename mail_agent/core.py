@@ -357,6 +357,7 @@ class Agent:
         binding = self.db.execute("SELECT * FROM gmail_bindings WHERE email_id=?", (email.id,)).fetchone()
         read_before_wajo = bool(binding is not None and not binding["initial_unread"])
         suppressed_action = ""
+        event_safety_blocked = False
         try:
             from .events import analysis_context
             event_context = analysis_context(self.db, email.id)
@@ -365,6 +366,7 @@ class Agent:
             else:
                 proposal = self.proposer.propose(email)
             validate(proposal)
+            event_safety_blocked = bool(proposal.suspicious or proposal.needs_human)
             if read_before_wajo:
                 suppressed_action = proposal.action if proposal.action != "label" else ""
                 keep_label = proposal.action == "label"
@@ -428,7 +430,9 @@ class Agent:
             from .superpowers import bind_application
             bind_application(self, action_id, draft_style_application)
             from .events import register_analysis
-            register_analysis(self.db, email, proposal, event_context)
+            if not read_before_wajo:
+                register_analysis(self.db, email, proposal, event_context,
+                                  safety_blocked=event_safety_blocked)
             binding = self.db.execute("SELECT * FROM gmail_bindings WHERE email_id=?", (email.id,)).fetchone()
             if binding is not None:
                 self.db.execute("UPDATE actions SET transport='gmail' WHERE id=?", (action_id,))

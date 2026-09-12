@@ -46,7 +46,7 @@ class GmailConnection:
                 if not (legacy or modern):
                     raise ValueError("Review the Gmail account, history scope and data-sharing consent.")
                 if data["allow_groq"] is not True:
-                    raise ValueError("Allow selected email text to be sent to Groq before syncing.")
+                    raise ValueError("Allow selected email text to be sent to the active model provider before syncing.")
                 if self.info["status"] != "connected" or (legacy and not self.info["label_ready"]):
                     raise ValueError("Check the Gmail connection and selected label before syncing.")
                 if data["account"] != self.info["account"]:

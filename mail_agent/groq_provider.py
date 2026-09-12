@@ -193,6 +193,11 @@ class GroqProposer:
                 safe_context["current_same_thread_event"] = {
                     key: value for key, value in current.items() if key != "id"
                 }
+            if safe_context.get("current_same_thread_events"):
+                safe_context["current_same_thread_events"] = [
+                    {key: value for key, value in item.items() if key != "id"}
+                    for item in safe_context["current_same_thread_events"]
+                ]
             user_input["trusted_email_context"] = safe_context
         payload = {"model": self.model, "temperature": 0, "max_completion_tokens": 1000,
                    "messages": [{"role": "system", "content": self.system},

@@ -18,7 +18,9 @@ class WebTests(unittest.TestCase):
         key = "gsk_private_test_key"
         with patch("mail_agent.web.validate_user_key", return_value=KeyValidation(True)):
             checked = self.post("/api/models/validate", {"mode": USER_GROQ, "key": key})
+            later = self.post("/api/models/validate", {"mode": USER_GROQ, "key": key + "-later"})
         self.assertTrue(checked["valid"])
+        self.assertTrue(later["valid"])
         with self.assertRaises(HTTPError):
             self.post("/api/models/apply", {"mode": USER_GROQ, "concurrency": 7,
                       "key": key + "-changed", "validation_token": checked["token"]})

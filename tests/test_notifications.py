@@ -54,7 +54,7 @@ class NotificationTests(unittest.TestCase):
         self.assertEqual(self.scheduler.run_due().sent, 0)
         self.assertEqual(self.recorder.calls, [("Wajo is running", "Active model: Bundled free Groq")])
 
-    def test_new_launch_gets_its_own_startup_notification(self):
+    def test_new_launch_replaces_an_undelivered_startup_notification(self):
         self.scheduler.schedule_startup_mode("User Groq")
         other = NotificationScheduler(
             self.path, notifier=self.recorder, clock=self.clock, launch_id="launch-b"
@@ -62,7 +62,8 @@ class NotificationTests(unittest.TestCase):
         try:
             other.schedule_startup_mode("User Groq")
             self.clock.advance(5)
-            self.assertEqual(other.run_due().sent, 2)
+            self.assertEqual(other.run_due().sent, 1)
+            self.assertEqual([job.status for job in other.jobs()], ["cancelled", "sent"])
         finally:
             other.close()
 
@@ -109,6 +110,22 @@ class NotificationTests(unittest.TestCase):
         self.assertEqual(self.scheduler.run_due().sent, 1)
         reopened = NotificationScheduler(self.path, notifier=self.recorder, clock=self.clock)
         try:
+            self.assertEqual(reopened.run_due().sent, 0)
+        finally:
+            reopened.close()
+
+    def test_unknown_delivery_outcome_is_not_retried_after_restart(self):
+        self.scheduler.schedule_urgent_deadline(
+            "mail-crash", title="Reply", body="Due", source_verified=True)
+        db = sqlite3.connect(self.path)
+        try:
+            db.execute("UPDATE notification_jobs SET status='dispatching'")
+            db.commit()
+        finally:
+            db.close()
+        reopened = NotificationScheduler(self.path, notifier=self.recorder, clock=self.clock)
+        try:
+            self.assertEqual(reopened.jobs()[0].status, "unknown")
             self.assertEqual(reopened.run_due().sent, 0)
         finally:
             reopened.close()

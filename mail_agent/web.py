@@ -76,7 +76,9 @@ class Application:
         agent.close()
         from .notifications import NotificationScheduler
         self.notifications = NotificationScheduler(
-            self.db_path, source_verifier=self._notification_source_current)
+            self.db_path, source_verifier=self._notification_source_current,
+            policy_check=self._notification_policy_allows)
+        self._backfill_event_reminders()
         if recover_jobs:
             from .gmail_executor import recover
             recover(self.db_path)
@@ -133,6 +135,23 @@ class Application:
                     (proposal_id,),
                 ).fetchone() is not None
         return False
+
+    @staticmethod
+    def _notification_policy_allows(job):
+        """Fail closed for notification kinds not explicitly supported by D."""
+        return job.kind in {"startup_mode", "event_reminder", "urgent_deadline"}
+
+    def _backfill_event_reminders(self):
+        """Repair the durable event/reminder gap after an interrupted process."""
+        with self.connect() as db:
+            rows = db.execute("""SELECT * FROM calendar_events
+                                 WHERE status='current' AND all_day=0 AND start_utc!=''""").fetchall()
+        for row in rows:
+            event = dict(row)
+            self.notifications.schedule_event_reminder(
+                str(event["id"]), title=event["title"],
+                starts_at=datetime.fromisoformat(event["start_utc"]),
+                source_ref=f"event:{event['id']}", source_verified=True)
 
     def _schedule_event_result(self, result):
         event = result.get("event") if isinstance(result, dict) else None
@@ -439,8 +458,12 @@ class Application:
             token = secrets.token_urlsafe(32)
             digest = hashlib.sha256((data["mode"] + "\0" + data["key"]).encode()).hexdigest()
             with self.model_validation_lock:
-                self.model_validation = {"token": token, "digest": digest,
-                                         "expires": time.monotonic() + 300}
+                now = time.monotonic()
+                self.model_validation = {
+                    saved_token: proof for saved_token, proof in self.model_validation.items()
+                    if proof.get("expires", 0) >= now
+                }
+                self.model_validation[token] = {"digest": digest, "expires": now + 300}
             return {"valid": True, "error": "", "token": token}
         if route == "/api/models/apply":
             mode, concurrency = data.get("mode"), data.get("concurrency")
@@ -456,12 +479,11 @@ class Application:
                     raise ValueError("Validate the current API key before applying it")
                 digest = hashlib.sha256((str(mode) + "\0" + key).encode()).hexdigest()
                 with self.model_validation_lock:
-                    proof = self.model_validation
+                    proof = self.model_validation.get(token, {})
                     valid = (proof.get("expires", 0) >= time.monotonic()
-                             and secrets.compare_digest(proof.get("token", ""), token)
                              and secrets.compare_digest(proof.get("digest", ""), digest))
                     if valid:
-                        self.model_validation = {}
+                        self.model_validation.pop(token, None)
                 if not valid:
                     raise ValueError("This key validation is missing or stale. Validate the current key again")
                 self.credentials.set_key(mode, key)
@@ -561,13 +583,20 @@ class Application:
                             agent.db, data["proposal_id"], data["revision"])
                     if type(data.get("all_day")) is not bool:
                         raise ValueError("Choose whether this is an all-day event")
-                    return events.clarify_event(
+                    result = events.clarify_event(
                         agent.db, data["proposal_id"], data["revision"],
                         start_at=data.get("start_at", ""), end_at=data.get("end_at", ""),
                         all_day=data["all_day"], local_date=data.get("local_date", ""),
                         local_end_date=data.get("local_end_date", ""),
                         source_timezone=data.get("timezone", ""),
                         local_timezone=events.system_timezone())
+                    if (result["kind"] == "response_deadline"
+                            and result["confidence"] == "clear"):
+                        self.notifications.schedule_urgent_deadline(
+                            str(result["id"]), title="Urgent response deadline",
+                            body=result["title"], source_ref=f"proposal:{result['id']}",
+                            source_verified=True)
+                    return result
                 if route.startswith('/api/superpowers/'):
                     connection = self.gmail_connection.snapshot()
                     account = connection.get('account') if connection.get('status') == 'connected' else None

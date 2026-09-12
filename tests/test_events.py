@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from mail_agent import events
-from mail_agent.core import Agent
+from mail_agent.core import Agent, Email, Proposal
 from mail_agent.demo import ScriptedProposer
 
 
@@ -65,6 +65,20 @@ class EventTests(unittest.TestCase):
         self.assertEqual(bad_zone["status"], "needs_clarification")
         self.assertIn("timezone", bad_zone["ambiguity_reason"])
 
+    def test_dst_gap_fold_and_mismatched_offset_require_clarification(self):
+        gap = self.proposal(candidate_key="gap", start_at="2026-03-08T02:30:00",
+                            source_timezone="America/New_York")
+        self.assertEqual(gap["status"], "needs_clarification")
+        self.assertIn("not a real local time", gap["ambiguity_reason"])
+        fold = self.proposal(candidate_key="fold", start_at="2026-11-01T01:30:00",
+                             source_timezone="America/New_York")
+        self.assertEqual(fold["status"], "needs_clarification")
+        self.assertIn("ambiguous", fold["ambiguity_reason"])
+        mismatch = self.proposal(candidate_key="offset", start_at="2026-09-18T15:00:00+00:00",
+                                 source_timezone="Europe/Moscow")
+        self.assertEqual(mismatch["status"], "needs_clarification")
+        self.assertIn("offset does not match", mismatch["ambiguity_reason"])
+
     def test_rejection_is_independent_from_mail_action(self):
         proposal = self.proposal()
         rejected = events.reject_event(self.db, proposal["id"], 1)
@@ -108,6 +122,25 @@ class EventTests(unittest.TestCase):
             candidate_key="cancel", change_kind="cancel", supersedes_event_id=current["id"])
         self.assertIsNone(events.approve_event(self.db, cancel["id"], 1)["event"])
         self.assertEqual(events.list_events(self.db, now=datetime(2026, 9, 12, tzinfo=timezone.utc)), [])
+
+    def test_multiple_current_thread_events_are_never_superseded_by_guessing(self):
+        first = events.approve_event(self.db, self.proposal(candidate_key="first")["id"], 1)["event"]
+        second_proposal = self.proposal(candidate_key="second", title="Design review",
+                                        semantic_kind="design_review",
+                                        start_at="2026-09-19T15:00:00")
+        second = events.approve_event(self.db, second_proposal["id"], 1)["event"]
+        context = events.analysis_context(self.db, "m3")
+        self.assertIsNone(context["current_same_thread_event"])
+        self.assertEqual(len(context["current_same_thread_events"]), 2)
+        proposal = Proposal(
+            "none", "Calendar change", event_change="cancel", event_kind="calendar_event",
+            event_semantic_kind="meeting", event_title="Unidentified review",
+            event_original_text="Cancelled", event_evidence="Cancelled")
+        self.assertIsNone(events.register_analysis(
+            self.db, Email("m3", "a@example.test", "Re: Planning", "Cancelled"),
+            proposal, context))
+        self.assertEqual(events.get_event(self.db, first["id"])["status"], "current")
+        self.assertEqual(events.get_event(self.db, second["id"])["status"], "current")
 
     def test_source_thread_cannot_be_forged(self):
         with self.assertRaises(ValueError):

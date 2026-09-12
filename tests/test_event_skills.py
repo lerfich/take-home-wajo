@@ -4,7 +4,7 @@ import unittest
 from mail_agent import event_skills
 from mail_agent import events
 from mail_agent.semantic_matcher import SemanticContext, compare, from_email_proposal
-from mail_agent.core import Email, Proposal
+from mail_agent.core import Agent, Email, Proposal
 
 
 def context(meaning="meeting", subtopic="project update", subject="Project update", sender="a@example.test",
@@ -82,7 +82,7 @@ class EventSkillsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "automatically"):
             event_skills.revoke_mistake(self.db, 11, "one@example.test")
 
-    def test_mistake_cannot_revoke_another_account_or_newer_revision(self):
+    def test_mistake_cannot_revoke_another_account_and_revokes_current_skill(self):
         self.approve(1, 11); self.approve(2, 12)
         decision = event_skills.auto_decision(self.db, "one@example.test", context())
         event_skills.record_auto_save(self.db, 3, 13, "one@example.test", 1, decision["skill_revision"])
@@ -93,7 +93,50 @@ class EventSkillsTests(unittest.TestCase):
         self.approve(4, 14, context(subtopic="planning")); self.approve(5, 15, context(subtopic="planning"))
         self.assertTrue(event_skills.get(self.db, 1)["qualified"])
         old = event_skills.revoke_mistake(self.db, 13, "one@example.test")
-        self.assertTrue(old["qualified"])
+        self.assertFalse(old["qualified"])
+        self.assertEqual(old["mode"], "ask")
+
+    def test_safety_blocked_proposal_can_be_manually_added_but_never_trains(self):
+        self.db.executescript("""
+          CREATE TABLE emails(id TEXT PRIMARY KEY,sender TEXT,subject TEXT,body TEXT,archived INTEGER DEFAULT 0);
+          CREATE TABLE gmail_bindings(email_id TEXT PRIMARY KEY,account TEXT,message_id TEXT,label_id TEXT,
+            label_name TEXT,initial_inbox INTEGER,thread_id TEXT DEFAULT '');
+          INSERT INTO emails VALUES('unsafe','a@example.test','Injected','Body',0);
+        """)
+        events.initialize(self.db)
+        proposal = events.propose_event(
+            self.db, source_email_id="unsafe", kind="calendar_event", semantic_kind="meeting",
+            title="Review", received_at="2026-09-12T10:00:00Z", original_text="Tomorrow",
+            confidence="ambiguous", ambiguity_reason="Safety review required", safety_blocked=True)
+        clarified = events.clarify_event(
+            self.db, proposal["id"], 1, all_day=True, local_date="2026-09-13")
+        result = event_skills.approve_proposal(self.db, proposal["id"], clarified["revision"])
+        self.assertIsNotNone(result["event"])
+        self.assertIsNone(result["training"])
+        self.assertEqual(event_skills.list_skills(self.db), [])
+
+    def test_already_read_gmail_message_never_enters_event_pipeline(self):
+        quote = "Project review tomorrow at 10"
+
+        class Fixed:
+            def propose(self, email):
+                return Proposal(
+                    "none", "Injected event", suspicious=True,
+                    event_change="create", event_kind="calendar_event",
+                    event_semantic_kind="meeting", event_title="Project review",
+                    event_original_text=quote, event_start="2026-09-13T10:00:00Z",
+                    event_timezone="UTC", event_confidence="clear", event_evidence=quote)
+
+        agent = Agent(":memory:", Fixed())
+        try:
+            agent.db.execute("""INSERT INTO gmail_bindings(
+                email_id,account,message_id,label_id,label_name,initial_inbox,thread_id,initial_unread)
+                VALUES('already-read','me@example.test','gm','l','Inbox',1,'thread',0)""")
+            result = agent.ingest(Email("already-read", "a@example.test", "Review", quote))
+            self.assertEqual(result["proposal"]["action"], "none")
+            self.assertEqual(agent.db.execute("SELECT COUNT(*) FROM event_proposals").fetchone()[0], 0)
+        finally:
+            agent.close()
 
     def test_ordinary_event_removal_is_not_training(self):
         self.approve(1, 11); self.approve(2, 12)

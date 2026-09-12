@@ -138,7 +138,7 @@ def configure(api, app, data):
     if set(data) != {"allow_groq", "account", "live", "history_mode", "label_ids"}:
         raise ValueError("Review the Gmail account, history scope and data-sharing consent.")
     if data["allow_groq"] is not True:
-        raise ValueError("Allow selected email text to be sent to Groq before syncing.")
+        raise ValueError("Allow selected email text to be sent to the active model provider before syncing.")
     if data["history_mode"] not in HISTORY_MODES:
         raise ValueError("Choose how much existing mail to import.")
     if type(data["label_ids"]) is not list or any(type(x) is not str for x in data["label_ids"]):

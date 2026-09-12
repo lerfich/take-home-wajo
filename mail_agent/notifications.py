@@ -103,6 +103,11 @@ def initialize(db: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS notification_jobs_due
             ON notification_jobs(status, due_at);
     """)
+    # Delivery may have reached Notification Center before a prior process
+    # crashed. Never repeat that unknown external outcome automatically.
+    db.execute("""UPDATE notification_jobs SET status='unknown',completed_at=?,
+                  error='Delivery outcome unknown after restart'
+                  WHERE status='dispatching'""", (time.time(),))
     db.commit()
 
 
@@ -190,6 +195,11 @@ class NotificationScheduler:
         """Schedule exactly one active-model banner for this process launch."""
         now = self.clock()
         due = now + STARTUP_DELAY_SECONDS
+        with self._connect() as db:
+            db.execute("""UPDATE notification_jobs SET status='cancelled',completed_at=?
+                          WHERE kind='startup_mode' AND status='pending'
+                            AND dedupe_key<>?""",
+                       (now, f"startup-mode:{self.launch_id}"))
         return self._insert(
             kind="startup_mode",
             dedupe_key=f"startup-mode:{self.launch_id}",
@@ -325,6 +335,13 @@ class NotificationScheduler:
                     )
                     suppressed += 1
                     continue
+                claimed = db.execute(
+                    "UPDATE notification_jobs SET status='dispatching' WHERE id=? AND status='pending'",
+                    (job.id,),
+                ).rowcount
+                if not claimed:
+                    continue
+                db.commit()
                 try:
                     delivered = bool(self.notifier.notify(job.title, job.body))
                 except Exception:
@@ -332,7 +349,7 @@ class NotificationScheduler:
                 status = "sent" if delivered else "failed"
                 db.execute(
                     """UPDATE notification_jobs SET status=?,completed_at=?,error=?
-                       WHERE id=? AND status='pending'""",
+                       WHERE id=? AND status='dispatching'""",
                     (status, now, "" if delivered else "Notification unavailable", job.id),
                 )
                 allowance -= 1
@@ -366,7 +383,7 @@ class NotificationScheduler:
         self._thread = threading.Thread(target=loop, name="wajo-notifications", daemon=True)
         self._thread.start()
 
-    def stop(self, *, timeout: float = 2.0) -> None:
+    def stop(self, *, timeout: float = 4.0) -> None:
         self._stop.set()
         if self._thread:
             self._thread.join(timeout)

@@ -63,7 +63,11 @@ def initialize(db) -> None:
 
 def context_from_proposal(proposal: Mapping[str, Any] | Any) -> SemanticContext:
     """Adapter for rows returned by events.get_proposal()."""
-    return coerce_context(proposal)
+    context = coerce_context(proposal)
+    if isinstance(proposal, Mapping) and proposal.get("safety_blocked"):
+        return SemanticContext(context.meaning, context.subtopic, context.subject,
+                               context.sender, context.evidence, context.ambiguous, True)
+    return context
 
 
 def _decode(row) -> dict:
@@ -228,17 +232,10 @@ def revoke_mistake(db, event_id: int, account: str) -> dict:
     if account != row["account"]:
         raise ValueError("The event belongs to another account")
     skill = get(db, row["skill_id"])
-    if skill["revision"] == row["skill_revision"]:
-        _revoke(db, skill, account, "This shouldn't have been added", event_id)
-        qualified = False
-    else:
-        # Do not silently revoke a newer, explicitly reviewed revision because
-        # an event created by an older revision was later corrected.
-        db.execute("""INSERT INTO event_skill_revocations
-            (skill_id,skill_revision,account,event_id,reason,created_at) VALUES(?,?,?,?,?,?)""",
-            (skill["id"], row["skill_revision"], account, event_id,
-             "This shouldn't have been added", _now()))
-        qualified = skill["qualified"]
+    # The explicit correction always returns this learned behavior to asking,
+    # even if the application came from an older revision of the same Skill.
+    _revoke(db, skill, account, "This shouldn't have been added", event_id)
+    qualified = False
     db.execute("UPDATE event_skill_applications SET active=0 WHERE event_id=?", (event_id,))
     return {"removed": True, "skill_id": skill["id"], "qualified": qualified,
             "mode": "ask" if not qualified else "auto_save"}
@@ -280,7 +277,8 @@ def approve_proposal(db, proposal_id: int, revision: int) -> dict:
     if result["idempotent"]:
         feedback = db.execute("SELECT * FROM event_skill_feedback WHERE proposal_id=?", (proposal_id,)).fetchone()
         return dict(result, training=dict(feedback) if feedback else None)
-    if proposal["change_kind"] != "create" or result["event"] is None:
+    if (proposal["change_kind"] != "create" or result["event"] is None
+            or proposal.get("safety_blocked")):
         return dict(result, training=None)
     account = proposal["account"] or "local_simulation"
     training = record_approval(db, proposal_id, result["event"]["id"], account,

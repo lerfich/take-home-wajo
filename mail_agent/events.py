@@ -97,20 +97,23 @@ def analysis_context(db: sqlite3.Connection, email_id: str) -> dict:
             job = None
         received_at = (job["created_at"] if job and job["created_at"]
                        else datetime.now(timezone.utc).isoformat())
-    current = db.execute(
+    current_rows = db.execute(
         """SELECT id,title,kind,semantic_kind,start_utc,end_utc,local_date,all_day,source_timezone
            FROM calendar_events WHERE source_thread_id=? AND account=? AND status='current'
-           ORDER BY received_at DESC,id DESC LIMIT 1""",
+           ORDER BY received_at DESC,id DESC""",
         (thread_id, account),
-    ).fetchone()
+    ).fetchall()
+    current_events = [dict(row) for row in current_rows]
     return {
         "received_at": received_at,
         "local_timezone": system_timezone(),
-        "current_same_thread_event": dict(current) if current else None,
+        "current_same_thread_event": current_events[0] if len(current_events) == 1 else None,
+        "current_same_thread_events": current_events,
     }
 
 
-def register_analysis(db: sqlite3.Connection, email, proposal, context: dict) -> dict | None:
+def register_analysis(db: sqlite3.Connection, email, proposal, context: dict, *,
+                      safety_blocked: bool = False) -> dict | None:
     """Persist and, when qualified, auto-apply the model's independent event suggestion."""
     if proposal.event_change == "none":
         return None
@@ -120,11 +123,25 @@ def register_analysis(db: sqlite3.Connection, email, proposal, context: dict) ->
         raise ValueError("Calendar suggestion requires exact evidence from the email body")
     confidence = proposal.event_confidence
     ambiguity = proposal.event_ambiguity_reason
-    if proposal.suspicious or proposal.needs_human:
+    safety_blocked = bool(safety_blocked or proposal.suspicious or proposal.needs_human)
+    if safety_blocked:
         confidence = "ambiguous"
         ambiguity = ambiguity or "Safety or human review is required before saving this event."
+    current_events = context.get("current_same_thread_events") or []
     prior = context.get("current_same_thread_event")
     change = proposal.event_change
+    if change in {"reschedule", "cancel"} and not prior and current_events:
+        title = proposal.event_title.strip().casefold()
+        title_matches = [item for item in current_events
+                         if str(item.get("title", "")).strip().casefold() == title]
+        semantic = proposal.event_semantic_kind.strip().casefold()
+        semantic_matches = [item for item in current_events
+                            if semantic and str(item.get("semantic_kind", "")).strip().casefold() == semantic]
+        matches = title_matches if len(title_matches) == 1 else semantic_matches
+        prior = matches[0] if len(matches) == 1 else None
+        if prior is None:
+            # Never guess which existing event a later message changes.
+            return None
     prior_id = prior["id"] if prior and change in {"reschedule", "cancel"} else None
     if change == "cancel" and prior_id is None:
         return None  # Nothing in Wajo's current calendar can be cancelled.
@@ -146,6 +163,7 @@ def register_analysis(db: sqlite3.Connection, email, proposal, context: dict) ->
         local_timezone=context["local_timezone"], confidence=confidence,
         ambiguity_reason=ambiguity, change_kind=change,
         supersedes_event_id=prior_id, _commit=False,
+        safety_blocked=safety_blocked,
     )
     if saved["status"] != "awaiting_confirmation":
         return saved
@@ -184,6 +202,7 @@ def initialize(db: sqlite3.Connection) -> None:
             status TEXT NOT NULL,
             revision INTEGER NOT NULL DEFAULT 1,
             automatic INTEGER NOT NULL DEFAULT 0,
+            safety_blocked INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             decided_at TEXT NOT NULL DEFAULT '',
             UNIQUE(source_email_id, candidate_key)
@@ -217,6 +236,9 @@ def initialize(db: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS event_proposals_source
             ON event_proposals(source_email_id,status);
     """)
+    columns = {row[1] for row in db.execute("PRAGMA table_info(event_proposals)")}
+    if "safety_blocked" not in columns:
+        db.execute("ALTER TABLE event_proposals ADD COLUMN safety_blocked INTEGER NOT NULL DEFAULT 0")
 
 
 def _now() -> str:
@@ -227,7 +249,7 @@ def _row(row: sqlite3.Row | None) -> dict | None:
     if row is None:
         return None
     result = dict(row)
-    for key in ("all_day", "automatic"):
+    for key in ("all_day", "automatic", "safety_blocked"):
         if key in result:
             result[key] = bool(result[key])
     return result
@@ -277,7 +299,24 @@ def _normalize_timed(start_at: str, end_at: str, source_timezone: str,
         except (TypeError, ValueError) as exc:
             raise ValueError(f"Invalid {field}") from exc
         if result.tzinfo is None:
-            result = result.replace(tzinfo=zone)
+            candidates = []
+            for fold in (0, 1):
+                candidate = result.replace(tzinfo=zone, fold=fold)
+                utc = candidate.astimezone(timezone.utc)
+                back = utc.astimezone(zone)
+                if back.replace(tzinfo=None) == result and back.fold == fold:
+                    candidates.append(utc)
+            unique = {candidate.isoformat(): candidate for candidate in candidates}
+            if not unique:
+                raise ValueError(f"{field} is not a real local time in {used_zone}")
+            if len(unique) > 1:
+                raise ValueError(f"{field} is ambiguous in {used_zone}; include an explicit UTC offset")
+            return next(iter(unique.values()))
+        if source_timezone:
+            in_zone = result.astimezone(zone)
+            if (in_zone.replace(tzinfo=None) != result.replace(tzinfo=None)
+                    or in_zone.utcoffset() != result.utcoffset()):
+                raise ValueError(f"{field} offset does not match {source_timezone}")
         return result.astimezone(timezone.utc)
 
     start = parse(start_at, "start_at")
@@ -310,13 +349,14 @@ def propose_event(db: sqlite3.Connection, *, source_email_id: str, kind: str,
                   source_timezone: str = "", local_timezone: str = "",
                   confidence: str = "clear", ambiguity_reason: str = "",
                   change_kind: str = "create", supersedes_event_id: int | None = None,
+                  safety_blocked: bool = False,
                   _commit: bool = True) -> dict:
     """Persist an idempotent candidate; ambiguous candidates can never be approved."""
     if kind not in EVENT_KINDS or change_kind not in CHANGE_KINDS:
         raise ValueError("Invalid event kind or change kind")
     if confidence not in {"clear", "ambiguous"}:
         raise ValueError("Invalid confidence")
-    if type(all_day) is not bool or not title.strip() or not original_text.strip():
+    if type(all_day) is not bool or type(safety_blocked) is not bool or not title.strip() or not original_text.strip():
         raise ValueError("Event title, original text and boolean all_day are required")
     received = _aware(received_at, "received_at").astimezone(timezone.utc).isoformat()
     thread_id, account, sender, subject = _safe_source(db, source_email_id, source_thread_id)
@@ -364,6 +404,7 @@ def propose_event(db: sqlite3.Connection, *, source_email_id: str, kind: str,
         "all_day": int(all_day), "source_timezone": used_zone, "confidence": confidence,
         "ambiguity_reason": reason, "change_kind": change_kind,
         "supersedes_event_id": supersedes_event_id,
+        "safety_blocked": int(safety_blocked),
         "status": "needs_clarification" if confidence == "ambiguous" else "awaiting_confirmation",
     }
     existing = db.execute(
