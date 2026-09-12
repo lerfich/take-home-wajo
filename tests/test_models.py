@@ -23,6 +23,7 @@ from mail_agent.model_settings import (
     validate_user_key,
 )
 from mail_agent.openai_provider import DEFAULT_OPENAI_MODEL, OpenAIProposer
+from mail_agent.web import Application
 
 
 class ModelSettingsTests(unittest.TestCase):
@@ -86,6 +87,26 @@ class ModelSettingsTests(unittest.TestCase):
         with self.assertRaisesRegex(ProviderError, "Enter and verify"):
             create_provider(settings, self.credentials, Path("unused"))
         self.assertEqual(load_model_settings(self.db), settings)
+
+    def test_application_restart_restores_user_mode_key_and_concurrency(self):
+        path = Path(self.temp.name) / "restart.sqlite3"
+        token = Path(self.temp.name) / "missing-token.json"
+        client = Path(self.temp.name) / "missing-client.json"
+        first = Application(path, connection_token=token, gmail_credentials=client)
+        try:
+            first.credentials.set_key(USER_OPENAI, "sk-local-restart-test")
+            with first.connect() as db:
+                save_model_settings(db, USER_OPENAI, 9)
+        finally:
+            first.notifications.close()
+        second = Application(path, connection_token=token, gmail_credentials=client)
+        try:
+            self.assertEqual(second.model_settings(), ModelSettings(USER_OPENAI, 9))
+            self.assertEqual(second.analysis_limit, 9)
+            self.assertTrue(second.public_models()["has_user_openai_key"])
+            self.assertEqual(second.credentials.get_key(USER_OPENAI), "sk-local-restart-test")
+        finally:
+            second.notifications.close()
 
 
 class ProviderContractTests(unittest.TestCase):

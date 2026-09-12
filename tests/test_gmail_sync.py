@@ -363,3 +363,46 @@ class GmailSyncTests(unittest.TestCase):
                 self.app.stop.set(); self.app.wakeup.set(); self.app.worker.join(4)
         self.assertTrue(all(x["status"] == "done" for x in self.app.state()["jobs"]))
         self.assertEqual(provider.maximum, 3)
+
+    def test_user_model_mode_really_runs_seven_analyses_concurrently(self):
+        class Blocking:
+            def __init__(self):
+                self.calls = []
+                self.active = 0
+                self.maximum = 0
+                self.lock = threading.Lock()
+                self.seven = threading.Event()
+                self.release = threading.Event()
+            def propose(self, email):
+                with self.lock:
+                    self.active += 1
+                    self.maximum = max(self.maximum, self.active)
+                    if self.active == 7:
+                        self.seven.set()
+                self.release.wait(3)
+                with self.lock:
+                    self.active -= 1
+                    self.calls.append({"status": "ok"})
+                return Proposal("label", "Work", label="AI: Work")
+
+        provider = Blocking()
+        self.app.analysis_limit = 7
+        for index in range(8):
+            self.app.enqueue({"sender": "sender@example.test", "subject": f"User mail {index}",
+                              "body": "Synthetic body"}, f"user-parallel-{index}")
+        with patch("mail_agent.web.create_provider", return_value=provider):
+            self.app.worker.start()
+            try:
+                self.assertTrue(provider.seven.wait(3))
+                time.sleep(.1)
+                self.assertEqual(provider.maximum, 7)
+            finally:
+                provider.release.set()
+                deadline = time.monotonic() + 4
+                while time.monotonic() < deadline:
+                    if all(x["status"] == "done" for x in self.app.state()["jobs"]):
+                        break
+                    time.sleep(.05)
+                self.app.stop.set(); self.app.wakeup.set(); self.app.worker.join(4)
+        self.assertTrue(all(x["status"] == "done" for x in self.app.state()["jobs"]))
+        self.assertEqual(provider.maximum, 7)

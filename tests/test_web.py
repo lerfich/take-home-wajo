@@ -75,6 +75,45 @@ class WebTests(unittest.TestCase):
         self.assertEqual(paused["status"], "paused")
         self.assertFalse(paused["qualified"])
 
+    def test_event_skill_qualifies_auto_saves_and_mistake_returns_to_questions(self):
+        def analyzed(email_id, day):
+            quote = f"Project review on 2027-02-{day:02d}"
+            class Fixed:
+                def propose(self, email):
+                    return Proposal(
+                        "none", "Calendar item", event_change="create",
+                        event_kind="calendar_event", event_semantic_kind="project_review",
+                        event_title="Project review", event_original_text=quote,
+                        event_start=f"2027-02-{day:02d}", event_all_day=True,
+                        event_confidence="clear", event_evidence=quote)
+            agent = self.server.app.agent(Fixed())
+            try:
+                return agent.ingest(Email(email_id, "team@example.test", "Project review", quote))
+            finally:
+                agent.close()
+
+        for index, day in enumerate((10, 11), 1):
+            action = analyzed(f"event-train-{index}", day)
+            proposal = next(item for item in self.get()["event_proposals"]
+                            if item["source_email_id"] == action["email_id"])
+            self.post("/api/events/approve", {"proposal_id": proposal["id"],
+                      "revision": proposal["revision"]})
+        self.assertTrue(self.get()["event_skills"][0]["qualified"])
+
+        automatic_action = analyzed("event-automatic", 12)
+        automatic_state = self.get()
+        automatic_proposal = next(item for item in automatic_state["event_proposals"]
+                                  if item["source_email_id"] == automatic_action["email_id"])
+        self.assertEqual(automatic_proposal["status"], "approved")
+        self.assertTrue(automatic_proposal["automatic"])
+        automatic_event = next(item for item in automatic_state["events"]
+                               if item["proposal_id"] == automatic_proposal["id"])
+        correction = self.post("/api/events/mistake", {"event_id": automatic_event["id"]})
+        self.assertEqual(correction["correction"]["mode"], "ask")
+        after = self.get()
+        self.assertFalse(after["event_skills"][0]["qualified"])
+        self.assertNotIn(automatic_event["id"], {item["id"] for item in after["events"]})
+
     def test_attention_state_exposes_disabled_effective_exception(self):
         from mail_agent.attention import set_rule
         class Fixed:
