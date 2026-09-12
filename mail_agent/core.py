@@ -34,6 +34,20 @@ class Proposal:
     label_kind: str = "unknown"
     attention_cue: str = ""  # Missing legacy field; explicit none/unknown stay authoritative.
     attention_evidence: str = ""
+    # A calendar suggestion is independent from the mail action above.  Both
+    # are returned by one model call, then reviewed and persisted separately.
+    event_change: str = "none"
+    event_kind: str = "none"
+    event_semantic_kind: str = ""
+    event_title: str = ""
+    event_original_text: str = ""
+    event_start: str = ""
+    event_end: str = ""
+    event_all_day: bool = False
+    event_timezone: str = ""
+    event_confidence: str = "none"
+    event_ambiguity_reason: str = ""
+    event_evidence: str = ""
 
 
 class Proposer(Protocol):
@@ -72,10 +86,14 @@ def validate(proposal: Proposal) -> None:
     if type(proposal) is not Proposal:
         raise ValueError("Invalid proposal type")
     for name in ("action", "reason", "label", "text", "recipient", "pattern", "pattern_evidence", "label_kind",
-                 "attention_cue", "attention_evidence"):
+                 "attention_cue", "attention_evidence", "event_change", "event_kind",
+                 "event_semantic_kind", "event_title", "event_original_text", "event_start",
+                 "event_end", "event_timezone", "event_confidence", "event_ambiguity_reason",
+                 "event_evidence"):
         if type(getattr(proposal, name)) is not str:
             raise ValueError(f"Invalid {name}")
-    for name in ("notify", "suspicious", "needs_human", "requires_action", "has_deadline", "significant_change", "sensitive"):
+    for name in ("notify", "suspicious", "needs_human", "requires_action", "has_deadline", "significant_change", "sensitive",
+                 "event_all_day"):
         if type(getattr(proposal, name)) is not bool:
             raise ValueError(f"Invalid {name}")
     if proposal.pattern not in PATTERNS | {"unknown"}:
@@ -86,6 +104,25 @@ def validate(proposal: Proposal) -> None:
     from .attention import ATTENTION_CUES
     if proposal.attention_cue not in set(ATTENTION_CUES) | {"unknown", ""}:
         raise ValueError("Invalid attention cue")
+    if proposal.event_change not in {"none", "create", "reschedule", "cancel"}:
+        raise ValueError("Invalid event change")
+    if proposal.event_kind not in {"none", "calendar_event", "response_deadline"}:
+        raise ValueError("Invalid event kind")
+    if proposal.event_confidence not in {"none", "clear", "ambiguous"}:
+        raise ValueError("Invalid event confidence")
+    if proposal.event_change == "none":
+        unused = (proposal.event_semantic_kind, proposal.event_title,
+                  proposal.event_original_text, proposal.event_start, proposal.event_end,
+                  proposal.event_timezone, proposal.event_ambiguity_reason,
+                  proposal.event_evidence)
+        if (proposal.event_kind != "none" or proposal.event_confidence != "none"
+                or proposal.event_all_day or any(unused)):
+            raise ValueError("Unused event fields must use none")
+    elif (proposal.event_kind == "none" or proposal.event_confidence == "none"
+          or not proposal.event_title.strip() or not proposal.event_original_text.strip()):
+        raise ValueError("Event suggestions require a kind, title, source text and confidence")
+    elif proposal.event_confidence == "ambiguous" and not proposal.event_ambiguity_reason.strip():
+        raise ValueError("Ambiguous event suggestions require a clarification reason")
 
 
 # Communicative purpose, not sender/domain, subject keywords or job-search templates.
@@ -179,6 +216,10 @@ class Agent:
         initialize_gmail_sync(self.db)
         from .superpowers import initialize as initialize_superpowers
         initialize_superpowers(self.db)
+        from .events import initialize as initialize_events
+        initialize_events(self.db)
+        from .event_skills import initialize as initialize_event_skills
+        initialize_event_skills(self.db)
 
     def queue_gmail(self, action_id, operation, approved=False, scope="general", automatic=False):
         if scope not in {"general", "sender"}:
@@ -317,7 +358,12 @@ class Agent:
         read_before_wajo = bool(binding is not None and not binding["initial_unread"])
         suppressed_action = ""
         try:
-            proposal = self.proposer.propose(email)
+            from .events import analysis_context
+            event_context = analysis_context(self.db, email.id)
+            if hasattr(self.proposer, "propose_with_context"):
+                proposal = self.proposer.propose_with_context(email, event_context)
+            else:
+                proposal = self.proposer.propose(email)
             validate(proposal)
             if read_before_wajo:
                 suppressed_action = proposal.action if proposal.action != "label" else ""
@@ -381,6 +427,8 @@ class Agent:
             register_application(self, action_id, draft_style_application)
             from .superpowers import bind_application
             bind_application(self, action_id, draft_style_application)
+            from .events import register_analysis
+            register_analysis(self.db, email, proposal, event_context)
             binding = self.db.execute("SELECT * FROM gmail_bindings WHERE email_id=?", (email.id,)).fetchone()
             if binding is not None:
                 self.db.execute("UPDATE actions SET transport='gmail' WHERE id=?", (action_id,))

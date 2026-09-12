@@ -10,9 +10,69 @@ from urllib.error import HTTPError
 
 from mail_agent.core import Agent, Email, Proposal
 from mail_agent.web import create_server
+from mail_agent.model_settings import KeyValidation, USER_GROQ
 
 
 class WebTests(unittest.TestCase):
+    def test_model_settings_require_current_validation_and_never_expose_key(self):
+        key = "gsk_private_test_key"
+        with patch("mail_agent.web.validate_user_key", return_value=KeyValidation(True)):
+            checked = self.post("/api/models/validate", {"mode": USER_GROQ, "key": key})
+        self.assertTrue(checked["valid"])
+        with self.assertRaises(HTTPError):
+            self.post("/api/models/apply", {"mode": USER_GROQ, "concurrency": 7,
+                      "key": key + "-changed", "validation_token": checked["token"]})
+        applied = self.post("/api/models/apply", {"mode": USER_GROQ, "concurrency": 7,
+                            "key": key, "validation_token": checked["token"]})
+        self.assertTrue(applied["applied"])
+        state = self.get()
+        self.assertEqual((state["models"]["mode"], state["models"]["concurrency"]),
+                         (USER_GROQ, 7))
+        self.assertEqual(self.server.app.analysis_limit, 7)
+        self.assertNotIn(key, json.dumps(state))
+
+    def test_event_decision_is_independent_and_visible_in_calendar(self):
+        quote = "Project review on 2027-01-20 at 10:00 UTC"
+        class Fixed:
+            def propose(self, email):
+                return Proposal(
+                    "none", "Calendar item", requires_action=False, has_deadline=False,
+                    significant_change=False, sensitive=False,
+                    event_change="create", event_kind="calendar_event",
+                    event_semantic_kind="project_review", event_title="Project review",
+                    event_original_text=quote, event_start="2027-01-20T10:00:00+00:00",
+                    event_timezone="UTC", event_confidence="clear", event_evidence=quote)
+        agent = self.server.app.agent(Fixed())
+        try:
+            action = agent.ingest(Email("event-web", "team@example.test", "Review", quote))
+        finally:
+            agent.close()
+        before = self.get()
+        row = next(item for item in before["actions"] if item["id"] == action["id"])
+        proposal = next(item for item in before["event_proposals"]
+                        if item["source_email_id"] == "event-web")
+        self.assertEqual(row["status"], "executed")
+        self.assertTrue(row["awaiting_event_decision"])
+        self.assertEqual(before["events"], [])
+        self.post("/api/events/approve", {"proposal_id": proposal["id"],
+                  "revision": proposal["revision"]})
+        after = self.get()
+        self.assertFalse(next(item for item in after["actions"]
+                              if item["id"] == action["id"])["awaiting_event_decision"])
+        self.assertEqual(after["events"][0]["title"], "Project review")
+        self.assertEqual(after["event_skills"][0]["approval_streak"], 1)
+        with self.server.app.connect() as db:
+            reminder = db.execute(
+                "SELECT status FROM notification_jobs WHERE kind='event_reminder'"
+            ).fetchone()
+        self.assertEqual(reminder["status"], "pending")
+        skill = after["event_skills"][0]
+        self.post("/api/event-skills/manage", {"skill_id": skill["id"],
+                  "revision": skill["revision"], "operation": "pause"})
+        paused = self.get()["event_skills"][0]
+        self.assertEqual(paused["status"], "paused")
+        self.assertFalse(paused["qualified"])
+
     def test_attention_state_exposes_disabled_effective_exception(self):
         from mail_agent.attention import set_rule
         class Fixed:

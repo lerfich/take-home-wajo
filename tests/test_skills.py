@@ -108,8 +108,15 @@ class SkillsTests(unittest.TestCase):
     def test_sender_scope_is_exact_but_ordinary_skill_crosses_accounts(self):
         ident = self.suggest()
         data = dict(skill_id=ident, scope='sender', exclusions=[])
-        result = skills.preview(self.agent, data)
-        skills.save(self.agent, dict(data, token=result['token'], reviewed=[e['id'] for e in result['examples']]))
+        with self.assertRaisesRegex(ValueError, 'New Skills use similar'):
+            skills.preview(self.agent, data)
+        # A sender-scoped Skill saved before D keeps its narrow boundary; it is
+        # not silently widened when the new-skill control is removed.
+        saved = skills.get(self.agent, ident)
+        saved['config']['scope'] = 'sender'
+        with self.agent.db:
+            self.agent.db.execute("UPDATE skills SET config=?,status='active' WHERE id=?",
+                                  (json.dumps(saved['config']), ident))
         self.assertFalse(matches(self.agent, self.agent.email_for(self.other['id']), self.p))
         self.assertFalse(matches(self.agent, self.email, replace(self.p, suspicious=True)))
         with self.agent.db:

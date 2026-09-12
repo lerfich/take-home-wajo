@@ -93,6 +93,8 @@ def local_data_counts(db):
         "gmail_state": ("gmail_bindings", "gmail_sync_settings"),
         "superpowers": ("autosent_journal", "superpower_confirmations", "superpower_revocations",
                         "superpower_applications", "superpower_settings"),
+        "events": ("event_skill_applications", "event_skill_feedback", "event_skill_revocations",
+                   "event_skills", "calendar_events", "event_proposals", "notification_jobs"),
         "supporting_state": ("label_conflicts", "label_targets", "skill_examples",
                              "skill_legacy_links", "skill_feedback_seen", "skill_draft_seen",
                              "draft_style_applications", "draft_edit_versions", "email_organization",
@@ -108,6 +110,8 @@ def local_data_counts(db):
 def clear_local_data(db):
     """Clear Wajo's local mail-derived state. This never calls or mutates Gmail."""
     tables = (
+        "notification_jobs", "event_skill_applications", "event_skill_feedback",
+        "event_skill_revocations", "event_skills", "calendar_events", "event_proposals",
         "autosent_journal", "superpower_confirmations", "superpower_revocations",
         "superpower_applications", "superpower_settings",
         "gmail_operations", "gmail_replies", "label_conflicts", "label_targets",
@@ -309,6 +313,10 @@ def fetch_one(api, app, account, item, selected_history_labels=(), now=None):
         else:
             fields = message_fields(message)
         unread = "UNREAD" in ids
+        # Persist the trusted Gmail timestamp before the analysis job becomes
+        # visible to a worker. Relative calendar dates must be anchored to the
+        # source message time, not to whichever thread claims the job first.
+        _cache_context(app, account, message, fields, role, unread)
         if role == "incoming":
             event_id = f"gmail:{account}:{item['id']}"
             from .gmail import has_attachments
@@ -317,7 +325,6 @@ def fetch_one(api, app, account, item, selected_history_labels=(), now=None):
                        "initial_unread": int(unread), "source_role": role,
                        "has_attachments": int(has_attachments(message.get("payload", {})))}
             app.enqueue(fields, event_id=event_id, gmail_binding=binding)
-        _cache_context(app, account, message, fields, role, unread)
         return "imported" if role == "incoming" else "context"
     except Exception as exc:
         # History may reference a draft version removed by a later update.

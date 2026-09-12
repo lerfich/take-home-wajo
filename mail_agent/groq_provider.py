@@ -1,5 +1,6 @@
 """Groq adapter. Credentials never enter prompts, reports, or exception text."""
 from dataclasses import asdict
+from contextlib import nullcontext
 import json
 import os
 import math
@@ -26,6 +27,13 @@ FIELDS["label_kind"] = {"type": "string", "enum": sorted(set(LABEL_KINDS) | {"un
 from .attention import ATTENTION_CUES
 FIELDS["attention_cue"] = {"type": "string", "enum": sorted(set(ATTENTION_CUES) | {"unknown"})}
 FIELDS["attention_evidence"] = {"type": "string"}
+FIELDS.update({name: {"type": "string"} for name in (
+    "event_semantic_kind", "event_title", "event_original_text", "event_start", "event_end",
+    "event_timezone", "event_ambiguity_reason", "event_evidence")})
+FIELDS["event_change"] = {"type": "string", "enum": ["none", "create", "reschedule", "cancel"]}
+FIELDS["event_kind"] = {"type": "string", "enum": ["none", "calendar_event", "response_deadline"]}
+FIELDS["event_all_day"] = {"type": "boolean"}
+FIELDS["event_confidence"] = {"type": "string", "enum": ["none", "clear", "ambiguous"]}
 SCHEMA = {"type": "object", "properties": FIELDS, "required": list(FIELDS), "additionalProperties": False}
 
 # Analysis jobs may be prepared concurrently, but the selected free Groq
@@ -63,7 +71,8 @@ def read_settings(path: Path) -> dict:
 class GroqProposer:
     prompt_version = PROMPT_VERSION
     system = SYSTEM
-    def __init__(self, api_key: str, model: str = DEFAULT_MODEL, max_retries: int = 2):
+    def __init__(self, api_key: str, model: str = DEFAULT_MODEL, max_retries: int = 2,
+                 serialize_calls: bool = True):
         if not api_key or any(c.isspace() for c in api_key):
             raise ProviderError("Set a valid GROQ_API_KEY in task/.env or the environment")
         self._key = api_key
@@ -71,8 +80,15 @@ class GroqProposer:
         self.calls = []
         if type(max_retries) is not int or not 0 <= max_retries <= 2:
             raise ValueError("max_retries must be 0, 1 or 2")
+        if type(serialize_calls) is not bool:
+            raise ValueError("serialize_calls must be a boolean")
         self.max_retries = max_retries
+        self.serialize_calls = serialize_calls
         self.http_attempts = []
+
+    def chat_gate(self):
+        """Bundled quota is serialized; user-owned quota may run concurrently."""
+        return CHAT_RATE_GATE if self.serialize_calls else nullcontext()
 
     def redact(self, text):
         text = str(text).replace(self._key, "[REDACTED_KEY]")
@@ -160,20 +176,34 @@ class GroqProposer:
         return sorted(item["id"] for item in self.request("models")["data"])
 
     def propose(self, email: Email) -> Proposal:
+        return self.propose_with_context(email, None)
+
+    def propose_with_context(self, email: Email, email_context: dict | None) -> Proposal:
         # The model does not choose the target email ID.
         content = {k: v for k, v in asdict(email).items() if k != "id"}
         if len(json.dumps(content)) > 24000:
             raise ProviderError("Email exceeds initial context limit; manual review required")
-        payload = {"model": self.model, "temperature": 0, "max_completion_tokens": 800,
+        user_input = {"untrusted_email": content}
+        if email_context:
+            # Database identifiers remain server-bound and never need to be
+            # selected or echoed by the model.
+            safe_context = dict(email_context)
+            current = safe_context.get("current_same_thread_event")
+            if current:
+                safe_context["current_same_thread_event"] = {
+                    key: value for key, value in current.items() if key != "id"
+                }
+            user_input["trusted_email_context"] = safe_context
+        payload = {"model": self.model, "temperature": 0, "max_completion_tokens": 1000,
                    "messages": [{"role": "system", "content": self.system},
-                                {"role": "user", "content": json.dumps({"untrusted_email": content}, ensure_ascii=False)}],
+                                {"role": "user", "content": json.dumps(user_input, ensure_ascii=False)}],
                    "response_format": {"type": "json_schema", "json_schema": {
                        "name": "email_proposal", "strict": True, "schema": SCHEMA}}}
         start = time.monotonic()
         record = {"model": self.model, "prompt_version": self.prompt_version}
         attempts_start = len(self.http_attempts)
         try:
-            with CHAT_RATE_GATE:
+            with self.chat_gate():
                 result = self.request("chat/completions", payload)
             choice = result["choices"][0]
             if choice["finish_reason"] != "stop" or choice["message"].get("refusal"):
@@ -234,7 +264,7 @@ Return English unless the current draft is clearly in another language."""
         record = {"model": self.model, "prompt_version": self.prompt_version, "kind": "draft_style_rewrite"}
         attempts_start = len(self.http_attempts)
         try:
-            with CHAT_RATE_GATE:
+            with self.chat_gate():
                 result = self.request("chat/completions", payload)
             choice = result["choices"][0]
             if choice["finish_reason"] != "stop" or choice["message"].get("refusal"):

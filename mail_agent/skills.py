@@ -183,8 +183,22 @@ def match(agent, skill, email, proposal, exclusions=()):
     if kind == 'unknown' or (family != 'attention' and (
             not proposal.pattern_evidence.strip() or proposal.pattern_evidence not in email.body)):
         return 'unknown', 'No supported, evidenced meaning is available.'
-    if kind != c['kind']:
-        return 'no-match', 'The saved meaning is outside this skill.'
+    # New Skills are semantic-first.  Subject and sender only improve an
+    # already compatible semantic match; neither can manufacture one or prove
+    # that the sender is authentic.  Legacy sender-scoped Skills retain their
+    # explicit boundary in the check above.
+    from .semantic_matcher import SemanticContext, compare
+    semantic = compare(
+        SemanticContext(c['kind'], str(c.get('subtopic', '')), source.subject,
+                        source.sender, str(c.get('evidence', ''))),
+        SemanticContext(kind, str(c.get('subtopic', '')), email.subject,
+                        email.sender, proposal.pattern_evidence,
+                        suspicious=proposal.suspicious),
+    )
+    if semantic.outcome == 'unknown':
+        return 'unknown', semantic.reason
+    if not semantic.matched:
+        return 'no-match', semantic.reason
     body = email.body.casefold()
     if c.get('contains') and c['contains'].casefold() not in body:
         return 'no-match', 'The required literal phrase is absent.'
@@ -196,7 +210,7 @@ def match(agent, skill, email, proposal, exclusions=()):
         return 'no-match', 'This skill only adjusts an eligible label action.'
     if family == 'draft' and proposal.action not in {'draft', 'send'}:
         return 'no-match', 'There is no draft to style.'
-    return 'match', 'The evidenced meaning and scope match.'
+    return 'match', semantic.reason
 
 
 def choose(agent, family, email, proposal, *, candidate=None, candidate_exclusions=()):
@@ -316,7 +330,11 @@ def validated_config(skill, data):
         'labels': {'labels'}, 'draft': {'length', 'greeting', 'signoff'}, 'archive': {'mode'}}[skill['family']]
     if set(changes) - allowed:
         raise ValueError('This refinement cannot change permissions')
-    c.update(changes); c['scope'] = data.get('scope', c['scope'])
+    c.update(changes)
+    requested_scope = data.get('scope', c['scope'])
+    if requested_scope != c['scope']:
+        raise ValueError('Skill scope is fixed. New Skills use similar situations by default')
+    c['scope'] = requested_scope
     kinds = set(ATTENTION_CUES) - {'none'} if skill['family'] == 'attention' else PATTERNS if skill['family'] == 'archive' else set(LABEL_KINDS)
     if c['scope'] not in {'similar', 'sender'} or c['kind'] not in kinds:
         raise ValueError('Choose a supported meaning and scope')

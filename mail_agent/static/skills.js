@@ -28,7 +28,9 @@ async function reloadSkillPreview(){
 }
 function renderSkill(){
   const s=skillReview;if(!s)return;
-  $('#skill-scope').value=s.payload.scope;$('#skill-scope').disabled=s.loading;
+  $('#skill-scope').value=s.payload.scope;$('#skill-scope').disabled=true;
+  $('#skill-scope-title').textContent=s.payload.scope==='sender'?'This sender only · existing Skill':'Future similar emails';
+  $('#skill-scope-note').textContent=s.payload.scope==='sender'?'This older narrow scope is preserved and is not expanded automatically.':'Meaning is primary; subject, subtopic and sender are supporting context.';
   $('#skill-rule-title').textContent=s.data?.title||'Checking your preference';
   $('#skill-cue').textContent=s.data?.cue||'';
   $('#skill-back').disabled=s.loading||!s.data||s.index===0;
@@ -46,7 +48,7 @@ function renderSkill(){
     $('#skill-refine-form').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget, changes=Object.fromEntries(new FormData(form));for(const k of ['enabled','important'])if(form.elements[k])changes[k]=form.elements[k].checked;if(changes.labels)changes.labels=changes.labels.split('\n').map(x=>x.trim()).filter(Boolean);s.payload.changes=changes;await reloadSkillPreview()};
   }
   if(s.index===examples.length){
-    $('#skill-content').innerHTML=`<section class="skill-summary"><h3>Ready to save</h3><p>${esc(s.data.title)} · ${esc(s.data.cue)}</p><p>Scope: ${esc(s.data.scope)}</p><p>${examples.length} examples reviewed. ${s.payload.exclusions.length} email-only exceptions.</p><p>Future matching emails use this preference. Existing mail actions will not be repeated.</p><small>${esc(s.data.note)}</small></section>`;
+    $('#skill-content').innerHTML=`<section class="skill-summary"><h3>Ready to save</h3><p>${esc(s.data.title)} · ${esc(s.data.cue)}</p><p>Similar situations <small>Meaning first; subject, subtype and sender add context.</small></p><p>${examples.length} examples reviewed. ${s.payload.exclusions.length} email-only exceptions.</p><p>Future matching emails use this preference. Existing mail actions will not be repeated.</p><small>${esc(s.data.note)}</small></section>`;
     $('#skill-next').classList.add('hidden');$('#skill-save').classList.remove('hidden');
     $('#skill-save').disabled=s.reviewed.size!==examples.length;
     $('#skill-progress').textContent='Final review';return;
@@ -59,7 +61,6 @@ function renderSkill(){
   $('#skill-correct').onclick=()=>{s.reviewed.add(e.id);renderSkill();$('#skill-next').focus()};
   $('#skill-exclude').onclick=async()=>{s.payload.exclusions=e.excluded?s.payload.exclusions.filter(id=>id!==e.id):[...s.payload.exclusions,e.id];await reloadSkillPreview()};
 }
-$('#skill-scope').onchange=async()=>{skillReview.payload.scope=$('#skill-scope').value;await reloadSkillPreview()};
 $('#skill-back').onclick=()=>{skillReview.index--;renderSkill()};
 $('#skill-next').onclick=()=>{skillReview.index++;renderSkill();$('#skill-correct')?.focus()};
 $('#skill-save').onclick=async()=>{

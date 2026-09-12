@@ -7,6 +7,7 @@ const actions = {archive:'Archive email',label:'Apply label',draft:'Save draft',
 const statuses = {executing:'Gmail action queued',restoring:'Gmail restore queued',unknown:'Verification needed',pending:'Approval needed',executed:'Completed',blocked:'Blocked',escalated:'Needs your review',error:'Processing error',skipped:'Kept in inbox',rejected:'Rejected',corrected:'Restored to inbox'};
 const events = {gmail_draft_saved:'Gmail draft saved',gmail_queued:'Gmail operation queued',gmail_started:'Gmail verification started',gmail_unknown:'Verification needed',gmail_error:'Gmail operation stopped',gmail_unverified:'Gmail state not confirmed',decision:'Agent decision',approved:'You approved the action',rejected:'You rejected the action',executed:'Action completed',notification:'Notification',preference_feedback:'Feedback saved',learned_permission:'Learned preference applied',archive_corrected:'Archive corrected',revised:'Reply revised',organization_reviewed:'Organization reviewed',organization_preference_applied:'Organization preference applied',organization_rule_paused:'Organization preference paused',draft_style_saved:'Draft style saved',draft_style_applied:'Draft style applied',draft_style_fallback:'Draft style rewrite unavailable',draft_style_rule_paused:'Draft style paused'};
 let state, selected, selectedAutosent, filter='all', page='mail', signature='', busy=false, detailOpen=false;
+let calendarCursor=new Date(new Date().getFullYear(),new Date().getMonth(),1),modelValidation={mode:null,key:null,valid:false,token:null},modelValidationTimer,modelValidationRequest=0,modelsInitialized=false;
 function notify(text){$('#toast').textContent=text;$('#toast').classList.remove('hidden');setTimeout(()=>$('#toast').classList.add('hidden'),5000)}
 function error(text){$('#error').textContent=text;$('#error').classList.toggle('hidden',!text)}
 async function post(path, data){
@@ -21,7 +22,7 @@ async function post(path, data){
     await refresh(true);
     if(feedbackPaths.includes(path)){
       const suggestion=(state.skills||[]).find(s=>s.source_id===data.action_id&&s.status==='suggested'&&!previousSkills.has(s.id));
-      if(suggestion)await openSkillReview({skill_id:suggestion.id,scope:data.scope==='sender'?'sender':'similar'});
+      if(suggestion)await openSkillReview({skill_id:suggestion.id,scope:'similar'});
     }
     return result;
   }catch(e){error(e.message);return null}finally{busy=false}
@@ -41,17 +42,20 @@ function newestFirst(a,b){return b.timestamp-a.timestamp||String(a.email.id).loc
 function currentRows(){return state.actions.map(a=>({...a,email:state.emails.find(e=>e.id===a.email_id),timestamp:mailTime(a.email_id),labelReview:(state.label_reviews||[]).find(r=>r.action_id===a.id),threadId:a.thread_id||a.email_id})).filter(a=>a.email).sort(newestFirst)}
 function waitingRows(actions){const processed=new Set(actions.map(a=>a.email_id));return (state.jobs||[]).filter(j=>j.status!=='done'&&!processed.has(j.id)).map(job=>{const email=JSON.parse(job.email),message=(state.gmail_messages||[]).find(m=>`gmail:${m.account}:${m.message_id}`===job.id);return {id:'job:'+job.id,email,job,status:job.status,account:message?.account||'local',threadId:message?.thread_id||job.id,timestamp:mailTime(job.id)}})}
 function jobStatus(row){return row.status==='error'?'Analysis failed':row.status==='processing'?'Reading email…':'Queued for analysis'}
+function needsDecision(row){return row.status==='pending'||Boolean(row.awaiting_event_decision)}
 function groupThreads(rows){const groups=[];for(const row of rows){const key=`${row.account||'local'}:${row.threadId}`;let group=groups.find(x=>x.key===key);if(!group){group={key,threadId:row.threadId,representative:row,members:[]};groups.push(group)}group.members.push(row)}return groups}
-function badge(row){const replyState=row.reply?(row.status==='executing'?'Saving or sending Gmail reply':row.status==='pending'?'Gmail draft · approval needed':row.status==='executed'?'Sent via Gmail':null):null;const style=['blocked','error','unknown'].includes(row.status)?row.status:row.autonomy;return `<span class="badge ${esc(style)}">${esc(replyState||statuses[row.status]||autonomies[row.autonomy])}</span>`}
+function badge(row){const replyState=row.reply?(row.status==='executing'?'Saving or sending Gmail reply':row.status==='pending'?'Gmail draft · approval needed':row.status==='executed'?'Sent via Gmail':null):null;const eventState=row.awaiting_event_decision?'Awaiting event decision':null;const style=['blocked','error','unknown'].includes(row.status)?row.status:row.autonomy;return `<span class="badge ${esc(style)}">${esc(eventState||replyState||statuses[row.status]||autonomies[row.autonomy])}</span>`}
 function render(){
-  const demo=state.mode==='scripted';$('#mode').textContent=demo?'Sample cases · no AI':(state.gmail_enabled?'Qwen · Gmail live':'Qwen · Groq');
+  const demo=state.mode==='scripted',provider=modelConfig().label||'Bundled free Groq';$('#mode').textContent=demo?'Sample cases · no AI':`${provider}${state.gmail_enabled?' · Gmail live':' · local'}`;
   $('#new-email').classList.toggle('hidden',demo);$('#load-demo').classList.toggle('hidden',!demo);
-  $('#mode-note').textContent=demo?'Sample cases: emails and decisions are predefined; no AI model is called. All mail actions are simulated locally.':state.gmail_enabled?'Gmail live: synchronized incoming mail can receive AI labels, be archived, or have replies saved as Gmail drafts. Sending always requires approval of the exact displayed version.':'Local mode: analysis and actions stay local. Live Gmail actions remain paused until the server is started without --local-simulation.';
+  $('#mode-note').textContent=demo?'Sample cases: emails and decisions are predefined; no AI model is called. All mail actions are simulated locally.':state.gmail_enabled?`Gmail live · ${provider}: synchronized incoming mail can receive AI labels, be archived, or have replies saved as Gmail drafts. Sending follows the separate approval and Superpowers policy.`:`Local mode · ${provider}: model requests use the selected provider. Gmail writes remain paused until the server is started without --local-simulation.`;
+  $('#compose-provider-note').textContent=`The sender, subject and body will be sent to ${provider} for analysis. Use synthetic data.`;
+  $('#gmail-consent-copy').textContent=`I allow the sender, subject and body of mail in this scope to be sent to ${provider} for analysis. Email remains local except for selected model requests.`;
   $('#nav-count').textContent=state.emails.length;
   const suggestions=(state.skills||[]).filter(s=>s.status==='suggested').length;
   $('#skill-suggestion-count').textContent=suggestions;
   $('#skill-suggestion-count').classList.toggle('hidden',!suggestions);
-  renderMail();renderMemory();renderGmail();renderSuperpowers();
+  renderMail();renderMemory();renderGmail();renderCalendar();renderModels();renderSuperpowers();
 }
 function renderMail(){
   if(!state)return;
@@ -63,21 +67,21 @@ function renderMail(){
   $('#label-review-progress').textContent=`${reviewed} of ${labelRows.length} reviewed`;
   $('#nav-labels').classList.toggle('active',reviewMode&&page==='mail');
   $('#nav-mail').classList.toggle('active',!reviewMode&&page==='mail');
-  $('#count-pending').textContent=all.filter(r=>r.status==='pending').length;
+  $('#count-pending').textContent=all.filter(needsDecision).length;
   $('#count-archived').textContent=all.filter(r=>r.email.archived).length;
   const attentionIds=new Set((state.attention_items||[]).filter(x=>!x.seen).map(x=>x.action_id));
   $('#count-attention').textContent=all.filter(r=>attentionIds.has(r.id)).length;
   $('#count-escalated').textContent=all.filter(r=>r.status==='escalated').length;
   const listScroll=$('#email-list').scrollTop;
   const search=$('#search').value.toLocaleLowerCase();
-  const rows=all.filter(r=>(filter==='all'||(filter==='errors'&&['error','unknown'].includes(r.status))||(filter==='label_review'&&r.labelReview&&r.labelReview.status!=='reviewed')||(filter==='label_reviewed'&&r.labelReview?.status==='reviewed')||(filter==='pending'&&r.status==='pending')||(filter==='archived'&&r.email.archived)||(filter==='attention'&&attentionIds.has(r.id))||(filter==='escalated'&&r.status==='escalated'))&&(`${r.email.subject} ${r.email.sender}`).toLocaleLowerCase().includes(search));
+  const rows=all.filter(r=>(filter==='all'||(filter==='errors'&&['error','unknown'].includes(r.status))||(filter==='label_review'&&r.labelReview&&r.labelReview.status!=='reviewed')||(filter==='label_reviewed'&&r.labelReview?.status==='reviewed')||(filter==='pending'&&needsDecision(r))||(filter==='archived'&&r.email.archived)||(filter==='attention'&&attentionIds.has(r.id))||(filter==='escalated'&&r.status==='escalated'))&&(`${r.email.subject} ${r.email.sender}`).toLocaleLowerCase().includes(search));
   const threads=groupThreads(rows),incomplete=(state.gmail_messages||[]).filter(x=>x.state==='incomplete');
   $('#list-count').textContent=threads.length;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('selected',b.dataset.filter===filter));
   $('#filter-label').classList.toggle('hidden',!['attention','escalated'].includes(filter));$('#filter-label').textContent=filter==='attention'?'Showing emails matched by your explicit visibility preferences. Importance and escalation are separate.':filter==='escalated'?'Showing situations where the agent cannot safely continue without human judgment.':' ';
   if(!rows.some(r=>r.id===selected)){selected=threads[0]?.representative.id;detailOpen=false}
   $('.mailbox').classList.toggle('detail-open',detailOpen);
-  const cards=threads.map(group=>{const r=group.representative;const pending=group.members.filter(x=>['pending','escalated','unknown','error'].includes(x.status)).length;return {timestamp:r.timestamp,html:`<button class="email-item ${r.id===selected?'selected':''}" data-id="${esc(r.id)}"><div class="email-top"><span class="email-sender">${esc(r.email.sender)}</span><span class="thread-count">${group.members.length} message${group.members.length===1?'':'s'}${pending?' · '+pending+' need review':''}</span></div><h3>${esc(r.email.subject)}</h3>${r.timestamp?`<small>${esc(new Date(r.timestamp).toLocaleString('en-US'))}</small>`:''}${r.organization?`<p class="organization-line">${esc(r.organization.topic)} · ${esc(r.organization.subtype)}${r.organization.important?' · Important':''}</p>`:''}<p class="email-preview">${esc(r.email.body)}</p>${r.job?`<span class="badge ${r.status==='error'?'error':''}">${jobStatus(r)}</span>`:r.labelReview?`<span class="badge label-chip">${esc(r.labelReview.current_label)}</span> <span class="badge">${r.labelReview.status==='reviewed'?'✓ Reviewed':r.status==='executed'?'To review':esc(statuses[r.status]||r.status)}</span>`:badge(r)}</button>`}});
+  const cards=threads.map(group=>{const r=group.representative;const pending=group.members.filter(x=>needsDecision(x)||['escalated','unknown','error'].includes(x.status)).length;return {timestamp:r.timestamp,html:`<button class="email-item ${r.id===selected?'selected':''}" data-id="${esc(r.id)}"><div class="email-top"><span class="email-sender">${esc(r.email.sender)}</span><span class="thread-count">${group.members.length} message${group.members.length===1?'':'s'}${pending?' · '+pending+' need review':''}</span></div><h3>${esc(r.email.subject)}</h3>${r.timestamp?`<small>${esc(new Date(r.timestamp).toLocaleString('en-US'))}</small>`:''}${r.organization?`<p class="organization-line">${esc(r.organization.topic)} · ${esc(r.organization.subtype)}${r.organization.important?' · Important':''}</p>`:''}<p class="email-preview">${esc(r.email.body)}</p>${r.job?`<span class="badge ${r.status==='error'?'error':''}">${jobStatus(r)}</span>`:r.labelReview?`<span class="badge label-chip">${esc(r.labelReview.current_label)}</span> <span class="badge">${r.labelReview.status==='reviewed'?'✓ Reviewed':r.status==='executed'?'To review':esc(statuses[r.status]||r.status)}</span>`:badge(r)}</button>`}});
   const broken=['all','errors'].includes(filter)&&!search?incomplete.map(x=>({timestamp:Number(x.internal_date)||0,html:`<div class="email-item incomplete-email" aria-disabled="true"><div class="email-top"><span class="email-sender">! Incomplete Gmail message</span><span class="thread-count">Retry after ${x.retry_at?esc(new Date(x.retry_at).toLocaleTimeString('en-US')):'the next sync'}</span></div><h3>Message unavailable</h3><p class="email-preview">Wajo could not fully load this message. It cannot be opened or analyzed yet.</p></div>`})):[];
   $('#list-count').textContent=threads.length+broken.length;
   $('#email-list').innerHTML=[...cards,...broken].sort((a,b)=>b.timestamp-a.timestamp).map(c=>c.html).join('')||'<div class="empty-list">No matching conversations.<br>Add an email or change the filter.</div>';
@@ -93,6 +97,25 @@ function conversationView(row){
   if(members.length+context.length<=1)return '';
   const items=[...members.map(x=>({key:'action-'+x.id,timestamp:x.timestamp,role:'incoming',sender:x.email.sender,subject:x.email.subject,body:x.email.body,open:x.id===row.id||['pending','escalated','unknown','error'].includes(x.status),id:x.id,note:x.job?jobStatus(x):statuses[x.status]||autonomies[x.autonomy]})),...context.map(x=>({key:x.role+'-'+x.message_id,timestamp:Number(x.internal_date)||0,role:x.role,sender:x.sender,subject:x.subject,body:x.body,open:false,note:x.role==='draft'?(x.managed?'Draft prepared by Wajo':'Your Gmail draft · context only'):'Sent message · context only'}))].sort((a,b)=>a.timestamp-b.timestamp);
   return `<section class="conversation"><h3>Conversation · ${items.length} messages</h3>${items.map(x=>`<details ${x.open?'open':''}><summary><span>${esc(x.sender)}</span><strong>${esc(x.note)}</strong></summary><small>${esc(x.subject)}</small><p>${esc(x.body)}</p>${x.id!==undefined&&x.id!==row.id?`<button class="secondary" data-conversation-id="${esc(x.id)}">Open message and status</button>`:''}</details>`).join('')}</section>`;
+}
+function eventProposalBlocks(row){
+  const proposals=(state.event_proposals||[]).filter(item=>String(item.source_email_id)===String(row.email_id));
+  return proposals.map(item=>{
+    const status=item.status==='awaiting_confirmation'?'Awaiting your decision':item.status==='needs_clarification'?'Needs a clear date':item.status==='approved'?'Added to calendar':item.status==='rejected'?'Not added':item.status;
+    const timed=item.local_start||item.start_utc,when=item.all_day?(item.local_date||'Date not resolved'):(timed?new Date(timed).toLocaleString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'}):'Date and time not resolved');
+    const decision=item.status==='awaiting_confirmation'?`<div class="event-proposal-actions"><button class="primary" data-event-approve="${esc(item.id)}" data-revision="${esc(item.revision)}" aria-label="Add ${esc(item.title)} to calendar">✓ Add to calendar</button><button class="secondary" data-event-reject="${esc(item.id)}" data-revision="${esc(item.revision)}" aria-label="Do not add ${esc(item.title)} to calendar">× Don’t add</button></div>`:'';
+    const clarification=item.status==='needs_clarification'?`<form class="event-clarify" data-event-clarify="${esc(item.id)}" data-revision="${esc(item.revision)}"><p class="event-ambiguity">${esc(item.ambiguity_reason||'Choose an exact date and time.')}</p><label class="attention-toggle"><input type="checkbox" name="all_day"> All-day event</label><div class="field-pair"><label>Starts<input type="datetime-local" name="start_at" required></label><label>Ends · optional<input type="datetime-local" name="end_at"></label></div><label>Time zone<input name="timezone" required value="${esc(Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC')}"></label><button class="secondary">Use this date</button><small>You will still confirm the revised event separately.</small></form>`:'';
+    return `<section class="event-proposal"><div class="event-proposal-head"><div><div class="eyebrow">EVENT FOUND</div><h3>${esc(item.title)}</h3></div><span class="badge ${item.status==='needs_clarification'?'escalate':'notify'}">${esc(status)}</span></div><p>${esc(item.original_text||item.evidence||'')}</p><strong>${esc(when)}</strong>${clarification}${decision}</section>`;
+  }).join('');
+}
+function bindEventProposals(){
+  $('#detail').querySelectorAll('[data-event-approve]').forEach(button=>button.addEventListener('click',async()=>{if(await post('/api/events/approve',{proposal_id:Number(button.dataset.eventApprove),revision:Number(button.dataset.revision)}))notify('Event added to your local calendar.')}));
+  $('#detail').querySelectorAll('[data-event-reject]').forEach(button=>button.addEventListener('click',async()=>{if(await post('/api/events/reject',{proposal_id:Number(button.dataset.eventReject),revision:Number(button.dataset.revision)}))notify('This event was not added. Wajo will keep asking in similar situations.')}));
+  $('#detail').querySelectorAll('[data-event-clarify]').forEach(form=>{
+    const allDay=form.elements.all_day,start=form.elements.start_at,end=form.elements.end_at,timezone=form.elements.timezone;
+    const syncType=()=>{start.type=allDay.checked?'date':'datetime-local';end.type=allDay.checked?'date':'datetime-local';timezone.disabled=allDay.checked};allDay.addEventListener('change',syncType);
+    form.addEventListener('submit',async event=>{event.preventDefault();const payload={proposal_id:Number(form.dataset.eventClarify),revision:Number(form.dataset.revision),all_day:allDay.checked};if(allDay.checked){payload.local_date=start.value;payload.local_end_date=end.value}else{payload.start_at=start.value;payload.end_at=end.value;payload.timezone=timezone.value}if(await post('/api/events/clarify',payload))notify('Date clarified. Review it once more before adding it.')});
+  });
 }
 function renderDetail(row){
   const previousDetailScroll=$('#detail').scrollTop;
@@ -115,11 +138,11 @@ function renderDetail(row){
 
   if(operation)controls+=`<p role="alert">${esc(operation.error)}</p><button class="secondary" id="gmail-check">Check Gmail status (read only)</button>`;
   const readState=row.transport==='gmail'?(row.initial_unread?' · Unread when synchronized':' · Already read in Gmail'):'';
-  $('#detail').innerHTML=`<div class="detail-heading"><span>EMAIL # ${row.id}${readState}</span>${badge(row)}</div><h2>${esc(row.email.subject)}</h2>${conversationView(row)}<div class="organization-summary"><span>${esc(row.organization.topic)}</span><span>${esc(row.organization.subtype)}</span>${row.organization.important?'<span class="important-chip">Important</span>':''}<small>${esc(row.organization.source)}</small></div><div class="sender-row"><span class="avatar">${esc(row.email.sender[0].toUpperCase())}</span><div>${esc(row.email.sender)}<small>${row.transport==='gmail'?'Source: connected Gmail':'Source: local inbox copy'}</small></div></div><p class="email-body">${esc(row.email.body)}</p><div class="decision"><p><strong>${esc(transport)}</strong></p><p>${esc(row.reason)}</p><div class="decision-title">✦ Agent decision · ${esc(actions[p.action]||p.action)}</div><p>${esc(p.reason)}</p><div class="decision-meta">${esc(explanation)}<br>Pattern: ${esc(patterns[p.pattern]||p.pattern)}${p.label?`<br>Label: ${esc(p.label)}`:''}${flags.length&&p.pattern_evidence?`<br>${esc(flags.map(f=>f[1]).join(' · '))}`:''}</div>${p.pattern_evidence?`<blockquote class="reason-quote">${esc(p.pattern_evidence)}</blockquote>`:''}${replyPreview}${!reply&&p.text?`<div class="send-preview">${p.recipient?`Recipient: ${esc(p.recipient)}<br>`:''}${esc(p.text)}</div>`:''}${controls}${editor}${draftStyleForm(row)}${organizationForm(row)}${labelReviewForm(row)}${attentionForm(row)}<div class="decision-buttons"><button class="secondary" id="keep-sender">Always keep mail from this sender</button></div></div><details class="history"><summary>Decision history · ${history.length} entries</summary>${history.map(a=>`<div class="history-item">${esc(events[a.event]||a.event)}<small>${esc(new Date(a.created_at).toLocaleString('en-US'))}</small><details><summary>Details</summary><pre>${esc(JSON.stringify(JSON.parse(a.details),null,2))}</pre></details></div>`).join('')}</details>`;
+  $('#detail').innerHTML=`<div class="detail-heading"><span>EMAIL # ${row.id}${readState}</span>${badge(row)}</div><h2>${esc(row.email.subject)}</h2>${conversationView(row)}<div class="organization-summary"><span>${esc(row.organization.topic)}</span><span>${esc(row.organization.subtype)}</span>${row.organization.important?'<span class="important-chip">Important</span>':''}<small>${esc(row.organization.source)}</small></div><div class="sender-row"><span class="avatar">${esc(row.email.sender[0].toUpperCase())}</span><div>${esc(row.email.sender)}<small>${row.transport==='gmail'?'Source: connected Gmail':'Source: local inbox copy'}</small></div></div><p class="email-body">${esc(row.email.body)}</p>${eventProposalBlocks(row)}<div class="decision"><p><strong>${esc(transport)}</strong></p><p>${esc(row.reason)}</p><div class="decision-title">✦ Agent decision · ${esc(actions[p.action]||p.action)}</div><p>${esc(p.reason)}</p><div class="decision-meta">${esc(explanation)}<br>Pattern: ${esc(patterns[p.pattern]||p.pattern)}${p.label?`<br>Label: ${esc(p.label)}`:''}${flags.length&&p.pattern_evidence?`<br>${esc(flags.map(f=>f[1]).join(' · '))}`:''}</div>${p.pattern_evidence?`<blockquote class="reason-quote">${esc(p.pattern_evidence)}</blockquote>`:''}${replyPreview}${!reply&&p.text?`<div class="send-preview">${p.recipient?`Recipient: ${esc(p.recipient)}<br>`:''}${esc(p.text)}</div>`:''}${controls}${editor}${draftStyleForm(row)}${organizationForm(row)}${labelReviewForm(row)}${attentionForm(row)}<div class="decision-buttons"><button class="secondary" id="keep-sender">Always keep mail from this sender</button></div></div><details class="history"><summary>Decision history · ${history.length} entries</summary>${history.map(a=>`<div class="history-item">${esc(events[a.event]||a.event)}<small>${esc(new Date(a.created_at).toLocaleString('en-US'))}</small><details><summary>Details</summary><pre>${esc(JSON.stringify(JSON.parse(a.details),null,2))}</pre></details></div>`).join('')}</details>`;
   $('#detail').scrollTop=previousDetailScroll;
   $('#detail').insertAdjacentHTML('afterbegin','<button class="secondary detail-back" id="back-conversations">← All conversations</button>');
   $('#back-conversations').addEventListener('click',()=>{detailOpen=false;renderMail();$('.mailbox').scrollIntoView({block:'start'})});
-  bindDraftStyle(row);bindOrganization(row);bindLabelReview(row);bindAttention(row);
+  bindEventProposals();bindDraftStyle(row);bindOrganization(row);bindLabelReview(row);bindAttention(row);
   renderLabelConflict(row);
   $('#gmail-check')?.addEventListener('click',async()=>{if(await post('/api/gmail-check',{operation_id:operation.id}))notify('Gmail status checked. Review the result above.')});
   const scopeValue=()=>$('#feedback-scope')?.value||'general';
@@ -234,10 +257,66 @@ function renderMemory(){
   $('#organization-rules').querySelectorAll('button').forEach(b=>b.addEventListener('click',async()=>{if(await post('/api/organization-rule-pause',{rule_id:Number(b.dataset.pauseOrganization)}))notify('Organization preference paused.')}));
   $('#label-rules').innerHTML=(state.label_rules||[]).filter(r=>r.active).map(r=>`<div class="rule-row"><span><strong>${esc(r.label)}</strong><br>${esc(state.label_kinds[r.kind]||r.kind)} · ${esc(r.scope==='*'?'All senders':r.scope)}<br><small>Enabled by your review #${r.feedback_id}</small></span><button class="secondary" data-pause-label="${r.id}">Pause</button></div>`).join('')||'<p>No saved label preferences yet. Choose “Future similar emails” when reviewing a label.</p>';
   $('#label-rules').querySelectorAll('button').forEach(b=>b.addEventListener('click',async()=>{if(await post('/api/label-rule-pause',{rule_id:Number(b.dataset.pauseLabel)}))notify('Label preference paused. Review a similar email to set a new preference.')}));
+  $('#event-skills').innerHTML=(state.event_skills||[]).filter(skill=>skill.status!=='deleted').map(skill=>{const context=skill.context||{},stateCopy=skill.status==='paused'?'Paused':skill.qualified?'Qualified · automatic local saving':`${skill.approval_streak||0} of 2 confirmations`;return `<div class="rule-row"><span><strong>${esc(context.semantic_kind||context.kind||'Similar calendar events')}</strong><br>${esc(stateCopy)}<br><small>Meaning-first matching · sender is supporting context only</small></span><span class="rule-actions">${skill.status==='paused'?`<button class="secondary" data-event-skill="${skill.id}" data-revision="${skill.revision}" data-operation="resume">Resume</button>`:`<button class="secondary" data-event-skill="${skill.id}" data-revision="${skill.revision}" data-operation="pause">Pause</button>`}<button class="secondary" data-event-skill="${skill.id}" data-revision="${skill.revision}" data-operation="delete">Delete</button></span></div>`}).join('')||'<p>No Event Skills yet. Confirm a date found in an email to start one.</p>';
+  $('#event-skills').querySelectorAll('[data-event-skill]').forEach(button=>button.addEventListener('click',async()=>{const operation=button.dataset.operation;if(await post('/api/event-skills/manage',{skill_id:Number(button.dataset.eventSkill),revision:Number(button.dataset.revision),operation}))notify(operation==='delete'?'Event Skill deleted.':`Event Skill ${operation}d.`)}));
   const groups=new Map();for(const f of state.preference_feedback){const key=JSON.stringify([f.scope,f.pattern]);if(!groups.has(key))groups.set(key,{scope:f.scope,pattern:f.pattern,count:0});const group=groups.get(key);group.count=f.positive?group.count+1:0}
   $('#memory-groups').innerHTML=groups.size?[...groups.values()].map(g=>`<div class="memory-card"><h2>${esc(patterns[g.pattern]||g.pattern)}</h2><p class="scope-name">${g.scope==='*'?'General experience · all senders':esc(g.scope)}</p><strong>${g.count} <small>/ 3</small></strong><p>${g.count>=3?'Enough experience for eligible emails. Exceptions and risk signals are checked separately.':'The agent will keep asking. Explicit approvals are needed.'}</p></div>`).join(''):'<div class="memory-card"><h2>Learning your preferences</h2><p>Approve or correct archiving decisions. Experience for each semantic pattern will appear here.</p></div>';
   $('#rules').innerHTML=state.archive_rules.map((r,i)=>`<div class="rule-row"><span>${esc(r.scope==='*'?'All senders':r.scope)} · ${esc(r.pattern==='*'?'All email patterns':patterns[r.pattern])}</span><button class="secondary" data-remove-rule="${i}">Remove exception</button></div>`).join('');
   $('#rules').querySelectorAll('button').forEach(b=>b.addEventListener('click',async()=>{const r=state.archive_rules[Number(b.dataset.removeRule)];if(await post('/api/rule',{sender:r.scope,pattern:r.pattern,keep:false}))notify('Exception removed')}));
+}
+function eventStart(item){const value=item.local_start||item.local_date||item.start_at||item.start||item.date||item.starts_at;if(/^\d{4}-\d{2}-\d{2}$/.test(value||'')){const [year,month,day]=value.split('-').map(Number);return new Date(year,month-1,day)}return new Date(value)}
+function renderCalendar(){
+  if(!state)return;
+  const all=(state.events||[]).filter(item=>!['cancelled','canceled','deleted'].includes(String(item.status||'').toLowerCase())&&!Number.isNaN(eventStart(item).getTime()));
+  $('#event-count').textContent=String(all.length);
+  $('#calendar-month').textContent=calendarCursor.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const now=new Date(),minimum=new Date(now.getFullYear()-1,now.getMonth(),1),maximum=new Date(now.getFullYear()+3,now.getMonth(),1);
+  $('#calendar-prev').disabled=calendarCursor<=minimum;$('#calendar-next').disabled=calendarCursor>=maximum;
+  const year=calendarCursor.getFullYear(),month=calendarCursor.getMonth(),days=new Date(year,month+1,0).getDate(),offset=(new Date(year,month,1).getDay()+6)%7;
+  const cells=[];
+  for(let i=0;i<offset;i++)cells.push('<div class="calendar-day calendar-blank" role="gridcell" aria-hidden="true"></div>');
+  for(let day=1;day<=days;day++){
+    const date=new Date(year,month,day);
+    const items=all.filter(item=>{const d=eventStart(item);return d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day});
+    const today=date.toDateString()===now.toDateString();
+    cells.push(`<div class="calendar-day ${today?'calendar-today':''}" role="gridcell" aria-label="${esc(date.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}))}"><div class="calendar-date"><span>${esc(date.toLocaleDateString('en-US',{weekday:'short'}))}</span><strong>${day}</strong></div>${items.map((item,index)=>{const d=eventStart(item),allDay=Boolean(item.all_day||item.is_all_day),time=allDay?'All day':d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),palette=['teal','amber','violet','blue'],requested=String(item.color||''),color=palette.includes(requested)?requested:item.kind==='response_deadline'?'amber':palette[(Number(item.id)||index)%palette.length];return `<button class="event-card event-${color}" data-event-id="${esc(item.id)}" title="${esc(item.title||item.summary||'Untitled event')}"><small>${esc(time)}</small>${esc(item.title||item.summary||'Untitled event')}</button>`}).join('')}</div>`);
+  }
+  while(cells.length%7)cells.push('<div class="calendar-day calendar-blank" role="gridcell" aria-hidden="true"></div>');
+  $('#calendar-grid').innerHTML=cells.join('');
+  $('#calendar-grid').querySelectorAll('[data-event-id]').forEach(button=>button.addEventListener('click',()=>openEvent(button.dataset.eventId)));
+}
+function openEvent(id){
+  const item=(state.events||[]).find(event=>String(event.id)===String(id));if(!item)return;
+  const start=eventStart(item),end=item.local_end||item.local_end_date||item.end_at||item.end||item.ends_at,allDay=Boolean(item.all_day||item.is_all_day);
+  const when=allDay?start.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}):start.toLocaleString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'});
+  $('#event-dialog-title').textContent=item.title||item.summary||'Untitled event';
+  $('#event-dialog-content').innerHTML=`<dl class="event-facts"><div><dt>When</dt><dd>${esc(when)}${end?` – ${esc(new Date(end).toLocaleString('en-US'))}`:''}</dd></div>${item.location?`<div><dt>Location</dt><dd>${esc(item.location)}</dd></div>`:''}${item.description||item.original_text?`<div><dt>Details</dt><dd>${esc(item.description||item.original_text)}</dd></div>`:''}</dl><div class="event-dialog-actions">${item.source_email_id||item.email_id||item.action_id?`<button class="primary" id="event-source-email">Open source email →</button>`:''}${item.automatic?'<button class="secondary danger-button" id="event-mistake">This shouldn’t have been added</button>':''}</div>`;
+  $('#event-source-email')?.addEventListener('click',()=>{const source=item.action_id||(state.actions||[]).find(action=>String(action.email_id)===String(item.source_email_id||item.email_id))?.id;if(source!==undefined){filter='all';$('#search').value='';selected=source;detailOpen=true;$('#event-dialog').close();navigate('mail');renderMail()}});
+  $('#event-mistake')?.addEventListener('click',async()=>{const result=await post('/api/events/mistake',{event_id:Number(item.id)});if(result){$('#event-dialog').close();notify('Event removed. Wajo will ask again in similar situations.')}});
+  $('#event-dialog').showModal();
+}
+function modelConfig(){return state.models||state.model_settings||{mode:'bundled_groq',concurrency:3}}
+function selectedModelMode(){return document.querySelector('input[name="model-mode"]:checked')?.value||'bundled_groq'}
+function cleanModelError(message,key){let result=String(message||'The provider rejected this key.');if(key)result=result.split(key).join('[redacted]');return result.replace(/(?:sk-|gsk_)[A-Za-z0-9_-]{8,}/g,'[redacted]').replace(/Bearer\s+\S+/gi,'Bearer [redacted]').slice(0,240)}
+function updateModelControls(){
+  const mode=selectedModelMode(),bundled=mode==='bundled_groq',slider=$('#model-concurrency');
+  slider.disabled=bundled;slider.value=bundled?'3':String(Math.max(3,Math.min(12,Number(slider.value)||3)));$('#model-concurrency-value').textContent=slider.value;
+  $('#model-key-field').classList.toggle('hidden',bundled);
+  $('#model-quota-copy').textContent=bundled?'The bundled free tier uses shared Groq limits, so processing may pause when its quota is busy. Concurrency is fixed at 3.':mode==='user_groq'?'Your Groq account limits and availability apply. Higher concurrency can reach your quota sooner.':'OpenAI API usage is billed to your account. Higher concurrency can increase spend and reach rate limits sooner.';
+  $('.model-apply .risky').classList.toggle('hidden',mode!=='user_openai');
+  $('#model-risk-copy').textContent=bundled?'Changing provider affects future AI analysis. The bundled option does not use a personal key.':mode==='user_openai'?'OpenAI is a paid external API. Applying this key can incur charges for future model requests.':'Your provider quota applies to future model requests. Keep this key private.';
+  const currentKey=$('#model-key').value.trim();$('#model-apply').disabled=!bundled&&!(modelValidation.valid&&modelValidation.mode===mode&&modelValidation.key===currentKey);
+}
+function renderModels(){
+  if(!state)return;const config=modelConfig();
+  $('#model-active').textContent=config.label||({bundled_groq:'Bundled free Groq',user_groq:'Your Groq',user_openai:'Your OpenAI'}[config.mode]||'Bundled free Groq');
+  if(!modelsInitialized){const mode=['bundled_groq','user_groq','user_openai'].includes(config.mode)?config.mode:'bundled_groq';document.querySelector(`input[name="model-mode"][value="${mode}"]`).checked=true;$('#model-concurrency').value=String(Math.max(3,Math.min(12,Number(config.concurrency)||3)));modelsInitialized=true}
+  updateModelControls();
+}
+async function validateModelKey(){
+  const mode=selectedModelMode(),key=$('#model-key').value.trim(),request=++modelValidationRequest;if(mode==='bundled_groq'||!key)return;
+  $('#model-key-icon').textContent='…';$('#model-key-icon').className='checking';$('#model-key-status').textContent='Validating this key…';$('#model-apply').disabled=true;
+  try{const response=await fetch('/api/models/validate',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':state.csrf},body:JSON.stringify({mode,key})});const result=await response.json();if(request!==modelValidationRequest||mode!==selectedModelMode()||key!==$('#model-key').value.trim())return;modelValidation={mode,key,valid:response.ok&&Boolean(result.valid),token:result.token||null};$('#model-key-icon').textContent=modelValidation.valid?'✓':'×';$('#model-key-icon').className=modelValidation.valid?'valid':'invalid';$('#model-key-icon').title=modelValidation.valid?'':cleanModelError(result.error,key);$('#model-key-status').textContent=modelValidation.valid?'Key validated.':cleanModelError(result.error,key);$('#model-key-status').title=modelValidation.valid?'':cleanModelError(result.error,key)}catch(e){if(request!==modelValidationRequest)return;modelValidation={mode,key,valid:false,token:null};$('#model-key-icon').textContent='×';$('#model-key-icon').className='invalid';$('#model-key-icon').title='Could not validate the key.';$('#model-key-status').textContent='Could not validate the key. Check your connection and try again.'}updateModelControls();
 }
 function renderSuperpowers(){
   if(!state)return;
@@ -249,9 +328,11 @@ function renderSuperpowers(){
   if(!enabled&&['special','autosent'].includes(page)){page='mail';selectedAutosent=undefined}
   $('#mail-view').classList.toggle('hidden',page!=='mail');
   $('#memory-view').classList.toggle('hidden',page!=='memory');
+  $('#calendar-view').classList.toggle('hidden',page!=='calendar');
+  $('#models-view').classList.toggle('hidden',page!=='models');
   $('#special-view').classList.toggle('hidden',page!=='special'||!enabled);
   $('#autosent-view').classList.toggle('hidden',page!=='autosent'||!enabled);
-  for(const [name,id] of [['mail','nav-mail'],['memory','nav-memory'],['special','nav-special'],['autosent','nav-autosent']])$('#'+id).classList.toggle('active',page===name);
+  for(const [name,id] of [['mail','nav-mail'],['calendar','nav-calendar'],['memory','nav-memory'],['models','nav-models'],['special','nav-special'],['autosent','nav-autosent']])$('#'+id).classList.toggle('active',page===name);
   const reviewMode=page==='mail'&&['label_review','label_reviewed'].includes(filter);
   $('#nav-labels').classList.toggle('active',reviewMode);$('#nav-mail').classList.toggle('active',page==='mail'&&!reviewMode);
 
@@ -284,12 +365,14 @@ async function openAutosent(id){
 function navigate(next){
   if(['special','autosent'].includes(next)&&!state?.superpowers?.enabled)return;
   page=next;
-  $('#mail-view').classList.toggle('hidden',page!=='mail');$('#memory-view').classList.toggle('hidden',page!=='memory');$('#special-view').classList.toggle('hidden',page!=='special');$('#autosent-view').classList.toggle('hidden',page!=='autosent');
-  for(const [name,id] of [['mail','nav-mail'],['memory','nav-memory'],['special','nav-special'],['autosent','nav-autosent']])$('#'+id).classList.toggle('active',page===name);
+  $('#mail-view').classList.toggle('hidden',page!=='mail');$('#memory-view').classList.toggle('hidden',page!=='memory');$('#calendar-view').classList.toggle('hidden',page!=='calendar');$('#models-view').classList.toggle('hidden',page!=='models');$('#special-view').classList.toggle('hidden',page!=='special');$('#autosent-view').classList.toggle('hidden',page!=='autosent');
+  for(const [name,id] of [['mail','nav-mail'],['calendar','nav-calendar'],['memory','nav-memory'],['models','nav-models'],['special','nav-special'],['autosent','nav-autosent']])$('#'+id).classList.toggle('active',page===name);
   const reviewMode=page==='mail'&&['label_review','label_reviewed'].includes(filter);
   $('#nav-labels').classList.toggle('active',reviewMode);$('#nav-mail').classList.toggle('active',page==='mail'&&!reviewMode);
 }
 $('#nav-mail').addEventListener('click',()=>{navigate('mail');setFilter('all')});$('#back-mail').addEventListener('click',()=>navigate('mail'));$('#nav-memory').addEventListener('click',()=>navigate('memory'));
+$('#nav-calendar').addEventListener('click',()=>navigate('calendar'));
+$('#nav-models').addEventListener('click',()=>navigate('models'));
 $('#nav-labels').addEventListener('click',()=>{navigate('mail');$('#search').value='';setFilter('label_review')});
 $('#nav-special').addEventListener('click',()=>navigate('special'));
 $('#nav-autosent').addEventListener('click',()=>navigate('autosent'));
@@ -319,6 +402,15 @@ $('#superpowers-toggle').addEventListener('change',async event=>{
   else{event.target.checked=!enabled;$('#superpowers-error').textContent='Could not update Superpowers. Nothing changed.';$('#superpowers-error').classList.remove('hidden')}
   event.target.disabled=false;
 });
+$('#calendar-prev').addEventListener('click',()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()-1,1);renderCalendar()});
+$('#calendar-next').addEventListener('click',()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+1,1);renderCalendar()});
+$('#calendar-today').addEventListener('click',()=>{const now=new Date();calendarCursor=new Date(now.getFullYear(),now.getMonth(),1);renderCalendar()});
+$('#close-event').addEventListener('click',()=>$('#event-dialog').close());
+$('#event-dialog').addEventListener('cancel',event=>{event.preventDefault();$('#event-dialog').close()});
+document.querySelectorAll('input[name="model-mode"]').forEach(input=>input.addEventListener('change',()=>{clearTimeout(modelValidationTimer);modelValidationRequest++;modelValidation={mode:null,key:null,valid:false,token:null};$('#model-key').value='';$('#model-key-icon').textContent='';$('#model-key-icon').title='';$('#model-key-status').textContent=selectedModelMode()==='bundled_groq'?'No personal key is used.':'Enter a key to validate it.';updateModelControls()}));
+$('#model-concurrency').addEventListener('input',updateModelControls);
+$('#model-key').addEventListener('input',()=>{clearTimeout(modelValidationTimer);modelValidationRequest++;modelValidation={mode:null,key:null,valid:false,token:null};$('#model-key-icon').textContent='';$('#model-key-icon').className='';$('#model-key-icon').title='';$('#model-key-status').textContent=$('#model-key').value.trim()?'Waiting to validate…':'Enter a key to validate it.';updateModelControls();if($('#model-key').value.trim())modelValidationTimer=setTimeout(validateModelKey,2000)});
+$('#models-form').addEventListener('submit',async event=>{event.preventDefault();const mode=selectedModelMode(),key=$('#model-key').value.trim();if(mode!=='bundled_groq'&&!(modelValidation.valid&&modelValidation.mode===mode&&modelValidation.key===key))return;const result=await post('/api/models/apply',{mode,concurrency:Number($('#model-concurrency').value),...(mode==='bundled_groq'?{}:{key,validation_token:modelValidation.token})});if(result){modelValidation={mode:null,key:null,valid:false,token:null};$('#model-key').value='';notify('Model settings applied. Future requests will use this provider.')}});
 $('#show-unreviewed').addEventListener('click',()=>setFilter('label_review'));
 $('#show-reviewed').addEventListener('click',()=>setFilter('label_reviewed'));
 document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>setFilter(b.dataset.filter)));

@@ -121,6 +121,19 @@ class LabelProviderTests(unittest.TestCase):
             with patch.object(provider,'request',return_value=response):
                 with self.assertRaises(ProviderError):provider.propose(email)
 
+    def test_label_review_cannot_create_a_second_calendar_proposal(self):
+        provider=LabelProposer('test-key')
+        email=Email('e','x@example.test','Meeting','Meet on January 2')
+        proposed=Proposal('label','category',label='AI: Meetings',event_change='create',
+            event_kind='calendar_event',event_semantic_kind='meeting',event_title='Meeting',
+            event_original_text='Meet on January 2',event_start='2027-01-02',event_all_day=True,
+            event_confidence='clear',event_evidence='Meet on January 2')
+        response={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(asdict(proposed))}}]}
+        with patch.object(provider,'request',return_value=response):
+            result=provider.propose(email)
+        self.assertEqual((result.event_change,result.event_kind,result.event_confidence),
+                         ('none','none','none'))
+
     def test_batch_has_30_realistic_unique_samples_and_no_expected_labels(self):
         data=json.loads((Path(__file__).parents[1]/'examples'/'label-review-30.json').read_text())
         self.assertEqual(len(data['emails']),30)

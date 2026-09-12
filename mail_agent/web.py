@@ -4,6 +4,7 @@ import errno
 from contextlib import contextmanager, nullcontext
 from dataclasses import asdict
 from datetime import datetime, timezone
+import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
@@ -12,10 +13,16 @@ import sqlite3
 import threading
 import time
 import uuid
+from zoneinfo import ZoneInfo
 
 from .core import Agent, Email, PATTERNS, Proposal, learnable
 from .demo import CASES, ScriptedProposer
 from .groq_provider import GroqProposer
+from .model_settings import (BUNDLED_GROQ, USER_GROQ, USER_OPENAI,
+                             CredentialStore, create_provider,
+                             initialize_model_settings, load_model_settings,
+                             save_model_settings, validate_model_settings,
+                             validate_user_key)
 
 STATIC = Path(__file__).parent / "static"
 
@@ -40,6 +47,9 @@ class Application:
         # Provider Retry-After remains authoritative for the shared minute limit.
         self.analysis_limit = 3
         self.analysis_threads = []
+        self.model_validation = {}
+        self.model_validation_lock = threading.Lock()
+        self.credentials = CredentialStore(Path(self.db_path).parent / "model-credentials.json")
         self.label_review_lock = threading.Lock()
         from .gmail_connection import GmailConnection
         self.gmail_connection = GmailConnection(self, gmail_token or connection_token or Path("data/gmail-token.json"),
@@ -60,8 +70,13 @@ class Application:
             # Only local operations: a completed core event is idempotently returned.
             if recover_jobs:
                 db.execute("UPDATE incoming_jobs SET status='queued' WHERE status='processing'")
+            initialize_model_settings(db)
+            self.analysis_limit = load_model_settings(db).concurrency
         agent = self.agent()
         agent.close()
+        from .notifications import NotificationScheduler
+        self.notifications = NotificationScheduler(
+            self.db_path, source_verifier=self._notification_source_current)
         if recover_jobs:
             from .gmail_executor import recover
             recover(self.db_path)
@@ -79,6 +94,81 @@ class Application:
 
     def agent(self, proposer=None):
         return Agent(self.db_path, proposer or ScriptedProposer())
+
+    def model_settings(self):
+        with self.connect() as db:
+            return load_model_settings(db)
+
+    def model_provider(self):
+        return create_provider(
+            self.model_settings(), self.credentials,
+            Path(__file__).resolve().parents[1] / ".env")
+
+    @staticmethod
+    def _model_label(mode):
+        return {BUNDLED_GROQ: "Bundled free Groq", USER_GROQ: "Your Groq",
+                USER_OPENAI: "Your OpenAI · gpt-5.6-luna"}[mode]
+
+    def public_models(self):
+        settings = self.model_settings()
+        return {**settings.public_dict(), "label": self._model_label(settings.mode),
+                "has_user_groq_key": self.credentials.has_key(USER_GROQ),
+                "has_user_openai_key": self.credentials.has_key(USER_OPENAI)}
+
+    def _notification_source_current(self, job):
+        if job.kind == "startup_mode":
+            return True
+        with self.connect() as db:
+            if job.source_ref.startswith("event:"):
+                event_id = job.source_ref.split(":", 1)[1]
+                return db.execute(
+                    "SELECT 1 FROM calendar_events WHERE id=? AND status='current'", (event_id,)
+                ).fetchone() is not None
+            if job.source_ref.startswith("proposal:"):
+                proposal_id = job.source_ref.split(":", 1)[1]
+                return db.execute(
+                    """SELECT 1 FROM event_proposals p JOIN emails e ON e.id=p.source_email_id
+                       WHERE p.id=? AND p.kind='response_deadline'
+                         AND p.confidence='clear' AND p.status IN ('awaiting_confirmation','approved')""",
+                    (proposal_id,),
+                ).fetchone() is not None
+        return False
+
+    def _schedule_event_result(self, result):
+        event = result.get("event") if isinstance(result, dict) else None
+        if not event:
+            proposal = result.get("proposal", {}) if isinstance(result, dict) else {}
+            prior_id = proposal.get("supersedes_event_id") if isinstance(proposal, dict) else None
+            if prior_id:
+                self.notifications.cancel_event(str(prior_id))
+            return
+        prior_id = event.get("supersedes_event_id")
+        if prior_id:
+            self.notifications.cancel_event(str(prior_id))
+        if event["all_day"] or not event["start_utc"]:
+            return
+        self.notifications.schedule_event_reminder(
+            str(event["id"]), title=event["title"],
+            starts_at=datetime.fromisoformat(event["start_utc"]),
+            source_ref=f"event:{event['id']}", source_verified=True)
+
+    def _schedule_analysis_notifications(self, email_id):
+        from .events import proposals_for_source
+        with self.connect() as db:
+            proposals = proposals_for_source(db, email_id)
+            event_rows = {row["proposal_id"]: dict(row) for row in db.execute(
+                "SELECT * FROM calendar_events WHERE source_email_id=?", (email_id,))}
+        for proposal in proposals:
+            event = event_rows.get(proposal["id"])
+            if event and proposal["automatic"]:
+                event["all_day"] = bool(event["all_day"])
+                self._schedule_event_result({"event": event, "proposal": proposal})
+            if (proposal["kind"] == "response_deadline" and proposal["confidence"] == "clear"
+                    and proposal["status"] in {"awaiting_confirmation", "approved"}):
+                self.notifications.schedule_urgent_deadline(
+                    str(proposal["id"]), title="Urgent response deadline",
+                    body=proposal["title"], source_ref=f"proposal:{proposal['id']}",
+                    source_verified=True)
 
     def enqueue(self, payload, event_id=None, gmail_binding=None, processing_mode="triage"):
         if processing_mode not in {"triage", "label_review"}:
@@ -113,9 +203,9 @@ class Application:
     def work(self):
         if not self.demo and self.gmail_connection.token_path.is_file():
             self.gmail_connection.start("check", {})
-        self.analysis_threads = [threading.Thread(target=self.analysis_work, daemon=True,
+        self.analysis_threads = [threading.Thread(target=self.analysis_work, args=(i,), daemon=True,
                                                   name=f"wajo-analysis-{i + 1}")
-                                 for i in range(self.analysis_limit)]
+                                 for i in range(12)]
         for thread in self.analysis_threads:
             thread.start()
         while not self.stop.is_set():
@@ -130,10 +220,11 @@ class Application:
         for thread in self.analysis_threads:
             thread.join(3)
 
-    def analysis_work(self):
+    def analysis_work(self, worker_index=0):
         while not self.stop.is_set():
             with self.analysis_condition:
-                if self.account_switching or self.gmail_connection.snapshot()["status"] == "account_choice":
+                if (worker_index >= self.analysis_limit or self.account_switching
+                        or self.gmail_connection.snapshot()["status"] == "account_choice"):
                     self.analysis_condition.wait(1)
                     continue
                 self.analysis_inflight += 1
@@ -162,9 +253,10 @@ class Application:
                     status = "done"
                     diagnostics = [{"status": "skipped", "reason": "Message left the incoming-mail scope."}]
                 else:
-                    from .label_provider import LabelProposer
-                    provider_class = LabelProposer if row["processing_mode"] == "label_review" else GroqProposer
-                    provider = provider_class.from_env(Path(__file__).resolve().parents[1] / ".env")
+                    provider = self.model_provider()
+                    if row["processing_mode"] == "label_review":
+                        from .label_provider import LabelReviewProposer
+                        provider = LabelReviewProposer(provider)
                     guard = self.label_review_lock if row["processing_mode"] == "label_review" else nullcontext()
                     with guard:
                         agent = self.agent(provider)
@@ -174,9 +266,11 @@ class Application:
                             agent.close()
                     status = "error" if result["status"] == "error" else "done"
                     diagnostics = provider.calls
+                    if status == "done":
+                        self._schedule_analysis_notifications(row["id"])
             except Exception:
                 status = "error"
-                diagnostics = [{"status": "error", "error": "Processing unavailable. Check the local Groq configuration."}]
+                diagnostics = [{"status": "error", "error": "Processing unavailable. Check the active model configuration."}]
             with self.connect() as db:
                 attempts = db.execute("SELECT attempts FROM incoming_jobs WHERE id=?", (row["id"],)).fetchone()[0]
                 delay = min(3600, 60 * (2 ** min(attempts - 1, 6)))
@@ -222,14 +316,32 @@ class Application:
             # background worker may commit a newly processed email.
             agent.db.execute("BEGIN")
             state = agent.snapshot()
+            state["jobs"] = [dict(row) for row in agent.db.execute(
+                "SELECT * FROM incoming_jobs ORDER BY created_at")]
             state['skills'] = listing(agent)
             state['label_conflicts'] = [dict(r) for r in agent.db.execute("SELECT * FROM label_conflicts WHERE status='open'")]
             bindings = {r["email_id"]: dict(r) for r in agent.db.execute("SELECT * FROM gmail_bindings")}
+            state["event_proposals"] = [dict(r) for r in agent.db.execute(
+                "SELECT * FROM event_proposals ORDER BY id")]
+            from .events import system_timezone
+            event_zone = ZoneInfo(system_timezone())
+            for proposal in state["event_proposals"]:
+                proposal["all_day"] = bool(proposal["all_day"])
+                proposal["automatic"] = bool(proposal["automatic"])
+                proposal["local_start"] = (datetime.fromisoformat(proposal["start_utc"])
+                                                   .astimezone(event_zone).isoformat()
+                                                   if proposal["start_utc"] else "")
+                proposal["local_end"] = (datetime.fromisoformat(proposal["end_utc"])
+                                                 .astimezone(event_zone).isoformat()
+                                                 if proposal["end_utc"] else "")
+            pending_event_sources = {p["source_email_id"] for p in state["event_proposals"]
+                                     if p["status"] in {"awaiting_confirmation", "needs_clarification"}}
             email_map = {e["id"]: e for e in state["emails"]}
             for action in state["actions"]:
                 binding = bindings.get(action["email_id"])
                 action["thread_id"] = binding["thread_id"] if binding and binding["thread_id"] else action["email_id"]
                 action["account"] = binding["account"] if binding else "local"
+                action["awaiting_event_decision"] = action["email_id"] in pending_event_sources
                 action["initial_unread"] = bool(binding["initial_unread"]) if binding else True
                 action["reply"] = agent.get(action["id"])["reply"]
                 p = Proposal(**json.loads(action["proposal"]))
@@ -280,10 +392,16 @@ class Application:
             from .superpowers import state as superpower_state
             verified_account = connection.get("account") if connection.get("status") == "connected" else None
             state["superpowers"] = superpower_state(agent, verified_account)
+            from .events import list_events
+            state["events"] = list_events(agent.db, local_timezone=system_timezone())
+            automatic_proposals = {p["id"] for p in state["event_proposals"] if p["automatic"]}
+            for event in state["events"]:
+                event["automatic"] = event["proposal_id"] in automatic_proposals
+            from .event_skills import list_skills as list_event_skills
+            state["event_skills"] = list_event_skills(agent.db)
         finally:
             agent.close()
         with self.connect() as db:
-            state["jobs"] = [dict(row) for row in db.execute("SELECT * FROM incoming_jobs ORDER BY created_at")]
             state["gmail_messages"] = [dict(row) for row in db.execute("""SELECT account,message_id,thread_id,role,state,
                 unread,labels,internal_date,sender,subject,body,error,attempts,retry_at,fetched_at,wajo_key
                 FROM gmail_message_cache WHERE role!='excluded' ORDER BY internal_date DESC,message_id""")]
@@ -292,6 +410,7 @@ class Application:
                 message["managed"] = message["role"] == "draft" and message["wajo_key"] in managed_drafts
         from .gmail_sync import public as sync_public
         state["gmail_sync"] = sync_public(self, connection.get("account"))
+        state["models"] = self.public_models()
         state.update(mode="scripted" if self.demo else "groq", csrf=self.csrf,
                      patterns=sorted(PATTERNS), gmail_enabled=bool(self.gmail_token),
                      gmail_connection=connection)
@@ -311,6 +430,47 @@ class Application:
                              "/api/gmail/sync": "sync"}
         if route in connection_routes:
             return self.gmail_connection.start(connection_routes[route], data)
+        if route == "/api/models/validate":
+            if set(data) != {"mode", "key"} or type(data["mode"]) is not str or type(data["key"]) is not str:
+                raise ValueError("Choose a user model mode and enter its API key")
+            validation = validate_user_key(data["mode"], data["key"])
+            if not validation.ok:
+                return {"valid": False, "error": validation.error}
+            token = secrets.token_urlsafe(32)
+            digest = hashlib.sha256((data["mode"] + "\0" + data["key"]).encode()).hexdigest()
+            with self.model_validation_lock:
+                self.model_validation = {"token": token, "digest": digest,
+                                         "expires": time.monotonic() + 300}
+            return {"valid": True, "error": "", "token": token}
+        if route == "/api/models/apply":
+            mode, concurrency = data.get("mode"), data.get("concurrency")
+            validate_model_settings(mode, concurrency)
+            if mode == BUNDLED_GROQ:
+                if set(data) != {"mode", "concurrency"}:
+                    raise ValueError("Bundled Groq does not accept a user key")
+            else:
+                if set(data) != {"mode", "concurrency", "key", "validation_token"}:
+                    raise ValueError("Validate the current API key before applying it")
+                key, token = data.get("key"), data.get("validation_token")
+                if type(key) is not str or type(token) is not str:
+                    raise ValueError("Validate the current API key before applying it")
+                digest = hashlib.sha256((str(mode) + "\0" + key).encode()).hexdigest()
+                with self.model_validation_lock:
+                    proof = self.model_validation
+                    valid = (proof.get("expires", 0) >= time.monotonic()
+                             and secrets.compare_digest(proof.get("token", ""), token)
+                             and secrets.compare_digest(proof.get("digest", ""), digest))
+                    if valid:
+                        self.model_validation = {}
+                if not valid:
+                    raise ValueError("This key validation is missing or stale. Validate the current key again")
+                self.credentials.set_key(mode, key)
+            with self.connect() as db:
+                settings = save_model_settings(db, mode, concurrency)
+            with self.analysis_condition:
+                self.analysis_limit = settings.concurrency
+                self.analysis_condition.notify_all()
+            return {"applied": True, **settings.public_dict(), "label": self._model_label(settings.mode)}
         if route == "/api/gmail/account-choice":
             return self.gmail_connection.resolve_account_switch(data)
         if route == "/api/ingest":
@@ -368,6 +528,46 @@ class Application:
                 if route == '/api/skills/manage':
                     from .skills import manage
                     return manage(agent, data)
+                if route in {"/api/events/approve", "/api/events/reject", "/api/events/clarify",
+                             "/api/events/mistake", "/api/event-skills/manage"}:
+                    from . import event_skills, events
+                    if route == "/api/events/mistake":
+                        if type(data.get("event_id")) is not int:
+                            raise ValueError("Choose an automatically added event")
+                        result = event_skills.remove_mistaken_event(agent.db, data["event_id"])
+                        self.notifications.cancel_event(str(data["event_id"]))
+                        return result
+                    if route == "/api/event-skills/manage":
+                        if type(data.get("skill_id")) is not int or type(data.get("revision")) is not int:
+                            raise ValueError("Choose a current Event Skill")
+                        skill = event_skills.get(agent.db, data["skill_id"])
+                        connection = self.gmail_connection.snapshot()
+                        account = (connection.get("account") if connection.get("status") == "connected"
+                                   else skill["origin_account"])
+                        return event_skills.manage(
+                            agent.db, data["skill_id"], data["revision"], data.get("operation"),
+                            account=account, context=data.get("context"))
+                    if type(data.get("proposal_id")) is not int or type(data.get("revision")) is not int:
+                        raise ValueError("The displayed event proposal and revision are required")
+                    if route == "/api/events/approve":
+                        result = event_skills.approve_proposal(
+                            agent.db, data["proposal_id"], data["revision"])
+                        self._schedule_event_result(result)
+                        return result
+                    if route == "/api/events/reject":
+                        self.notifications.cancel_source(
+                            f"proposal:{data['proposal_id']}", kind="urgent_deadline")
+                        return event_skills.reject_proposal(
+                            agent.db, data["proposal_id"], data["revision"])
+                    if type(data.get("all_day")) is not bool:
+                        raise ValueError("Choose whether this is an all-day event")
+                    return events.clarify_event(
+                        agent.db, data["proposal_id"], data["revision"],
+                        start_at=data.get("start_at", ""), end_at=data.get("end_at", ""),
+                        all_day=data["all_day"], local_date=data.get("local_date", ""),
+                        local_end_date=data.get("local_end_date", ""),
+                        source_timezone=data.get("timezone", ""),
+                        local_timezone=events.system_timezone())
                 if route.startswith('/api/superpowers/'):
                     connection = self.gmail_connection.snapshot()
                     account = connection.get('account') if connection.get('status') == 'connected' else None
@@ -553,7 +753,12 @@ def main():
                         "To change the database or mode, stop the existing server with Ctrl+C first. Do not run two servers against the same database.\n")
         raise
     server.app.worker.start()
-    print(f"Wajo local mailbox: http://127.0.0.1:{server.server_address[1]} ({'scripted demo' if args.demo else 'Groq'})", flush=True)
+    if not args.demo:
+        server.app.notifications.schedule_startup_mode(
+            server.app._model_label(server.app.model_settings().mode))
+        server.app.notifications.start()
+    print(f"Wajo local mailbox: http://127.0.0.1:{server.server_address[1]} "
+          f"({'scripted demo' if args.demo else server.app._model_label(server.app.model_settings().mode)})", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -561,6 +766,7 @@ def main():
     finally:
         server.app.stop.set()
         server.app.wakeup.set()
+        server.app.notifications.close()
         server.server_close()
 
 

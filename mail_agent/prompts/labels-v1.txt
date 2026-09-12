@@ -40,3 +40,8 @@ no control characters. Names are free-form, e.g. a broad category if appropriate
 For labels, pattern_evidence must quote the body supporting label_kind. Do not
 choose a narrower type without evidence. A receipt and a request to take action
 must not be conflated just because the subject or sender looks similar.
+
+This is a label-only review. Calendar extraction belongs to the separate triage
+pass. Always return event_change=none, event_kind=none, event_confidence=none,
+event_all_day=false, and empty strings for every other event_* field. Return
+only the schema object.
