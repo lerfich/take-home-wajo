@@ -36,7 +36,11 @@ async function refresh(force=false){
   }catch(e){error('Could not refresh the inbox. Check that the local server is running.')}
 }
 function setFilter(value){filter=value;detailOpen=false;renderMail()}
-function currentRows(){return state.actions.map(a=>({...a,email:state.emails.find(e=>e.id===a.email_id),labelReview:(state.label_reviews||[]).find(r=>r.action_id===a.id),threadId:a.thread_id||a.email_id})).filter(a=>a.email).sort((a,b)=>Number(b.id)-Number(a.id))}
+function mailTime(emailId){const message=(state.gmail_messages||[]).find(m=>`gmail:${m.account}:${m.message_id}`===emailId);return Number(message?.internal_date)||Date.parse((state.jobs||[]).find(j=>j.id===emailId)?.created_at)||0}
+function newestFirst(a,b){return b.timestamp-a.timestamp||String(a.email.id).localeCompare(String(b.email.id))}
+function currentRows(){return state.actions.map(a=>({...a,email:state.emails.find(e=>e.id===a.email_id),timestamp:mailTime(a.email_id),labelReview:(state.label_reviews||[]).find(r=>r.action_id===a.id),threadId:a.thread_id||a.email_id})).filter(a=>a.email).sort(newestFirst)}
+function waitingRows(actions){const processed=new Set(actions.map(a=>a.email_id));return (state.jobs||[]).filter(j=>j.status!=='done'&&!processed.has(j.id)).map(job=>{const email=JSON.parse(job.email),message=(state.gmail_messages||[]).find(m=>`gmail:${m.account}:${m.message_id}`===job.id);return {id:'job:'+job.id,email,job,status:job.status,account:message?.account||'local',threadId:message?.thread_id||job.id,timestamp:mailTime(job.id)}})}
+function jobStatus(row){return row.status==='error'?'Analysis failed':row.status==='processing'?'Reading email…':'Queued for analysis'}
 function groupThreads(rows){const groups=[];for(const row of rows){const key=`${row.account||'local'}:${row.threadId}`;let group=groups.find(x=>x.key===key);if(!group){group={key,threadId:row.threadId,representative:row,members:[]};groups.push(group)}group.members.push(row)}return groups}
 function badge(row){const replyState=row.reply?(row.status==='executing'?'Saving or sending Gmail reply':row.status==='pending'?'Gmail draft · approval needed':row.status==='executed'?'Sent via Gmail':null):null;const style=['blocked','error','unknown'].includes(row.status)?row.status:row.autonomy;return `<span class="badge ${esc(style)}">${esc(replyState||statuses[row.status]||autonomies[row.autonomy])}</span>`}
 function render(){
@@ -51,7 +55,7 @@ function render(){
 }
 function renderMail(){
   if(!state)return;
-  const all=currentRows();$('#count-all').textContent=all.length;
+  const actions=currentRows(),all=[...actions,...waitingRows(actions)].sort(newestFirst);$('#count-all').textContent=all.length;
   const labelRows=all.filter(r=>r.labelReview);const reviewed=labelRows.filter(r=>r.labelReview.status==='reviewed').length;
   $('#label-review-count').textContent=labelRows.length-reviewed;
   const reviewMode=['label_review','label_reviewed'].includes(filter);
@@ -63,31 +67,32 @@ function renderMail(){
   $('#count-archived').textContent=all.filter(r=>r.email.archived).length;
   const attentionIds=new Set((state.attention_items||[]).filter(x=>!x.seen).map(x=>x.action_id));
   $('#count-attention').textContent=all.filter(r=>attentionIds.has(r.id)).length;
-  $('#count-escalated').textContent=all.filter(r=>r.autonomy==='escalate').length;
+  $('#count-escalated').textContent=all.filter(r=>r.status==='escalated').length;
   const listScroll=$('#email-list').scrollTop;
   const search=$('#search').value.toLocaleLowerCase();
-  const rows=all.filter(r=>(filter==='all'||(filter==='label_review'&&r.labelReview&&r.labelReview.status!=='reviewed')||(filter==='label_reviewed'&&r.labelReview?.status==='reviewed')||(filter==='pending'&&r.status==='pending')||(filter==='archived'&&r.email.archived)||(filter==='attention'&&attentionIds.has(r.id))||(filter==='escalated'&&r.autonomy==='escalate'))&&(`${r.email.subject} ${r.email.sender}`).toLocaleLowerCase().includes(search));
+  const rows=all.filter(r=>(filter==='all'||(filter==='errors'&&['error','unknown'].includes(r.status))||(filter==='label_review'&&r.labelReview&&r.labelReview.status!=='reviewed')||(filter==='label_reviewed'&&r.labelReview?.status==='reviewed')||(filter==='pending'&&r.status==='pending')||(filter==='archived'&&r.email.archived)||(filter==='attention'&&attentionIds.has(r.id))||(filter==='escalated'&&r.status==='escalated'))&&(`${r.email.subject} ${r.email.sender}`).toLocaleLowerCase().includes(search));
   const threads=groupThreads(rows),incomplete=(state.gmail_messages||[]).filter(x=>x.state==='incomplete');
   $('#list-count').textContent=threads.length;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('selected',b.dataset.filter===filter));
   $('#filter-label').classList.toggle('hidden',!['attention','escalated'].includes(filter));$('#filter-label').textContent=filter==='attention'?'Showing emails matched by your explicit visibility preferences. Importance and escalation are separate.':filter==='escalated'?'Showing situations where the agent cannot safely continue without human judgment.':' ';
   if(!rows.some(r=>r.id===selected)){selected=threads[0]?.representative.id;detailOpen=false}
   $('.mailbox').classList.toggle('detail-open',detailOpen);
-  const cards=threads.map(group=>{const r=group.representative;const pending=group.members.filter(x=>['pending','escalated','unknown','error'].includes(x.status)).length;return `<button class="email-item ${r.id===selected?'selected':''}" data-id="${r.id}"><div class="email-top"><span class="email-sender">${esc(r.email.sender)}</span><span class="thread-count">${group.members.length} message${group.members.length===1?'':'s'}${pending?' · '+pending+' need review':''}</span></div><h3>${esc(r.email.subject)}</h3><p class="organization-line">${esc(r.organization.topic)} · ${esc(r.organization.subtype)}${r.organization.important?' · Important':''}</p><p class="email-preview">${esc(r.email.body)}</p>${r.labelReview?`<span class="badge label-chip">${esc(r.labelReview.current_label)}</span> <span class="badge">${r.labelReview.status==='reviewed'?'✓ Reviewed':r.status==='executed'?'To review':esc(statuses[r.status]||r.status)}</span>`:badge(r)}</button>`}).join('');
-  const broken=filter==='all'?incomplete.map(x=>`<div class="email-item incomplete-email" aria-disabled="true"><div class="email-top"><span class="email-sender">! Incomplete Gmail message</span><span class="thread-count">Retry after ${x.retry_at?esc(new Date(x.retry_at).toLocaleTimeString('en-US')):'the next sync'}</span></div><h3>Message unavailable</h3><p class="email-preview">Wajo could not fully load this message. It cannot be opened or analyzed yet.</p></div>`).join(''):'';
-  $('#email-list').innerHTML=cards+broken||'<div class="empty-list">No matching conversations.<br>Add an email or change the filter.</div>';
+  const cards=threads.map(group=>{const r=group.representative;const pending=group.members.filter(x=>['pending','escalated','unknown','error'].includes(x.status)).length;return {timestamp:r.timestamp,html:`<button class="email-item ${r.id===selected?'selected':''}" data-id="${esc(r.id)}"><div class="email-top"><span class="email-sender">${esc(r.email.sender)}</span><span class="thread-count">${group.members.length} message${group.members.length===1?'':'s'}${pending?' · '+pending+' need review':''}</span></div><h3>${esc(r.email.subject)}</h3>${r.timestamp?`<small>${esc(new Date(r.timestamp).toLocaleString('en-US'))}</small>`:''}${r.organization?`<p class="organization-line">${esc(r.organization.topic)} · ${esc(r.organization.subtype)}${r.organization.important?' · Important':''}</p>`:''}<p class="email-preview">${esc(r.email.body)}</p>${r.job?`<span class="badge ${r.status==='error'?'error':''}">${jobStatus(r)}</span>`:r.labelReview?`<span class="badge label-chip">${esc(r.labelReview.current_label)}</span> <span class="badge">${r.labelReview.status==='reviewed'?'✓ Reviewed':r.status==='executed'?'To review':esc(statuses[r.status]||r.status)}</span>`:badge(r)}</button>`}});
+  const broken=['all','errors'].includes(filter)&&!search?incomplete.map(x=>({timestamp:Number(x.internal_date)||0,html:`<div class="email-item incomplete-email" aria-disabled="true"><div class="email-top"><span class="email-sender">! Incomplete Gmail message</span><span class="thread-count">Retry after ${x.retry_at?esc(new Date(x.retry_at).toLocaleTimeString('en-US')):'the next sync'}</span></div><h3>Message unavailable</h3><p class="email-preview">Wajo could not fully load this message. It cannot be opened or analyzed yet.</p></div>`})):[];
+  $('#list-count').textContent=threads.length+broken.length;
+  $('#email-list').innerHTML=[...cards,...broken].sort((a,b)=>b.timestamp-a.timestamp).map(c=>c.html).join('')||'<div class="empty-list">No matching conversations.<br>Add an email or change the filter.</div>';
   $('#email-list').scrollTop=listScroll;
-  $('#email-list').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{selected=Number(b.dataset.id);detailOpen=true;renderMail();$('.mailbox').scrollIntoView({block:'start'})}));
-  const jobs=state.jobs.filter(j=>j.status!=='done');
-  $('#jobs').innerHTML=jobs.map(j=>{const e=JSON.parse(j.email);return `<div class="job">${esc(e.subject)}<br>${j.status==='error'?'Processing failed':j.status==='processing'?'The agent is reading…':'Queued for analysis'}${j.status==='error'?`<details><summary>Error details and attempts</summary><pre>${esc(JSON.stringify(JSON.parse(j.diagnostics),null,2))}</pre></details>`:''}</div>`}).join('');
-  renderDetail(all.find(r=>r.id===selected));
+  $('#email-list').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.id.startsWith('job:')?b.dataset.id:Number(b.dataset.id);detailOpen=true;renderMail();$('.mailbox').scrollIntoView({block:'start'})}));
+  const row=all.find(r=>r.id===selected);
+  if(row?.job){$('#detail').innerHTML=`<button class="secondary detail-back" id="back-conversations">← All conversations</button><h2>${esc(row.email.subject)}</h2><p>${esc(row.email.sender)}</p><span class="badge">${jobStatus(row)}</span>${conversationView(row)}<p class="email-body">${esc(row.email.body)}</p>${row.status==='error'?`<details><summary>Error details and attempts</summary><pre>${esc(row.job.diagnostics)}</pre></details>`:''}`;$('#back-conversations').addEventListener('click',()=>{detailOpen=false;renderMail()})}else renderDetail(row);
+  $('#detail').querySelectorAll('[data-conversation-id]').forEach(button=>button.addEventListener('click',()=>{const id=button.dataset.conversationId;selected=id.startsWith('job:')?id:Number(id);renderMail()}));
 }
 function conversationView(row){
-  const members=currentRows().filter(x=>x.threadId===row.threadId).reverse();
-  const context=(state.gmail_messages||[]).filter(x=>x.thread_id===row.threadId&&['sent','draft'].includes(x.role));
+  const actions=currentRows();const members=[...actions,...waitingRows(actions)].filter(x=>x.threadId===row.threadId&&x.account===row.account).sort(newestFirst).reverse();
+  const context=(state.gmail_messages||[]).filter(x=>x.thread_id===row.threadId&&x.account===row.account&&['sent','draft'].includes(x.role));
   if(members.length+context.length<=1)return '';
-  const items=[...members.map(x=>({key:'action-'+x.id,role:'incoming',sender:x.email.sender,subject:x.email.subject,body:x.email.body,open:x.id===row.id||['pending','escalated','unknown','error'].includes(x.status),note:statuses[x.status]||autonomies[x.autonomy]})),...context.map(x=>({key:x.role+'-'+x.message_id,role:x.role,sender:x.sender,subject:x.subject,body:x.body,open:false,note:x.role==='draft'?(x.managed?'Draft prepared by Wajo':'Your Gmail draft · context only'):'Sent message · context only'}))];
-  return `<section class="conversation"><h3>Conversation · ${items.length} messages</h3>${items.map(x=>`<details ${x.open?'open':''}><summary><span>${esc(x.sender)}</span><strong>${esc(x.note)}</strong></summary><small>${esc(x.subject)}</small><p>${esc(x.body)}</p></details>`).join('')}</section>`;
+  const items=[...members.map(x=>({key:'action-'+x.id,timestamp:x.timestamp,role:'incoming',sender:x.email.sender,subject:x.email.subject,body:x.email.body,open:x.id===row.id||['pending','escalated','unknown','error'].includes(x.status),id:x.id,note:x.job?jobStatus(x):statuses[x.status]||autonomies[x.autonomy]})),...context.map(x=>({key:x.role+'-'+x.message_id,timestamp:Number(x.internal_date)||0,role:x.role,sender:x.sender,subject:x.subject,body:x.body,open:false,note:x.role==='draft'?(x.managed?'Draft prepared by Wajo':'Your Gmail draft · context only'):'Sent message · context only'}))].sort((a,b)=>a.timestamp-b.timestamp);
+  return `<section class="conversation"><h3>Conversation · ${items.length} messages</h3>${items.map(x=>`<details ${x.open?'open':''}><summary><span>${esc(x.sender)}</span><strong>${esc(x.note)}</strong></summary><small>${esc(x.subject)}</small><p>${esc(x.body)}</p>${x.id!==undefined&&x.id!==row.id?`<button class="secondary" data-conversation-id="${esc(x.id)}">Open message and status</button>`:''}</details>`).join('')}</section>`;
 }
 function renderDetail(row){
   const previousDetailScroll=$('#detail').scrollTop;
@@ -308,10 +313,11 @@ function animateSuperpowersOff(){
 }
 $('#superpowers-toggle').addEventListener('change',async event=>{
   const enabled=event.target.checked;event.target.disabled=true;
-  if(!enabled){$('#superpowers-dialog').close();await animateSuperpowersOff()}
+  $('#superpowers-error').classList.add('hidden');
   const result=await post('/api/superpowers/global',{enabled,reviewed_rules:true});
-  if(result){notify(enabled?'Superpowers enabled. Qualified Skills can now autosend safely.':'Superpowers turned off. Every reply requires approval again.');if(enabled)$('#superpowers-dialog').close()}
-  else{event.target.checked=!enabled;event.target.disabled=false;if(!$('#superpowers-dialog').open)openSuperpowersDialog();$('#superpowers-error').textContent='Could not update Superpowers. Nothing changed.';$('#superpowers-error').classList.remove('hidden')}
+  if(result){notify(enabled?'Superpowers enabled. Qualified Skills can now autosend safely.':'Superpowers turned off. Every reply requires approval again.')}
+  else{event.target.checked=!enabled;$('#superpowers-error').textContent='Could not update Superpowers. Nothing changed.';$('#superpowers-error').classList.remove('hidden')}
+  event.target.disabled=false;
 });
 $('#show-unreviewed').addEventListener('click',()=>setFilter('label_review'));
 $('#show-reviewed').addEventListener('click',()=>setFilter('label_reviewed'));

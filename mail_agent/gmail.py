@@ -16,6 +16,7 @@ from .web import Application
 READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 MANAGE_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 ACCESS_SCOPES = {"readonly": [READONLY_SCOPE], "manage": [MANAGE_SCOPE]}
+GMAIL_TIMEOUT_SECONDS = 25
 
 
 def private_write(path, content):
@@ -57,27 +58,40 @@ def authorize(credentials_path, token_path, access="readonly", on_url=None):
 
 
 def service(token_path):
-    from google.auth.transport.requests import Request
+    import httplib2
+    from google_auth_httplib2 import AuthorizedHttp, Request
     from google.oauth2.credentials import Credentials
     from googleapiclient.discovery import build
     credentials = Credentials.from_authorized_user_file(str(token_path))
     if not {READONLY_SCOPE, MANAGE_SCOPE}.intersection(credentials.scopes or []):
         raise ValueError("Gmail read access is missing; run the auth command again")
+    # Bound both token refresh and Gmail requests; never replay a mutation on 401.
+    http = httplib2.Http(timeout=GMAIL_TIMEOUT_SECONDS)
     if credentials.expired and credentials.refresh_token:
-        credentials.refresh(Request())
+        credentials.refresh(Request(http))
         private_write(token_path, credentials.to_json())
     if not credentials.valid:
         raise ValueError("Gmail authorization expired; run the auth command again")
-    return build("gmail", "v1", credentials=credentials, cache_discovery=False)
+    authorized_http = AuthorizedHttp(credentials, http=http, max_refresh_attempts=0)
+    return build("gmail", "v1", http=authorized_http, cache_discovery=False, num_retries=0)
 
 
 class _TextExtractor(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.parts = []
+        self.hidden = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in {"script", "style", "head"}:
+            self.hidden.append(tag)
+
+    def handle_endtag(self, tag):
+        if tag in self.hidden:
+            self.hidden = self.hidden[:self.hidden.index(tag)]
 
     def handle_data(self, data):
-        if data.strip():
+        if not self.hidden and data.strip():
             self.parts.append(data.strip())
 
 

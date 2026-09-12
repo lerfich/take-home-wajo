@@ -41,7 +41,9 @@ class WebTests(unittest.TestCase):
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
-        self.server = create_server(Path(self.directory.name) / "web.sqlite3", 0, True)
+        self.server = create_server(Path(self.directory.name) / "web.sqlite3", 0, True,
+                                    connection_token=Path(self.directory.name) / "token.json",
+                                    gmail_credentials=Path(self.directory.name) / "client.json")
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
@@ -225,9 +227,13 @@ class WebTests(unittest.TestCase):
             self.post("/api/ingest", {"sender": "x@example.test", "subject": "<script>alert(1)</script>", "body": "<img src=x onerror=alert(1)>"})
             deadline = time.monotonic() + 3
             state = self.get()
-            while not state["actions"] and time.monotonic() < deadline:
+            # An action can become visible before its background job finishes.
+            while (not state["jobs"] or any(job["status"] not in {"done", "error"}
+                                            for job in state["jobs"])) and time.monotonic() < deadline:
                 time.sleep(.02)
                 state = self.get()
+            self.assertTrue(state["jobs"])
+            self.assertTrue(all(job["status"] == "done" for job in state["jobs"]))
             self.assertEqual(len(state["labels"]), 1)
             self.assertIn("<script>", state["emails"][0]["subject"])
             # The frontend must render this as text, never as markup.

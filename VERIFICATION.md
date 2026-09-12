@@ -1,4 +1,41 @@
-# Iteration 1 verification
+# Stage C closure — September 12, 2026
+
+Pre-commit rerun exposed environmental coupling in the web tests: switching a test server out of demo mode could pick up the workspace's real OAuth token and skip synthetic input during Gmail scope checking. Test servers now use isolated temporary OAuth paths. The background test also waits for terminal job status rather than action creation and requires `done` before checking effects. No real send was triggered by this test.
+
+Stage C is functionally complete under the bounded live scenarios below, complemented by 189 passing development tests. This is not an independent evaluation or a prolonged private-mail pilot. Earlier chronological entries below describe intermediate states and are superseded by this closure summary, not erased.
+
+- Initial private-mail import: 30/30 analyzed after recovery from Groq 403; two pages, restart and Pause/Resume checked. Archive/restore confirmed by Gmail. One earlier unconfirmed label operation remains error and was not replayed.
+- Synthetic B and D: two exact manually approved replies confirmed by Gmail, qualifying Draft Skill #24 revision 2.
+- E / action #36: send operation #18 done with automatic=1; one Autosent entry with matching sent ID. The next poll did not create another send operation. Gmail confirmation is not proof of recipient inbox placement. Elapsed from Gmail message timestamp to confirmation was 83 seconds: detection dominated; Groq took about 2 seconds. Poll interval remains one minute.
+- F / action #37: after skill permission revocation, style applied but only a draft was saved; no send queued. Qualification reset to 0/2 while the global switch stayed on.
+- Same-account reconnect preserved 37 emails/actions, active skill, sync state and revoked qualification. Keep previous data on the other account preserved prior records and disabled current-account Superpowers.
+- G / action #42: after explicit user authorization to change the test skill to All senders while retaining the literal test phrase, revision 3 applied across accounts. Gmail draft saved, action pending, sent ID empty, qualification 0/2 and global Superpowers off. The previous account's signature was intentionally not supplied; output ends with `Best,` without a name. A signature for the new account remains a separate user preference.
+
+Safety-block combinations, unknown-outcome recovery, and broad scope variations are covered by synthetic/mocked tests, not all exercised live. The test is narrow and does not establish general semantic reliability. Test drafts remain in Gmail; no cleanup or extra sends were performed. Remaining UX/operational limitations include minute polling, one stale label error and an SSL ResourceWarning during tests. D and final evaluation remain future work.
+
+# Iteration history
+
+## Live account switch with Keep previous data
+
+Switching from the private pilot account to the user's synthetic-test account reached the explicit account-choice state. Keep previous data preserved 31 emails, 31 actions and both suggested Archive Skills. The new account connected with manage access and new-only synchronization; historical test mail was not imported. This confirms preservation, not application of an active Skill across accounts: both preserved Skills are still suggested, and there is no active Draft Skill yet.
+
+## New incoming message: automatic polling verified
+
+The user sent the synthetic “Wajo C incoming check” message from another account. With no manual Sync request, the running server polled Gmail at 10:36:17 UTC, queued the message at 10:36:17.660 and completed analysis at 10:36:24.253 on September 12. The saved action is none/executed. The original 30 jobs remain complete. The full current test suite passes 185 tests (a ResourceWarning about an unclosed SSL socket was emitted; no test failed). This supersedes the pending incoming-message check below.
+
+## Stage C resumed live validation
+
+All 30 imported jobs now have status done, including the 23 manually resumed analyses. The previous restore was reconciled read-only first (not in Inbox), then explicitly resumed under the user's restore-validation request; operation 4 is done with Gmail readback. Six label operations are done; the earlier unconfirmed label remains error and was not replayed.
+
+Pause/Resume was exercised through the local HTTP API and confirmed in SQLite. After stopping the sole executor and restarting through run.sh, 30 unique bindings and 30 completed jobs remained intact, getProfile succeeded, and integrity_check returned ok. No send was performed.
+
+A separate ignored diagnostic database exercised a fixed synthetic draft proposal against one already authorized Gmail binding. One Gmail draft addressed to the connected account was created and updated in place to revision 2, with exact readback and pending status. Its subject is “Wajo Stage C draft verification — do not send”; it remains in Gmail. This validates transport, not model draft quality. No send operation was queued. A fresh incoming-mail polling scenario is still awaiting a user-created test message; Stage C is not yet closed.
+
+184 unit tests pass. New regressions cover HTML style/script/head exclusion and bounded Gmail refresh; Gmail requests now use a 25-second timeout with no implicit replay after 401. Existing cached mail was not rewritten. The UI has one timeline ordered by Gmail date and separates processing errors from escalation counts.
+
+## Connectivity recheck and three-worker limit
+
+The analysis pool now has three workers; Groq requests remain serialized by the shared gate. All 17 synchronization tests pass, including the updated concurrency bound. Groq model listing and one synthetic triage request succeeded, and the saved Gmail connection passed getProfile. No private-mail analysis was resumed and no Gmail mutation was performed during this connectivity check. Full Stage C revalidation awaits the user's go-ahead. Separately, the earlier restore attempt (operation 4) ended unknown and its subsequent read-only check still found no INBOX membership; reconcile before any further write.
 
 ## September 12: reconnect, portable Skills and Superpowers — synthetic/mocked only
 
@@ -229,3 +266,22 @@ These are execution/policy checks, **not measured AI accuracy, learning performa
 Environment issue found during verification: one shell resolved `python3` to Python 3.6. The successful checks explicitly used the installed Python 3.14 interpreter. The application now exits with a clear Python 3.11+ requirement when invoked with an older interpreter.
 
 September 10 follow-up: 104 tests pass after adding explicit Replace/Add review modes. New tests cover preservation of original/unrelated labels, replacement after addition, rejected unsupported future-add scope, and read-only reconciliation after an uncertain addition. Gmail transport uses mocks for these new cases; no live mailbox mutation was performed. Browser mode-switch check passed with no console errors.
+# September 12: live Draft Skill preparation
+
+Keep previous data after switching to the private pilot account preserved all 37 previous actions and active Draft Skill #24 revision 2. Automatic polling added two new actions, bringing the total to 39. Current-account Superpowers is disabled with no rules. No send was queued for previous pending draft actions #32/#34/#37. Positive live cross-account skill application is still untested: the retained skill's exact sender is now the mailbox owner, so a message from the test account is outside its scope. Scope must not be silently broadened to manufacture a passing test.
+
+Same-account OAuth reconnect completed live: connection returned to the same test account without account-choice; all 37 emails/actions, active Skill #24 revision 2, New only sync settings, pending draft #37 and the single Autosent record remain. Global Superpowers stayed on, but revoked qualification stayed 0/2. No permission was restored by reconnecting.
+
+Live revocation check F: after the user disabled the skill's auto-send permission, global Superpowers remained on but qualification reset to 0/2. Action #37 applied the same Draft Skill and saved Gmail draft operation #19 (done), then remained pending with an empty sent ID and no send operation. This verifies live revocation without removing the ordinary drafting preference. Before same-account OAuth reconnect, the workspace contains 37 emails and 37 actions.
+
+Synthetic message D / action #35: the fixed rewrite applied Skill #24 revision 2 and produced the correct signature. Nikita approved unchanged reply revision 1; send operation #16 is done, approved=1, automatic=0, with Gmail-confirmed sent ID. Qualification reached 2/2 for the same skill revision. Superpowers remains off; the settings dialog was opened for explicit user activation. No live automatic-send result is claimed yet.
+
+Identity fix follow-up: account-matched managed Draft Skills supply a conventional signature extracted from the saved edited example as separate reply-author identity context; cross-account style reuse does not supply that signature. Incoming author and reply recipient are distinct fields. Payload and account-isolation regression tests pass; full suite: 189 tests, with an existing SSL ResourceWarning. Restarted the server with the fix and placeholder guard. A standalone live Groq rewrite of synthetic C content returned `Best, / Nikita` without a placeholder, with no Gmail mutation. This is a focused generation check, not a second qualification send; action #34 retains its original pending draft.
+
+Live follow-up C exposed an actual generation defect: action #34 saved a pending revision-1 Gmail draft containing `[User Name]`, despite application of Skill #24. No send or second qualification confirmation occurred. Added a rewrite instruction against placeholders and a conservative known-name-placeholder guard shared by automatic authorization and pre-send validation; 12 Superpowers tests pass. Code changes have not yet been loaded by the running server. This prevents treating the live Superpowers test as passed; generation retry and server restart remain required.
+
+Live follow-up B: action #33 used Draft Skill #24 revision 2 (`draft_style_applications.status=applied`). Following Nikita's personal UI approval of unchanged reply revision 1, Gmail send operation #13 completed with `done`, `approved=1`, `automatic=0`; action status is `executed` and reason is `Gmail confirmed the sent message`, with a saved sent ID. Qualification advanced to 1/2 for the same skill revision. Superpowers remains disabled and its Autosent journal is empty. This confirms provider-side send, not recipient-side inbox placement.
+
+Preparation action #32 remains a pending Gmail draft at revision 2; no send was performed. The UI review activated Draft Skill #24 after checking one matching synthetic receipt-confirmation example and two non-matching sender examples. Its scope is the source sender, work progress updates, and the literal body phrase `sample project update`. Style: concise, greeting included, sign-off included. This is a narrow transport/workflow check, not an independent evaluation or evidence of broad semantic matching quality.
+
+The preparation exposed a sign-off extraction defect: `Best,` followed by an author name was treated as no sign-off. Recognition and regression tests now cover named English/Russian closings and a negative body-text case. Existing suggested configuration was explicitly refined through UI; saved skills were not silently migrated. The running server has not yet reloaded this Python change. Two unchanged manual approvals on future applications of the active revision, live Superpowers auto-send, revocation, and active-skill account portability remain pending.

@@ -1,9 +1,10 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from mail_agent.core import Agent, Email, Proposal
-from mail_agent.draft_preferences import derive, preview, save
+from mail_agent.draft_preferences import derive, preview, save, choose, signature_name
 
 
 class Rewriter:
@@ -51,6 +52,27 @@ class DraftPreferenceTests(unittest.TestCase):
         self.assertEqual((style["length"], style["greeting"], style["signoff"]),
                          ("concise", "omit", "omit"))
         self.assertIn("concise", preview(self.agent, self.edited_action(), 2)["summary"])
+
+    def test_named_signoff_is_preserved(self):
+        for closing in ("Best,\nNikita", "Best regards,\nNikita Smith", "С уважением,\nНикита"):
+            with self.subTest(closing=closing):
+                self.assertEqual(derive("Original", "Hi,\n\nReceived.\n\n" + closing)["signoff"], "include")
+
+    def test_signature_identity_is_account_bound(self):
+        skill = {'id': 10, 'account': 'owner@example.test',
+                 'config': {'example_after': 'Received.\n\nBest,\nNikita'}}
+        email = Email('identity-test', 'other@example.test', 'Update', 'Routine')
+        with patch('mail_agent.skills.choose', return_value=skill):
+            with patch('mail_agent.draft_preferences.account_for', return_value=skill['account']):
+                rule = choose(self.agent, self.proposal, email)
+                self.assertEqual(rule['confirmed_signature_name'], 'Nikita')
+                self.assertEqual(rule['reply_account'], skill['account'])
+            with patch('mail_agent.draft_preferences.account_for', return_value='different@example.test'):
+                self.assertNotIn('confirmed_signature_name', choose(self.agent, self.proposal, email))
+        self.assertEqual(signature_name('Best,\n[User Name]'), '')
+
+    def test_body_thanks_is_not_a_named_signoff(self):
+        self.assertEqual(derive("Original", "Thanks,\nPlease review the updated document tomorrow.")["signoff"], "omit")
 
     def test_confirmed_style_transfers_without_send_permission(self):
         save(self.agent, self.edited_action(), 2, "similar")

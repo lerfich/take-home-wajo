@@ -7,7 +7,7 @@ from .label_preferences import LABEL_KINDS, account_for
 
 
 GREETINGS = re.compile(r"^(hi|hello|hey|dear|привет|здравствуйте)\b", re.I)
-SIGNOFFS = re.compile(r"^(best|thanks|thank you|regards|sincerely|спасибо|с уважением)[,!.]?$", re.I)
+SIGNOFFS = re.compile(r"^(best(?: regards)?|kind regards|thanks|thank you|regards|sincerely|спасибо|с уважением)[,!.]?$", re.I)
 EXAMPLE_LIMIT = 1000
 
 
@@ -53,7 +53,10 @@ def derive(original, edited):
         length = "standard"
     lines = _lines(edited)
     greeting = "include" if lines and GREETINGS.search(lines[0]) else "omit"
-    signoff = "include" if lines and SIGNOFFS.search(lines[-1]) else "omit"
+    # A conventional closing may be followed by the author's name.
+    named_closing = (len(lines) >= 2 and SIGNOFFS.fullmatch(lines[-2])
+                     and re.fullmatch(r"[^\W\d_]+(?:[ '-][^\W\d_]+){0,3}", lines[-1]))
+    signoff = "include" if lines and (SIGNOFFS.fullmatch(lines[-1]) or named_closing) else "omit"
     return {"length": length, "greeting": greeting, "signoff": signoff,
             "original_words": original_words, "edited_words": edited_words}
 
@@ -138,7 +141,12 @@ def choose(agent, proposal, email):
     from .skills import choose as choose_skill
     skill = choose_skill(agent, 'draft', email, proposal)
     if skill:
-        return dict(skill['config'], id=-skill['id'])
+        rule = dict(skill['config'], id=-skill['id'])
+        # Style can be portable; a personal signature must stay account-bound.
+        if skill['account'] == account_for(agent, email.id):
+            rule['reply_account'] = skill['account']
+            rule['confirmed_signature_name'] = signature_name(rule.get('example_after', ''))
+        return rule
     if (proposal.action not in {"draft", "send"} or proposal.suspicious or proposal.needs_human
             or proposal.label_kind not in LABEL_KINDS or not proposal.pattern_evidence.strip()
             or proposal.pattern_evidence not in email.body):
@@ -160,6 +168,14 @@ def choose(agent, proposal, email):
         rule["example_before"] = _example_text(example["example_before"])
         rule["example_after"] = _example_text(example["example_after"])
     return rule
+
+
+def signature_name(text):
+    lines = _lines(text)
+    if (len(lines) >= 2 and SIGNOFFS.fullmatch(lines[-2])
+            and re.fullmatch(r"[^\W\d_]+(?:[ '-][^\W\d_]+){0,3}", lines[-1])):
+        return lines[-1]
+    return ""
 
 
 def apply(agent, proposal, email):

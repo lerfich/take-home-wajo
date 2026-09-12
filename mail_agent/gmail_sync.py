@@ -319,7 +319,14 @@ def fetch_one(api, app, account, item, selected_history_labels=(), now=None):
             app.enqueue(fields, event_id=event_id, gmail_binding=binding)
         _cache_context(app, account, message, fields, role, unread)
         return "imported" if role == "incoming" else "context"
-    except Exception:
+    except Exception as exc:
+        # History may reference a draft version removed by a later update.
+        # A missing message is not a transient MIME/network failure.
+        if getattr(getattr(exc, 'resp', None), 'status', None) == 404:
+            with app.connect() as db:
+                db.execute("DELETE FROM gmail_message_cache WHERE account=? AND message_id=? AND state='incomplete'",
+                           (account, item['id']))
+            return 'skipped'
         _cache_incomplete(app, account, item, now, selected_history_labels)
         return "incomplete"
 

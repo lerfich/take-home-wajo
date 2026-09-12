@@ -37,9 +37,8 @@ class Application:
         self.account_switching = False
         # Keep the UI responsive without reproducing the seven-request burst
         # that exhausted the selected free Groq model's shared token budget.
-        # Provider Retry-After remains authoritative when four requests still
-        # reach the minute limit together.
-        self.analysis_limit = 4
+        # Provider Retry-After remains authoritative for the shared minute limit.
+        self.analysis_limit = 3
         self.analysis_threads = []
         self.label_review_lock = threading.Lock()
         from .gmail_connection import GmailConnection

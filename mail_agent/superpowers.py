@@ -328,6 +328,8 @@ _PROMPT_INJECTION = re.compile(
 
 def _hard_risk_reason(*parts):
     content = "\n".join(str(part or "") for part in parts)
+    if re.search(r"\[\s*(?:(?:your|user|sender|recipient|full|first|last)[ _-]+)?name\s*\]", content, re.I):
+        return "Unresolved name placeholder requires review"
     if _PROMPT_INJECTION.search(content):
         return "Possible prompt injection requires review"
     if _RISK.search(content):

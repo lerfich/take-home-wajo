@@ -107,6 +107,18 @@ class SuperpowerTests(unittest.TestCase):
         superpowers.mark_seen(self.agent, result["authorization_id"])
         self.assertEqual(superpowers.state(self.agent, self.account)["unseen"], 0)
 
+    def test_unresolved_name_placeholder_blocks_auto_send(self):
+        self._confirm("one"); self._confirm("two")
+        superpowers.set_global(self.agent, {"enabled": True, "reviewed_rules": True}, self.account)
+        for index, name in enumerate(("[User Name]", "[Your Name]", "[name]")):
+            action = self._action("placeholder-" + str(index))
+            with self.agent.db:
+                self.agent.db.execute("UPDATE gmail_replies SET text=? WHERE action_id=?",
+                                      ("Received.\\nBest,\\n" + name, action["id"]))
+            result = superpowers.authorize_auto(self.agent, action["id"])
+            self.assertFalse(result["eligible"])
+            self.assertIn("placeholder", result["reason"])
+
     def test_hard_blocks_and_exact_skill_revision(self):
         self._confirm("one"); self._confirm("two")
         superpowers.set_global(self.agent, {"enabled": True, "reviewed_rules": True}, self.account)

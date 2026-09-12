@@ -42,7 +42,7 @@ class GmailTests(unittest.TestCase):
                 self.assertEqual(token.read_text(), "previous-token")
 
     def test_service_preserves_saved_access_during_refresh(self):
-        credentials_module, transport, discovery = MagicMock(), MagicMock(), MagicMock()
+        credentials_module, transport, discovery, http_module = MagicMock(), MagicMock(), MagicMock(), MagicMock()
         credentials = credentials_module.Credentials.from_authorized_user_file.return_value
         credentials.expired = True
         credentials.refresh_token = "synthetic"
@@ -50,7 +50,8 @@ class GmailTests(unittest.TestCase):
         credentials.to_json.return_value = '{"token": "synthetic"}'
         with tempfile.TemporaryDirectory() as directory, patch.dict("sys.modules", {
             "google.oauth2.credentials": credentials_module,
-            "google.auth.transport.requests": transport,
+            "google_auth_httplib2": transport,
+            "httplib2": http_module,
             "googleapiclient.discovery": discovery,
         }):
             token = Path(directory) / "token.json"
@@ -59,15 +60,50 @@ class GmailTests(unittest.TestCase):
                 service(token)
                 credentials_module.Credentials.from_authorized_user_file.assert_called_with(str(token))
                 credentials.refresh.assert_called_with(transport.Request.return_value)
+                http_module.Http.assert_called_with(timeout=25)
+                transport.Request.assert_called_with(http_module.Http.return_value)
+                transport.AuthorizedHttp.assert_called_with(
+                    credentials, http=http_module.Http.return_value, max_refresh_attempts=0)
+                discovery.build.assert_called_with("gmail", "v1",
+                    http=transport.AuthorizedHttp.return_value, cache_discovery=False, num_retries=0)
             credentials.scopes = []
             with self.assertRaisesRegex(ValueError, "read access is missing"):
                 service(token)
+
+    def test_refresh_timeout_does_not_replace_token_or_build_service(self):
+        credentials_module, transport, discovery, http_module = MagicMock(), MagicMock(), MagicMock(), MagicMock()
+        credentials = credentials_module.Credentials.from_authorized_user_file.return_value
+        credentials.scopes = [MANAGE_SCOPE]
+        credentials.expired = True
+        credentials.refresh_token = "synthetic"
+        credentials.refresh.side_effect = TimeoutError("synthetic timeout")
+        with tempfile.TemporaryDirectory() as directory, patch.dict("sys.modules", {
+            "google.oauth2.credentials": credentials_module,
+            "google_auth_httplib2": transport,
+            "httplib2": http_module,
+            "googleapiclient.discovery": discovery,
+        }):
+            token = Path(directory) / "token.json"
+            token.write_text("previous-token")
+            with self.assertRaises(TimeoutError):
+                service(token)
+            credentials.refresh.assert_called_once_with(transport.Request.return_value)
+            self.assertEqual(token.read_text(), "previous-token")
+            discovery.build.assert_not_called()
 
     def test_only_inline_plain_text_and_exact_address(self):
         self.assertEqual(message_fields(payload()), {"sender": "test@example.test", "subject": "Test", "body": "Synthetic receipt"})
         html = base64.urlsafe_b64encode(b"<p>Hello <strong>there</strong></p>").decode()
         self.assertEqual(message_fields({"payload": {"mimeType": "text/html", "headers": [
             {"name": "From", "value": "test@example.test"}], "body": {"data": html}}})["body"], "Hello\nthere")
+
+    def test_html_excludes_style_script_and_head_content(self):
+        html = base64.urlsafe_b64encode(
+            b'<head><title>Hidden</title><style>body {color:red}</style></head>'
+            b'<body><p>Visible text</p><script>malicious()</script><p>Next line</p></body>').decode()
+        self.assertEqual(message_fields({"payload": {"mimeType": "text/html", "headers": [
+            {"name": "From", "value": "test@example.test"}], "body": {"data": html}}})["body"],
+            "Visible text\nNext line")
 
     def test_import_deduplicates_and_never_writes_gmail(self):
         with tempfile.TemporaryDirectory() as directory:

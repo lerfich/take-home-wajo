@@ -42,12 +42,17 @@ class GroqTests(unittest.TestCase):
         with patch.object(self.provider, "request", return_value=response) as request:
             text = self.provider.rewrite_draft(self.email, proposal, {
                 "length": "concise", "greeting": "omit", "signoff": "omit",
+                "reply_account": "owner@example.test", "confirmed_signature_name": "Nikita",
                 "example_before": "Received, thank you.",
                 "example_after": "Thank you, I received."})
         self.assertEqual(text, "Thanks, received.")
         payload = request.call_args.args[1]
         self.assertNotIn("server-only-id", json.dumps(payload))
         style = json.loads(payload["messages"][1]["content"])["confirmed_style"]
+        identity = json.loads(payload["messages"][1]["content"])["identity_context"]
+        self.assertEqual(identity['incoming_author_address'], 'sender@example.test')
+        self.assertEqual(identity['reply_author_account'], 'owner@example.test')
+        self.assertEqual(identity['confirmed_reply_author_signature'], 'Nikita')
         self.assertEqual(style["preferred_edit_example"]["user_version"], "Thank you, I received.")
         self.assertEqual(self.provider.calls[-1]["kind"], "draft_style_rewrite")
 

@@ -31,6 +31,15 @@ class Fixed:
 
 
 class GmailSyncTests(unittest.TestCase):
+    def test_missing_history_message_does_not_become_incomplete_job(self):
+        missing = Exception('Gone')
+        missing.resp = type('Response', (), {'status': 404})()
+        self.users.messages.return_value.get.return_value.execute.side_effect = missing
+        self.assertEqual(fetch_one(self.api, self.app, 'owner@example.test', {'id': 'removed-draft'}), 'skipped')
+        self.assertEqual(self.app.state()['jobs'], [])
+        with self.app.connect() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM gmail_message_cache').fetchone()[0], 0)
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         root = Path(self.directory.name)
@@ -314,21 +323,21 @@ class GmailSyncTests(unittest.TestCase):
         finally:
             agent.close()
 
-    def test_analysis_pool_never_exceeds_four_messages(self):
+    def test_analysis_pool_never_exceeds_three_messages(self):
         class Blocking:
             def __init__(self):
                 self.calls = []
                 self.active = 0
                 self.maximum = 0
                 self.lock = threading.Lock()
-                self.four = threading.Event()
+                self.three = threading.Event()
                 self.release = threading.Event()
             def propose(self, email):
                 with self.lock:
                     self.active += 1
                     self.maximum = max(self.maximum, self.active)
-                    if self.active == 4:
-                        self.four.set()
+                    if self.active == 3:
+                        self.three.set()
                 self.release.wait(3)
                 with self.lock:
                     self.active -= 1
@@ -341,9 +350,9 @@ class GmailSyncTests(unittest.TestCase):
         with patch("mail_agent.groq_provider.GroqProposer.from_env", return_value=provider):
             self.app.worker.start()
             try:
-                self.assertTrue(provider.four.wait(3))
+                self.assertTrue(provider.three.wait(3))
                 time.sleep(.1)
-                self.assertEqual(provider.maximum, 4)
+                self.assertEqual(provider.maximum, 3)
             finally:
                 provider.release.set()
                 deadline = time.monotonic() + 4
@@ -353,4 +362,4 @@ class GmailSyncTests(unittest.TestCase):
                     time.sleep(.05)
                 self.app.stop.set(); self.app.wakeup.set(); self.app.worker.join(4)
         self.assertTrue(all(x["status"] == "done" for x in self.app.state()["jobs"]))
-        self.assertEqual(provider.maximum, 4)
+        self.assertEqual(provider.maximum, 3)
