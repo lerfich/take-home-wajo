@@ -85,6 +85,26 @@ class EventTests(unittest.TestCase):
         self.assertEqual(rejected["status"], "rejected")
         self.assertEqual(self.db.execute("SELECT COUNT(*) FROM actions").fetchone()[0], 0)
 
+    def test_analysis_evidence_allows_only_whitespace_normalization(self):
+        body = "Meet on September 16 at\r\n3:00 PM Europe/Moscow."
+        self.db.execute("UPDATE emails SET body=? WHERE id='m1'", (body,))
+        context = events.analysis_context(self.db, "m1")
+        proposal = Proposal(
+            "none", "Calendar item", event_change="create", event_kind="calendar_event",
+            event_semantic_kind="project_meeting", event_title="Project meeting",
+            event_original_text="Meet on September 16 at 3:00 PM Europe/Moscow.",
+            event_start="2026-09-16T15:00:00+03:00", event_timezone="Europe/Moscow",
+            event_confidence="clear",
+            event_evidence="Meet on September 16 at 3:00 PM Europe/Moscow.")
+        saved = events.register_analysis(self.db, Email("m1", "a@example.test", "Planning", body),
+                                         proposal, context)
+        self.assertEqual(saved["status"], "awaiting_confirmation")
+        changed = Proposal(**{**proposal.__dict__, "event_evidence":
+                              "Meet on September 17 at 3:00 PM Europe/Moscow."})
+        with self.assertRaisesRegex(ValueError, "exact evidence"):
+            events.register_analysis(self.db, Email("m1", "a@example.test", "Planning", body),
+                                     changed, context)
+
     def test_idempotency_and_restart(self):
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / "events.sqlite3")

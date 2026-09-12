@@ -12,6 +12,7 @@ from datetime import date, datetime, timezone
 import hashlib
 import os
 from pathlib import Path
+import re
 import sqlite3
 import time
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -24,6 +25,13 @@ PROPOSAL_STATUSES = {
 EVENT_STATUSES = {"current", "rescheduled", "cancelled"}
 EVENT_KINDS = {"calendar_event", "response_deadline"}
 CHANGE_KINDS = {"create", "reschedule", "cancel"}
+
+
+def _source_contains(body: str, evidence: str) -> bool:
+    """Require source-grounded text while tolerating MIME line wrapping."""
+    normalized_body = re.sub(r"\s+", " ", body).strip()
+    normalized_evidence = re.sub(r"\s+", " ", evidence).strip()
+    return bool(normalized_evidence) and normalized_evidence in normalized_body
 
 
 @contextmanager
@@ -117,9 +125,8 @@ def register_analysis(db: sqlite3.Connection, email, proposal, context: dict, *,
     """Persist and, when qualified, auto-apply the model's independent event suggestion."""
     if proposal.event_change == "none":
         return None
-    if (proposal.event_original_text not in email.body
-            or not proposal.event_evidence.strip()
-            or proposal.event_evidence not in email.body):
+    if (not _source_contains(email.body, proposal.event_original_text)
+            or not _source_contains(email.body, proposal.event_evidence)):
         raise ValueError("Calendar suggestion requires exact evidence from the email body")
     confidence = proposal.event_confidence
     ambiguity = proposal.event_ambiguity_reason

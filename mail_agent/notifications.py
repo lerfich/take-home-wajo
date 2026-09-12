@@ -195,6 +195,8 @@ class NotificationScheduler:
         """Schedule exactly one active-model banner for this process launch."""
         now = self.clock()
         due = now + STARTUP_DELAY_SECONDS
+        body = ("Active model: Groq · bundled free plan"
+                if mode == "Bundled free Groq" else f"Active model: {_clean_text(mode, limit=80)}")
         with self._connect() as db:
             db.execute("""UPDATE notification_jobs SET status='cancelled',completed_at=?
                           WHERE kind='startup_mode' AND status='pending'
@@ -204,7 +206,7 @@ class NotificationScheduler:
             kind="startup_mode",
             dedupe_key=f"startup-mode:{self.launch_id}",
             title="Wajo is running",
-            body=f"Active model: {_clean_text(mode, limit=80)}",
+            body=body,
             source_ref="server-launch",
             source_verified=True,
             due_at=due,

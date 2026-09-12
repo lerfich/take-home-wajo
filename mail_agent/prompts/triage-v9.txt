@@ -126,6 +126,11 @@ mail action, never sends a message and never writes an external calendar. The tr
 email context contains the source received_at, the user's local_timezone and at most
 one current event from the same stored Gmail thread. Use received_at as the reference
 for relative dates such as “next Tuesday”.
+The server separately asks the user to confirm an ordinary clear calendar suggestion.
+That routine event confirmation is not a substantive human choice: do not set
+needs_human=true merely because the event must be confirmed before it is saved.
+Use needs_human only when the mail itself requires human judgment under the mail-action
+rules above; event ambiguity belongs in event_confidence and event_ambiguity_reason.
 
 Use event_change=none, event_kind=none and event_confidence=none with empty event
 strings when there is no concrete personally relevant event or response deadline.
