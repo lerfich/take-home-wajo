@@ -161,6 +161,8 @@ Each ID is atomically saved under `reports/g1/results/`; a checkpoint is written
 
 The report separates model classification, server-policy outcomes and the effect of saved preferences. Its figures do not measure Gmail delivery, UI behavior or verified Gmail-only Archive/Event Skill qualification; those have separate functional evidence in `VERIFICATION.md`.
 
+The concise architecture and policy rationale is in [DESIGN.md](DESIGN.md). Synthetic illustrative flows for the four levels, exact reply approval, safe injection handling and preference transfer are in [examples/transcripts.md](examples/transcripts.md). Their G1 links and measured wording remain pending until the frozen run completes.
+
 ## Archive preference learning
 
 Learning groups emails by communicative purpose across senders: `acknowledgement_only`, `periodic_digest`, `routine_success`, `informational_reference`. These are initial broad semantic categories, not automatically discovered clusters. Unknown cases do not qualify. Job applications, support tickets and material submissions can all be receipt acknowledgements; an interview invitation or substantive rejection is a different outcome.
