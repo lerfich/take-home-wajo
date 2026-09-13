@@ -115,11 +115,11 @@ def current_rule_valid(agent, action_id):
 def submit(agent, action_id, revision, label, scope, mode="replace"):
     from .core import Proposal, decide
     if scope not in {"email", "similar", "sender"}:
-        raise ValueError("Choose this email, similar emails, or similar emails from this sender")
+        raise ValueError("Invalid preference scope. Refresh the email and try again.")
     if mode not in {"replace", "add"}:
         raise ValueError("Choose Replace or Add")
     if mode == "add" and scope != "email":
-        raise ValueError("Additional labels currently apply to this email only")
+        raise ValueError("Save the additional label on this email before reviewing its suggested Skill.")
     name = normalize_label(label)
     with agent.db:
         agent.db.execute("BEGIN IMMEDIATE")
@@ -139,7 +139,7 @@ def submit(agent, action_id, revision, label, scope, mode="replace"):
             return conflict(agent, action_id, [name], existing)
         if scope != "email" and (p.label_kind not in LABEL_KINDS or not p.pattern_evidence.strip()
                                   or p.pattern_evidence not in email.body):
-            raise ValueError("This email has no supported, evidenced situation type. Review this email only.")
+            raise ValueError("Wajo cannot identify a reliable matching context in this email. A preference for future emails was not created.")
         new_revision = revision + 1
         account = account_for(agent, email.id)
         key = "email" if scope == "email" else "*" if scope == "similar" else email.sender.casefold()

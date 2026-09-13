@@ -7,11 +7,16 @@ const actions = {archive:'Archive email',label:'Apply label',draft:'Save draft',
 const statuses = {executing:'Gmail action queued',restoring:'Gmail restore queued',unknown:'Verification needed',pending:'Approval needed',executed:'Completed',blocked:'Blocked',escalated:'Needs your review',error:'Processing error',skipped:'Kept in inbox',rejected:'Rejected',corrected:'Restored to inbox'};
 const events = {gmail_draft_saved:'Gmail draft saved',gmail_queued:'Gmail operation queued',gmail_started:'Gmail verification started',gmail_unknown:'Verification needed',gmail_error:'Gmail operation stopped',gmail_unverified:'Gmail state not confirmed',decision:'Agent decision',approved:'You approved the action',rejected:'You rejected the action',executed:'Action completed',notification:'Notification',preference_feedback:'Feedback saved',learned_permission:'Learned preference applied',archive_corrected:'Archive corrected',revised:'Reply revised',organization_reviewed:'Organization reviewed',organization_preference_applied:'Organization preference applied',organization_rule_paused:'Organization preference paused',draft_style_saved:'Draft style saved',draft_style_applied:'Draft style applied',draft_style_fallback:'Draft style rewrite unavailable',draft_style_rule_paused:'Draft style paused'};
 let state, selected, selectedAutosent, filter='all', page='mail', signature='', busy=false, detailOpen=false;
+let replyEditing=false,detailDirty=false;
+let approvalInProgress=false;
+const expandedBodies=new Set();
+let renderedDetailAction=null;
+const reviewOrbitDirections=new Map();
 let calendarCursor=new Date(new Date().getFullYear(),new Date().getMonth(),1),modelValidation={mode:null,key:null,valid:false,token:null,expires:0},modelValidationTimer,modelValidationRequest=0,modelsInitialized=false;
 function notify(text){$('#toast').textContent=text;$('#toast').classList.remove('hidden');setTimeout(()=>$('#toast').classList.add('hidden'),5000)}
 function error(text){$('#error').textContent=text;$('#error').classList.toggle('hidden',!text)}
-async function post(path, data){
-  if(busy) return null;
+async function post(path, data, options={}){
+  if(busy||(approvalInProgress&&!options.approvalFlow)) return null;
   busy=true;error('');
   try {
     const feedbackPaths=['/api/attention','/api/organization','/api/label-review','/api/draft-style','/api/approve','/api/reject','/api/correct','/api/edit'];
@@ -19,8 +24,9 @@ async function post(path, data){
     const payload={...data};if(feedbackPaths.includes(path))payload.propose_skill=true;
     const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':state.csrf},body:JSON.stringify(payload)});
     const result=await response.json();if(!response.ok)throw Error(result.error||'Operation failed');
+    detailDirty=false;replyEditing=false;
     await refresh(true);
-    if(feedbackPaths.includes(path)){
+    if(feedbackPaths.includes(path)&&!options.quietSkills){
       const suggestion=(state.skills||[]).find(s=>s.source_id===data.action_id&&s.status==='suggested'&&!previousSkills.has(s.id));
       if(suggestion)await openSkillReview({skill_id:suggestion.id,scope:'similar'});
     }
@@ -31,12 +37,12 @@ async function refresh(force=false){
   try{
     const response=await fetch('/api/state');if(!response.ok)throw Error('Server unavailable');
     const next=await response.json();const sig=JSON.stringify(next);
-    if(!force && ($('#detail').contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)))return;
+    if(!force && (replyEditing||detailDirty||($('#detail').contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))))return;
     state=next;
     if(force||sig!==signature){signature=sig;render()}
   }catch(e){error('Could not refresh the inbox. Check that the local server is running.')}
 }
-function setFilter(value){filter=value;detailOpen=false;renderMail()}
+function setFilter(value){filter=value;detailOpen=false;replyEditing=false;detailDirty=false;renderMail()}
 function mailTime(emailId){const message=(state.gmail_messages||[]).find(m=>`gmail:${m.account}:${m.message_id}`===emailId);return Number(message?.internal_date)||Date.parse((state.jobs||[]).find(j=>j.id===emailId)?.created_at)||0}
 function newestFirst(a,b){return b.timestamp-a.timestamp||String(a.email.id).localeCompare(String(b.email.id))}
 function currentRows(){return state.actions.map(a=>({...a,email:state.emails.find(e=>e.id===a.email_id),timestamp:mailTime(a.email_id),labelReview:(state.label_reviews||[]).find(r=>r.action_id===a.id),threadId:a.thread_id||a.email_id})).filter(a=>a.email).sort(newestFirst)}
@@ -73,22 +79,29 @@ function renderMail(){
   $('#count-attention').textContent=all.filter(r=>attentionIds.has(r.id)).length;
   $('#count-escalated').textContent=all.filter(r=>r.status==='escalated').length;
   const listScroll=$('#email-list').scrollTop;
+  const focusedListId=$('#email-list').contains(document.activeElement)?document.activeElement.closest('button[data-id]')?.dataset.id:null;
   const search=$('#search').value.toLocaleLowerCase();
   const rows=all.filter(r=>(filter==='all'||(filter==='errors'&&['error','unknown'].includes(r.status))||(filter==='label_review'&&r.labelReview&&r.labelReview.status!=='reviewed')||(filter==='label_reviewed'&&r.labelReview?.status==='reviewed')||(filter==='pending'&&needsDecision(r))||(filter==='archived'&&r.email.archived)||(filter==='attention'&&attentionIds.has(r.id))||(filter==='escalated'&&r.status==='escalated'))&&(`${r.email.subject} ${r.email.sender}`).toLocaleLowerCase().includes(search));
   const threads=groupThreads(rows),incomplete=(state.gmail_messages||[]).filter(x=>x.state==='incomplete');
   $('#list-count').textContent=threads.length;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('selected',b.dataset.filter===filter));
   $('#filter-label').classList.toggle('hidden',!['attention','escalated'].includes(filter));$('#filter-label').textContent=filter==='attention'?'Showing emails matched by your explicit visibility preferences. Importance and escalation are separate.':filter==='escalated'?'Showing situations where the agent cannot safely continue without human judgment.':' ';
-  if(!rows.some(r=>r.id===selected)){selected=threads[0]?.representative.id;detailOpen=false}
+  if(typeof selected==='string'&&selected.startsWith('job:')&&!all.some(r=>r.id===selected)){
+    const completed=actions.find(r=>r.email_id===selected.slice(4));
+    if(completed)selected=completed.id;
+  }
+  if(!all.some(r=>r.id===selected)){selected=threads[0]?.representative.id;detailOpen=false}
+  else if(!detailOpen&&!rows.some(r=>r.id===selected))selected=threads[0]?.representative.id;
   $('.mailbox').classList.toggle('detail-open',detailOpen);
   const cards=threads.map(group=>{const r=group.representative;const pending=group.members.filter(x=>needsDecision(x)||['escalated','unknown','error'].includes(x.status)).length;return {timestamp:r.timestamp,html:`<button class="email-item ${r.id===selected?'selected':''}" data-id="${esc(r.id)}"><div class="email-top"><span class="email-sender">${esc(r.email.sender)}</span><span class="thread-count">${group.members.length} message${group.members.length===1?'':'s'}${pending?' · '+pending+' need review':''}</span></div><h3>${esc(r.email.subject)}</h3>${r.timestamp?`<small>${esc(new Date(r.timestamp).toLocaleString('en-US'))}</small>`:''}${r.organization?`<p class="organization-line">${esc(r.organization.topic)} · ${esc(r.organization.subtype)}${r.organization.important?' · Important':''}</p>`:''}<p class="email-preview">${esc(r.email.body)}</p>${r.job?`<span class="badge ${r.status==='error'?'error':''}">${jobStatus(r)}</span>`:r.labelReview?`<span class="badge label-chip">${esc(r.labelReview.current_label)}</span> <span class="badge">${r.labelReview.status==='reviewed'?'✓ Reviewed':r.status==='executed'?'To review':esc(statuses[r.status]||r.status)}</span>`:badge(r)}</button>`}});
   const broken=['all','errors'].includes(filter)&&!search?incomplete.map(x=>({timestamp:Number(x.internal_date)||0,html:`<div class="email-item incomplete-email" aria-disabled="true"><div class="email-top"><span class="email-sender">! Incomplete Gmail message</span><span class="thread-count">Retry after ${x.retry_at?esc(new Date(x.retry_at).toLocaleTimeString('en-US')):'the next sync'}</span></div><h3>Message unavailable</h3><p class="email-preview">Wajo could not fully load this message. It cannot be opened or analyzed yet.</p></div>`})):[];
   $('#list-count').textContent=threads.length+broken.length;
   $('#email-list').innerHTML=[...cards,...broken].sort((a,b)=>b.timestamp-a.timestamp).map(c=>c.html).join('')||'<div class="empty-list">No matching conversations.<br>Add an email or change the filter.</div>';
   $('#email-list').scrollTop=listScroll;
-  $('#email-list').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.id.startsWith('job:')?b.dataset.id:Number(b.dataset.id);detailOpen=true;renderMail();$('.mailbox').scrollIntoView({block:'start'})}));
+  if(focusedListId){const focus=[...$('#email-list').querySelectorAll('button[data-id]')].find(button=>button.dataset.id===focusedListId);focus?.focus({preventScroll:true})}
+  $('#email-list').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.id.startsWith('job:')?b.dataset.id:Number(b.dataset.id);replyEditing=false;detailDirty=false;detailOpen=true;renderMail();$('.mailbox').scrollIntoView({block:'start'})}));
   const row=all.find(r=>r.id===selected);
-  if(row?.job){$('#detail').innerHTML=`<button class="secondary detail-back" id="back-conversations">← All conversations</button><h2>${esc(row.email.subject)}</h2><p>${esc(row.email.sender)}</p><span class="badge">${jobStatus(row)}</span>${conversationView(row)}<p class="email-body">${esc(row.email.body)}</p>${row.status==='error'?`<details><summary>Error details and attempts</summary><pre>${esc(row.job.diagnostics)}</pre></details>`:''}`;$('#back-conversations').addEventListener('click',()=>{detailOpen=false;renderMail()})}else renderDetail(row);
+  if(row?.job){$('#detail').innerHTML=`<button class="secondary detail-back" id="back-conversations">← All conversations</button><h2>${esc(row.email.subject)}</h2><p>${esc(row.email.sender)}</p><span class="badge" title="${esc(row.job.error||row.job.diagnostics||'This email is waiting for model analysis.')}">${jobStatus(row)}</span>${row.status==='error'?'<button class="secondary" id="retry-analysis">Retry analysis</button>':''}${emailBody(row)}`;$('#back-conversations').addEventListener('click',()=>{detailOpen=false;renderMail()});bindEmailBody(row);$('#retry-analysis')?.addEventListener('click',()=>post('/api/retry',{email_id:row.email.id}))}else renderDetail(row);
   $('#detail').querySelectorAll('[data-conversation-id]').forEach(button=>button.addEventListener('click',()=>{const id=button.dataset.conversationId;selected=id.startsWith('job:')?id:Number(id);renderMail()}));
 }
 function conversationView(row){
@@ -106,7 +119,7 @@ function eventProposalBlocks(row){
     const labels=item.change_kind==='cancel'?['Remove from calendar','Keep event']:item.change_kind==='reschedule'?['Update event','Keep existing date']:['Add to calendar','Don’t add'];
     const decision=item.status==='awaiting_confirmation'?`<div class="event-proposal-actions"><button class="primary" data-event-approve="${esc(item.id)}" data-revision="${esc(item.revision)}" aria-label="${esc(labels[0])}: ${esc(item.title)}">✓ ${esc(labels[0])}</button><button class="secondary" data-event-reject="${esc(item.id)}" data-revision="${esc(item.revision)}" aria-label="${esc(labels[1])}: ${esc(item.title)}">× ${esc(labels[1])}</button></div>`:'';
     const clarification=item.status==='needs_clarification'?`<form class="event-clarify" data-event-clarify="${esc(item.id)}" data-revision="${esc(item.revision)}"><p class="event-ambiguity">${esc(item.ambiguity_reason||'Choose an exact date and time.')}</p><label class="attention-toggle"><input type="checkbox" name="all_day"> All-day event</label><div class="field-pair"><label>Starts<input type="datetime-local" name="start_at" required></label><label>Ends · optional<input type="datetime-local" name="end_at"></label></div><label>Time zone<input name="timezone" required value="${esc(Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC')}"></label><button class="secondary">Use this date</button><small>You will still confirm the revised event separately.</small></form>`:'';
-    return `<section class="event-proposal"><div class="event-proposal-head"><div><div class="eyebrow">EVENT FOUND</div><h3>${esc(item.title)}</h3></div><span class="badge ${item.status==='needs_clarification'?'escalate':'notify'}">${esc(status)}</span></div><p>${esc(item.original_text||item.evidence||'')}</p><strong>${esc(when)}</strong>${clarification}${decision}</section>`;
+    return `<section class="event-proposal ${['awaiting_confirmation','needs_clarification'].includes(item.status)?'requires-review':''}"><div class="event-proposal-head"><div><div class="eyebrow">EVENT FOUND</div><h3>${esc(item.title)}</h3></div><span class="badge ${item.status==='needs_clarification'?'escalate':'notify'}">${esc(status)}</span></div><p>${esc(item.original_text||item.evidence||'')}</p><strong>${esc(when)}</strong>${clarification}${decision}</section>`;
   }).join('');
 }
 function bindEventProposals(){
@@ -118,47 +131,112 @@ function bindEventProposals(){
     form.addEventListener('submit',async event=>{event.preventDefault();const payload={proposal_id:Number(form.dataset.eventClarify),revision:Number(form.dataset.revision),all_day:allDay.checked};if(allDay.checked){payload.local_date=start.value;payload.local_end_date=end.value}else{payload.start_at=start.value;payload.end_at=end.value;payload.timezone=timezone.value}if(await post('/api/events/clarify',payload))notify('Date clarified. Review it once more before adding it.')});
   });
 }
+function emailBody(row){
+  const text=String(row.email.body||''),expanded=expandedBodies.has(row.email.id);
+  const cut=text.length>100?text.slice(0,100).replace(/\s+\S*$/,''):text;
+  return `<div class="body-preview ${text.length>100&&!expanded?'is-collapsed':''}"><p class="email-body">${esc(text.length>100&&!expanded?(cut||text.split(/\s/)[0])+'…':text)}</p></div>${text.length>100?`<button class="body-toggle" id="toggle-email-body" aria-expanded="${expanded}">${expanded?'Collapse email':'Read full email'} ${expanded?'↑':'↓'}</button>`:''}`;
+}
+function bindEmailBody(row){$('#toggle-email-body')?.addEventListener('click',()=>{expandedBodies.has(row.email.id)?expandedBodies.delete(row.email.id):expandedBodies.add(row.email.id);const old=$('#detail .body-preview'),button=$('#toggle-email-body');const holder=document.createElement('div');holder.innerHTML=emailBody(row);old.replaceWith(...holder.childNodes);button.remove();bindEmailBody(row)})}
+function reviewSection(title,content,required=false){
+  const key=title.toLowerCase();
+  const section=`<details class="review-section" data-review-key="${key}" ${required?'open':''}><summary id="review-summary-${key}">${esc(title)}${required?'<span>Review needed</span>':''}</summary>${content}</details>`;
+  return required?`<div class="review-slot requires-review" data-review-key="${key}">${section}</div>`:section;
+}
+function captureReviewView(actionId){
+  if(renderedDetailAction!==actionId)return null;
+  const detail=$('#detail'),opened={};
+  detail.querySelectorAll('details[data-review-key]').forEach(section=>{opened[section.dataset.reviewKey]=section.open});
+  const active=document.activeElement,focused=detail.contains(active)?active.id||null:null;
+  return {opened,focused};
+}
+function restoreReviewView(view,actionId){
+  const detail=$('#detail');
+  if(view){detail.querySelectorAll('details[data-review-key]').forEach(section=>{if(Object.hasOwn(view.opened,section.dataset.reviewKey))section.open=view.opened[section.dataset.reviewKey]});}
+  detail.querySelectorAll('.requires-review').forEach((section,index)=>{
+    const key=`${actionId}:${section.dataset.reviewKey||section.className}:${index}`;
+    if(!reviewOrbitDirections.has(key))reviewOrbitDirections.set(key,Math.random()<.5?'clockwise':'counterclockwise');
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class',`review-orbit ${reviewOrbitDirections.get(key)}`);
+    svg.setAttribute('aria-hidden','true');
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x','2');rect.setAttribute('y','2');rect.setAttribute('rx','9');
+    svg.append(rect);section.append(svg);
+  });
+  if(view?.focused){const focus=document.getElementById(view.focused);if(detail.contains(focus))focus.focus({preventScroll:true})}
+  renderedDetailAction=actionId;
+}
+function exactEditedReply(action,expected,revision){
+  if(!action||action.id!==expected.action_id||action.revision!==revision)return false;
+  const reply=action.reply;
+  return Boolean(reply&&reply.sender===expected.sender&&reply.recipient===expected.recipient&&reply.subject===expected.subject&&reply.text===expected.text);
+}
+async function saveAndSendEditedReply(row,draft,payload){
+  const expected={...payload,sender:draft.sender},account=state.gmail_connection?.account;
+  approvalInProgress=true;replyEditing=false;detailDirty=false;
+  try{
+    $('#detail').querySelectorAll('button,input,textarea,select').forEach(el=>el.disabled=true);
+    notify('Saving and verifying your exact edited reply…');
+    const saved=await post('/api/edit',payload,{approvalFlow:true,quietSkills:true});
+    if(!saved)return;
+    const revision=row.revision+1,deadline=Date.now()+20000;
+    while(Date.now()<deadline){
+      const action=currentRows().find(x=>x.id===row.id);
+      if(state.gmail_connection?.account!==account||!exactEditedReply(action,expected,revision))throw Error('The saved reply or account changed. Review the current draft before sending.');
+      if(action.status==='pending'){
+        const result=await post('/api/approve',{action_id:row.id,revision,scope:'general'},{approvalFlow:true,quietSkills:true});
+        if(result)notify('Sending the exact edited reply you approved.');
+        return;
+      }
+      if(action.status!=='executing')throw Error('The edited draft could not be verified. Nothing was sent; review its status.');
+      await new Promise(resolve=>setTimeout(resolve,500));await refresh(true);
+    }
+    notify('Draft verification is still pending. Nothing was sent. Approve the saved version once it is ready.');
+  }catch(e){error(e.message)}finally{approvalInProgress=false;await refresh(true)}
+}
 function renderDetail(row){
   const previousDetailScroll=$('#detail').scrollTop;
-  if(!row){$('#detail').innerHTML='<div class="empty"><div class="empty-icon">✉</div><h2>Select an email</h2><p>The email, agent decision and action history will appear here.</p></div>';return}
-  const p=row.proposal;const reply=row.reply;const history=state.audit.filter(a=>a.action_id===row.id);
-  const basis=history.find(a=>a.event==='learned_permission');const pref=basis?JSON.parse(basis.details):row.preference;
-  const count=pref.approval_ids?.length||0;
-  const flags=[['requires_action','Reply or action required'],['has_deadline','Has a deadline'],['significant_change','Significant change'],['sensitive','Sensitive content'],['suspicious','Suspected prompt injection']].filter(([k])=>p[k]);
-  let explanation=basis?`Based on: ${count} approvals for “${patterns[p.pattern]||p.pattern}”. ${pref.scope==='*'?'Experience shared across senders.':'Sender-specific experience.'}`:row.preference.mode==='keep'?'Your exception applies: keep in inbox.':p.action==='archive'?`Approvals in the applicable group: ${count} of 3. ${!row.learning_eligible?'This email is not eligible for automatic archiving.':'After three approvals, eligible emails are archived with a notification.'}`:'Autonomy follows the permitted-action policy.';
-  const scope=`<label class="scope-label">Apply feedback to<select id="feedback-scope"><option value="general">This email pattern across all senders</option><option value="sender">This pattern only from ${esc(row.email.sender)}</option></select></label>`;
-  let controls='';
-  if(row.status==='pending')controls=`${p.action==='archive'?scope:''}<div class="decision-buttons"><button class="primary" id="approve">${reply?'Approve and send via Gmail':p.action==='send'?'Approve simulated send':(row.transport==='gmail'?'Approve Gmail archive':'Approve local archive')}</button><button class="secondary" id="reject">Reject</button></div>`;
-  if(row.status==='executed'&&p.action==='archive'&&row.email.archived)controls=`${scope}<div class="decision-buttons"><button class="secondary" id="correct">Restore to inbox and correct</button></div>`;
-  const gmailOps=(state.gmail_operations||[]).filter(o=>o.action_id===row.id);
-  const operation=gmailOps.find(o=>['unknown','error'].includes(o.status));
-  const transport=row.transport==='gmail'?'Gmail · real action':'Local simulation';
-  const replyPreview=reply?`<div class="send-preview"><strong>Reply · version ${row.revision}</strong><p>From: ${esc(reply.sender)}<br>To: ${esc(reply.recipient)}<br>Subject: ${esc(reply.subject)}</p><p>${esc(reply.text)}</p>${row.status==='rejected'?'<p>Sending rejected. The unsent draft remains in Gmail.</p>':''}</div>`:'';
-  const canEdit=row.status==='pending'&&(reply||p.action==='send');
-  const editor=canEdit?`<details class="send-editor"><summary>Edit recipient, subject and body</summary><label>Recipient<input id="edit-recipient" type="email"></label>${reply?'<label>Subject<input id="edit-subject" maxlength="300"></label>':''}<label>Body<textarea id="edit-text" rows="5"></textarea></label><div class="decision-buttons"><button class="secondary" id="save-edit">Save new revision</button></div><p>Save changes and review the new version before approving.</p></details>`:'';
-
-  if(operation)controls+=`<p role="alert">${esc(operation.error)}</p><button class="secondary" id="gmail-check">Check Gmail status (read only)</button>`;
-  const readState=row.transport==='gmail'?(row.initial_unread?' · Unread when synchronized':' · Already read in Gmail'):'';
-  $('#detail').innerHTML=`<div class="detail-heading"><span>EMAIL # ${row.id}${readState}</span>${badge(row)}</div><h2>${esc(row.email.subject)}</h2>${conversationView(row)}<div class="organization-summary"><span>${esc(row.organization.topic)}</span><span>${esc(row.organization.subtype)}</span>${row.organization.important?'<span class="important-chip">Important</span>':''}<small>${esc(row.organization.source)}</small></div><div class="sender-row"><span class="avatar">${esc(row.email.sender[0].toUpperCase())}</span><div>${esc(row.email.sender)}<small>${row.transport==='gmail'?'Source: connected Gmail':'Source: local inbox copy'}</small></div></div><p class="email-body">${esc(row.email.body)}</p>${eventProposalBlocks(row)}<div class="decision"><p><strong>${esc(transport)}</strong></p><p>${esc(row.reason)}</p><div class="decision-title">✦ Agent decision · ${esc(actions[p.action]||p.action)}</div><p>${esc(p.reason)}</p><div class="decision-meta">${esc(explanation)}<br>Pattern: ${esc(patterns[p.pattern]||p.pattern)}${p.label?`<br>Label: ${esc(p.label)}`:''}${flags.length&&p.pattern_evidence?`<br>${esc(flags.map(f=>f[1]).join(' · '))}`:''}</div>${p.pattern_evidence?`<blockquote class="reason-quote">${esc(p.pattern_evidence)}</blockquote>`:''}${replyPreview}${!reply&&p.text?`<div class="send-preview">${p.recipient?`Recipient: ${esc(p.recipient)}<br>`:''}${esc(p.text)}</div>`:''}${controls}${editor}${draftStyleForm(row)}${organizationForm(row)}${labelReviewForm(row)}${attentionForm(row)}<div class="decision-buttons"><button class="secondary" id="keep-sender">Always keep mail from this sender</button></div></div><details class="history"><summary>Decision history · ${history.length} entries</summary>${history.map(a=>`<div class="history-item">${esc(events[a.event]||a.event)}<small>${esc(new Date(a.created_at).toLocaleString('en-US'))}</small><details><summary>Details</summary><pre>${esc(JSON.stringify(JSON.parse(a.details),null,2))}</pre></details></div>`).join('')}</details>`;
+  if(!row){renderedDetailAction=null;$('#detail').innerHTML='<div class="empty"><h2>Select an email</h2><p>Your received email and suggested reply appear here.</p></div>';return}
+  const reviewView=captureReviewView(row.id);
+  const p=row.proposal,reply=row.reply,canEdit=row.status==='pending'&&(reply||p.action==='send');
+  const gmailOps=(state.gmail_operations||[]).filter(o=>o.action_id===row.id),operation=gmailOps.find(o=>['unknown','error'].includes(o.status));
+  const flags=[['requires_action','Reply or action required'],['has_deadline','Deadline'],['significant_change','Significant change'],['sensitive','Sensitive content'],['suspicious','Suspicious content']].filter(([key])=>p[key]).map(([,label])=>label);
+  const controls=row.status==='pending'&&!reply&&p.action!=='send'?`<div class="decision-buttons"><button class="primary" id="approve">Approve ${esc(actions[p.action]||'action')}</button><button class="secondary reject-button" id="reject">Reject</button></div>`:row.status==='executed'&&p.action==='archive'&&row.email.archived?'<button class="secondary" id="correct">Restore to inbox</button>':'';
+  const errorDescription=operation?.error||row.reason||'Processing could not finish. Retry checks the failed step.';
+  const issue=['error','unknown'].includes(row.status)?`<div class="processing-issue"><span class="badge error" tabindex="0" title="${esc(errorDescription)}">${row.status==='unknown'?'Verification needed':'Processing error'}</span><button class="secondary" id="retry-operation" title="Check an uncertain Gmail result before retrying">Retry</button><small role="status" id="retry-result"></small></div>`:badge(row);
+  const summary=reply||['send','draft'].includes(p.action)?'':`<div class="compact-summary"><div class="summary-traits"><div><small>Label</small><span class="badge label-chip">${esc(p.label||'-')}</span></div><div><small>Pattern</small><span class="badge">${esc(p.pattern==='unknown'?'-':patterns[p.pattern]||p.pattern||'-')}</span></div><div><small title="Detected characteristics, including risk signals; these are not Gmail labels.">Related themes</small>${flags.length?flags.map(x=>`<span class="badge">${esc(x)}</span>`).join(''):'<span>-</span>'}</div></div><p class="short-description"><small>short description</small> ${esc(p.reason||'-')}</p></div>`;
+  const labelContent=labelReviewForm(row)||'<p>No label decision is waiting.</p>',hasConflict=(state.label_conflicts||[]).some(x=>x.action_id===row.id);
+  const sections=`<div class="preference-grid">${reviewSection('Archive',controls||`<p>${row.email.archived?'This email is archived.':'This email stays in the inbox.'}</p><button class="secondary" id="keep-sender">Always keep this sender in inbox</button>`,row.status==='pending'&&p.action==='archive')}${reviewSection('Label',`<div class="decision label-decision">${labelContent}</div>`,hasConflict||row.labelReview?.status==='needs_review')}${organizationForm(row)}${reviewSection('Visibility',attentionForm(row))}</div>`;
+  const escalation=row.status==='escalated'||row.status==='blocked'?`<div class="human-review requires-review"><strong>${row.status==='blocked'?'Action blocked':'Your judgment is needed'}</strong><p>${esc(row.reason||p.reason)}</p><small>Check the received email and handle this situation yourself. Changing its organization does not resolve this request.</small></div>`:'';
+  const received=`<section class="received-pane"><div class="eyebrow">RECEIVED EMAIL</div><h2>${esc(row.email.subject)}</h2><div class="sender-row"><span class="avatar">${esc(row.email.sender[0]?.toUpperCase()||'?')}</span><div>${esc(row.email.sender)}</div></div>${emailBody(row)}${summary}${escalation}${eventProposalBlocks(row)}${sections}</section>`;
+  const draft=reply||['send','draft'].includes(p.action)?{sender:reply?.sender||row.account||'',recipient:reply?.recipient||p.recipient||'',subject:reply?.subject||row.email.subject,text:reply?.text||p.text||''}:null;
+  const replyPanel=draft?`<section class="reply-pane ${canEdit?'requires-review':''}"><div class="reply-heading"><strong class="${canEdit?'review-pulse':''}">Draft prepared by Wajo</strong><div class="reply-actions">${canEdit?'<button class="secondary reject-button" id="reject">Reject</button><button class="primary review-pulse" id="approve">Approve and send</button><button class="secondary review-pulse" id="edit-reply">Edit</button>':''}</div></div><div id="reply-preview" class="send-preview"><div class="reply-address"><small>From</small> ${esc(draft.sender)}</div><div class="reply-address"><small>To</small> ${esc(draft.recipient)}</div><div class="reply-address"><small>Subject</small> ${esc(draft.subject)}</div><p>${esc(draft.text)}</p></div>${canEdit?'<div id="reply-editor" class="hidden"><label>From<input id="edit-from" disabled></label><label>To<input id="edit-recipient" disabled></label><label>Subject<input id="edit-subject" maxlength="300"></label><textarea id="edit-text" aria-label="Reply text" rows="5"></textarea></div>':''}${row.status==='rejected'?'<p>The reply was rejected. Its unsent Gmail draft is retained.</p>':''}${draftStyleForm(row)}</section>`:'';
+  $('#detail').innerHTML=`<button class="secondary detail-back" id="back-conversations">← All conversations</button><div class="detail-heading"><span>EMAIL # ${row.id}</span>${issue}</div><div class="email-review-layout ${draft?'with-reply':''}">${received}${replyPanel}</div>`;
+  restoreReviewView(reviewView,row.id);
   $('#detail').scrollTop=previousDetailScroll;
-  $('#detail').insertAdjacentHTML('afterbegin','<button class="secondary detail-back" id="back-conversations">← All conversations</button>');
-  $('#back-conversations').addEventListener('click',()=>{detailOpen=false;renderMail();$('.mailbox').scrollIntoView({block:'start'})});
-  bindEventProposals();bindDraftStyle(row);bindOrganization(row);bindLabelReview(row);bindAttention(row);
-  renderLabelConflict(row);
-  $('#gmail-check')?.addEventListener('click',async()=>{if(await post('/api/gmail-check',{operation_id:operation.id}))notify('Gmail status checked. Review the result above.')});
-  const scopeValue=()=>$('#feedback-scope')?.value||'general';
-  for(const [id,route,message] of [['approve','approve','Action approved'],['reject','reject','Action rejected'],['correct','correct','Email restored. Correction saved']]){
-    $(`#${id}`)?.addEventListener('click',async()=>{const r=await post(`/api/${route}`,{action_id:row.id,revision:row.revision,scope:scopeValue()});if(r)notify(['executing','restoring'].includes(r.status)?'Gmail operation queued. Waiting for verification.':message)})
-  }
-  $('#keep-sender').addEventListener('click',async()=>{const r=await post('/api/rule',{sender:row.email.sender,keep:true});if(r)notify('Mail from this sender will stay in the inbox')});
-  if($('#save-edit')){
-    $('#edit-recipient').value=reply?reply.recipient:p.recipient;$('#edit-text').value=reply?reply.text:p.text;
-    if(reply)$('#edit-subject').value=reply.subject;
-    // Unsaved edits must never be mistaken for the displayed, saved approval version.
-    const disableApproval=()=>{$('#approve').disabled=true;$('#approve').textContent='Save changes before approving'};
-    for(const id of ['edit-recipient','edit-subject','edit-text'])$('#'+id)?.addEventListener('input',disableApproval);
-    $('#save-edit').addEventListener('click',async()=>{const r=await post('/api/edit',{action_id:row.id,revision:row.revision,recipient:$('#edit-recipient').value,text:$('#edit-text').value,...(reply?{subject:$('#edit-subject').value}:{})});if(r)notify('New revision queued. Wait for draft verification, then review before approving')})
-  }
+  $('#back-conversations').addEventListener('click',()=>{detailOpen=false;replyEditing=false;detailDirty=false;renderMail()});
+  bindEmailBody(row);bindEventProposals();bindDraftStyle(row);bindOrganization(row);bindLabelReview(row);bindAttention(row);renderLabelConflict(row);
+  $('#detail').querySelectorAll('input,textarea,select').forEach(input=>input.addEventListener('input',()=>{detailDirty=true}));
+  $('#retry-operation')?.addEventListener('click',async()=>{const result=await post('/api/retry',{action_id:row.id,revision:row.revision});if(result)notify(result.message||'The failed step was checked. Review its updated status.')});
+  for(const [id,route,message] of [['reject','reject','Action rejected'],['correct','correct','Email restored']])$('#'+id)?.addEventListener('click',async()=>{replyEditing=false;detailDirty=false;if(await post('/api/'+route,{action_id:row.id,revision:row.revision,scope:'general'}))notify(message)});
+  $('#keep-sender')?.addEventListener('click',async()=>{if(await post('/api/rule',{sender:row.email.sender,keep:true}))notify('This sender will not be archived automatically. Other skills still apply.')});
+  $('#approve')?.addEventListener('click',async()=>{
+    const changed=replyEditing&&draft&&($('#edit-subject').value!==draft.subject||$('#edit-text').value!==draft.text);
+    if(changed){
+      const payload={action_id:row.id,revision:row.revision,recipient:draft.recipient,subject:$('#edit-subject').value,text:$('#edit-text').value};
+      if(reply)await saveAndSendEditedReply(row,draft,payload);
+      else{replyEditing=false;detailDirty=false;if(await post('/api/edit',payload))notify('Edited simulation saved. Review the saved version before approving.');}
+      return;
+    }
+    replyEditing=false;detailDirty=false;
+    if(await post('/api/approve',{action_id:row.id,revision:row.revision,scope:'general'}))notify(draft?'Sending the approved saved reply.':'Action approved.');
+  });
+  $('#edit-reply')?.addEventListener('click',()=>{
+    replyEditing=!replyEditing;detailDirty=false;$('#reply-preview').classList.toggle('hidden',replyEditing);$('#reply-editor').classList.toggle('hidden',!replyEditing);
+    $('#edit-reply').textContent=replyEditing?'Cancel':'Edit';$('#edit-reply').classList.toggle('review-pulse',!replyEditing);
+    $('#edit-from').value=draft.sender;$('#edit-recipient').value=draft.recipient;$('#edit-subject').value=draft.subject;$('#edit-text').value=draft.text;
+    const area=$('#edit-text'),resize=()=>{area.style.height='auto';area.style.height=area.scrollHeight+'px'};area.oninput=resize;$('#edit-subject').oninput=resize;resize();
+  });
+  if(approvalInProgress)$('#detail').querySelectorAll('button,input,textarea,select').forEach(el=>el.disabled=true);
 }
 
 function draftStyleForm(row){
@@ -166,21 +244,21 @@ function draftStyleForm(row){
   if(!p)return row.draft_style_note?`<div class="send-preview"><strong>${row.draft_style_saved?'Draft style saved':'Draft style not learned'}</strong><br>${esc(row.draft_style_note)}</div>`:'';
   const confirmed=p.basis==='confirmed';
   const wording=confirmed?'':`<div class="style-example"><small>Agent wording</small><p>${esc(p.example_before)}</p><small>Your wording</small><p>${esc(p.example_after)}</p></div>`;
-  return `<form id="draft-style-form" class="label-review-form"><div class="eyebrow">${confirmed?'CONFIRM DRAFT STYLE':'LEARN FROM YOUR EDIT'}</div><h3>${confirmed?'Does this style work for you?':'Your draft style'}</h3><p>${esc(p.summary)}</p>${wording}<small>${confirmed?'The body matches the agent’s suggestion. Save this only if its writing style is what you want for similar drafts.':'Wajo will also use this wording change as an example of your tone. Situation-specific facts, recipients and promises are not copied.'} Sending always requires approval.</small><label>Use this style for<select id="draft-style-scope"><option value="similar">Future drafts for this kind of email</option><option value="sender">This kind of email from ${esc(row.email.sender)} only</option></select></label><button class="secondary">${confirmed?'This style works for me':'Use this style for future drafts'}</button></form>`;
+  return `<form id="draft-style-form" class="label-review-form"><div class="eyebrow">${confirmed?'CONFIRM DRAFT STYLE':'LEARN FROM YOUR EDIT'}</div><h3>${confirmed?'Does this style work for you?':'Your draft style'}</h3><p>${esc(p.summary)}</p>${wording}<small>${confirmed?'The body matches the agent’s suggestion. Save this only if its writing style is what you want for similar drafts.':'Wajo will also use this wording change as an example of your tone. Situation-specific facts, recipients and promises are not copied.'} Sending always requires approval.</small><small>For future drafts with similar meaning and context.</small><button class="secondary">${confirmed?'This style works for me':'Use this style for future drafts'}</button></form>`;
 }
 function bindDraftStyle(row){
   $('#draft-style-form')?.addEventListener('submit',async e=>{
     e.preventDefault();
     const existing=(state.skills||[]).find(s=>s.family==='draft'&&s.source_id===row.id&&s.status==='suggested');
-    if(existing){await openSkillReview({skill_id:existing.id,scope:$('#draft-style-scope').value});return}
-    const r=await post('/api/draft-style',{action_id:row.id,revision:row.revision,scope:$('#draft-style-scope').value});
+    if(existing){await openSkillReview({skill_id:existing.id,scope:'similar'});return}
+    const r=await post('/api/draft-style',{action_id:row.id,revision:row.revision,scope:'similar'});
     if(r)notify('Draft style suggestion is ready for review. Every send still requires approval.');
   });
 }
 
 function organizationForm(row){
   const known=Boolean(state.label_kinds[row.proposal.label_kind]);
-  return `<details class="organization-editor"><summary>Organize this email</summary><form id="organization-form" class="compact-form"><div class="field-pair"><label>Topic<input id="organization-topic" maxlength="60" required></label><label>Subtype<input id="organization-subtype" maxlength="60" required></label></div><label class="attention-toggle"><input type="checkbox" id="organization-important"> Mark as important</label><small>Importance is your separate marker. It does not approve an action or turn on attention alerts.</small><label>Use this organization for<select id="organization-scope"><option value="email">This email only</option>${known?`<option value="similar">Future emails of this kind · ${esc(state.label_kinds[row.proposal.label_kind])}</option><option value="sender">This kind from ${esc(row.email.sender)} only</option>`:''}</select></label><button class="secondary">Save organization</button></form></details>`;
+  return `<details class="organization-editor review-section"><summary>Organization</summary><form id="organization-form" class="compact-form"><div class="field-pair"><label>Topic<input id="organization-topic" maxlength="60" required></label><label>Subtype<input id="organization-subtype" maxlength="60" required></label></div><label class="attention-toggle"><input type="checkbox" id="organization-important"> Mark as important</label><small>Importance is your separate marker. It does not approve an action or turn on attention alerts.</small><small>For future emails with similar meaning and context.</small><button class="secondary">Save organization</button></form></details>`;
 }
 function bindOrganization(row){
   if(!$('#organization-form'))return;
@@ -189,7 +267,7 @@ function bindOrganization(row){
   $('#organization-important').checked=row.organization.important;
   $('#organization-form').addEventListener('submit',async e=>{
     e.preventDefault();
-    const result=await post('/api/organization',{action_id:row.id,topic:$('#organization-topic').value,subtype:$('#organization-subtype').value,important:$('#organization-important').checked,scope:$('#organization-scope').value});
+    const result=await post('/api/organization',{action_id:row.id,topic:$('#organization-topic').value,subtype:$('#organization-subtype').value,important:$('#organization-important').checked,scope:'similar'});
     if(result)notify('This email was updated. Future behavior stays inactive until you save the suggested skill.');
   });
 }
@@ -199,17 +277,12 @@ function attentionForm(row){
  const effective=row.attention_effective_rule;
  const scopes=effective?.enabled?[effective.scope]:[];
  const cue=!['none','unknown'].includes(row.attention_cue)?state.attention_cues?.[row.attention_cue]:null;
- return `<form id="attention-form" class="label-review-form"><div class="eyebrow">VISIBILITY PREFERENCE</div><label class="attention-toggle"><input type="checkbox" id="attention-enabled" ${scopes.length?'checked':''}> Keep this in Needs attention</label><p>This controls what you want to see. It does not mark the email Important, create a notification, change escalation, or approve an action. Matching future emails will not be archived automatically.</p><label>Use this visibility preference for<select id="attention-scope"><option value="email">This email only</option>${cue?`<option value="similar">Future emails with this reason · ${esc(cue)}</option><option value="sender">This reason from ${esc(row.email.sender)}</option>`:''}</select></label><button class="secondary">Save visibility preference</button>${item?'<button type="button" class="secondary" id="attention-seen">Clear from Needs attention</button>':''}</form>`;
+ return `<form id="attention-form" class="label-review-form"><div class="eyebrow">VISIBILITY PREFERENCE</div><label class="attention-toggle"><input type="checkbox" id="attention-enabled" ${scopes.length?'checked':''}> Keep this in Needs attention</label><p>This controls what you want to see. It does not mark the email Important, create a notification, change escalation, or approve an action. Matching future emails will not be archived automatically.</p><small>For future emails with the same reason.</small><button class="secondary">Save visibility preference</button>${item?'<button type="button" class="secondary" id="attention-seen">Clear from Needs attention</button>':''}</form>`;
 }
 function bindAttention(row){
- const rule=row.attention_effective_rule;
- const scopes=rule?[rule.scope==='*'?'similar':rule.scope.startsWith('email:')?'email':'sender']:[];
- if($('#attention-scope')){
-   $('#attention-scope').value=scopes.includes('sender')?'sender':scopes.includes('similar')?'similar':'email';
- }
  $('#attention-form')?.addEventListener('submit',async e=>{
    e.preventDefault();
-   const payload={action_id:row.id,enabled:$('#attention-enabled').checked,scope:$('#attention-scope').value};
+   const payload={action_id:row.id,enabled:$('#attention-enabled').checked,scope:'similar'};
    if(await post('/api/attention',payload))notify('This email was updated. Future behavior stays inactive until you save the suggested skill.');
  });
  $('#attention-seen')?.addEventListener('click',()=>post('/api/attention-seen',{action_id:row.id}));
@@ -218,7 +291,7 @@ function labelReviewForm(row){
   const r=row.labelReview;if(!r||row.status!=='executed')return '';
   const kind=state.label_kinds[r.kind];
   const names=[...new Set([...(state.labels||[]).map(x=>x.label),...(state.label_rules||[]).map(x=>x.label)])].sort();
-  return `<form id="label-review-form" class="label-review-form"><div class="eyebrow">${r.status==='reviewed'?'REVIEWED · EDIT YOUR CHOICE':'YOUR LABEL REVIEW'}</div><h3>${esc(r.current_label)}</h3><p>${esc(r.basis)}. ${kind?`Situation: ${esc(kind)}.`:'The situation type is uncertain; this review applies to this email only.'}</p><p>Current labels: ${esc((state.labels||[]).filter(x=>x.email_id===row.email_id).map(x=>x.label).join(' · '))}</p><label>Review action<select id="review-mode"><option value="replace">Replace / confirm current label</option><option value="add">Add another label · keep existing labels</option></select></label><p id="review-mode-note">Replaces ${esc(r.current_label)} only. Other labels stay.</p><label>Choose a label or type a new name<input id="review-label" list="available-labels" maxlength="100" required aria-label="Label name"><datalist id="available-labels">${names.map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist></label><small>Custom names are saved with the AI: prefix. Other Gmail labels, including human ready, stay in place.</small><label>Use this choice for<select id="review-scope"><option value="email">This email only</option>${kind?`<option value="similar">Future similar emails · ${esc(kind)}</option><option value="sender">This situation from ${esc(row.email.sender)} only</option>`:''}</select></label><p class="review-scope-note" id="review-scope-note">Only this email changes. No preference will be saved.</p><button class="primary" id="save-label-review">Confirm label &amp; continue →</button><p class="review-save-note">${row.transport==='gmail'?'Saved to Gmail and verified before the review is marked complete.':'This is a local simulation.'}</p></form>`;
+  return `<form id="label-review-form" class="label-review-form"><div class="eyebrow">${r.status==='reviewed'?'REVIEWED · EDIT YOUR CHOICE':'YOUR LABEL REVIEW'}</div><h3>${esc(r.current_label)}</h3><p>${esc(r.basis)}. ${kind?`Situation: ${esc(kind)}.`:'The situation type is uncertain; this review applies to this email only.'}</p><p>Current labels: ${esc((state.labels||[]).filter(x=>x.email_id===row.email_id).map(x=>x.label).join(' · '))}</p><label>Review action<select id="review-mode"><option value="replace">Replace / confirm current label</option><option value="add">Add another label · keep existing labels</option></select></label><p id="review-mode-note">Replaces ${esc(r.current_label)} only. Other labels stay.</p><label>Choose a label or type a new name<input id="review-label" list="available-labels" maxlength="100" required aria-label="Label name"><datalist id="available-labels">${names.map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist></label><small>Custom names are saved with the AI: prefix. Other Gmail labels, including human ready, stay in place.</small><small>For future emails with similar meaning and context.</small><p class="review-scope-note" id="review-scope-note">This email changes first. Review and save the suggested skill for future emails.</p><button class="primary" id="save-label-review">Confirm label &amp; continue →</button><p class="review-save-note">${row.transport==='gmail'?'Saved to Gmail and verified before the review is marked complete.':'This is a local simulation.'}</p></form>`;
 }
 function bindLabelReview(row){
   if(!$('#label-review-form'))return;
@@ -228,15 +301,14 @@ function bindLabelReview(row){
   $('#review-mode').addEventListener('change',()=>{
     const add=$('#review-mode').value==='add';
     $('#review-label').value=add?'':row.labelReview.current_label;
-    $('#review-scope').disabled=false;
     $('#review-mode-note').textContent=add?'Adds one more label. All existing labels stay.':'Replaces '+row.labelReview.current_label+' only. Other labels stay.';
     $('#review-scope-note').textContent='This email changes first. A suggested skill is inactive until you review and activate it.';
-    $('#review-scope').value='email';updateReviewButton();
+    updateReviewButton();
   });
-  $('#review-scope').addEventListener('change',()=>{$('#review-scope-note').textContent=$('#review-scope').value==='email'?'Only this email changes. No preference will be saved.':'Save an explicit preference for this situation. Existing emails will not be relabeled automatically; sending and archiving permissions stay unchanged.'});
+
   $('#label-review-form').addEventListener('submit',async e=>{
     e.preventDefault();const button=$('#save-label-review');button.disabled=true;
-    const result=await post('/api/label-review',{action_id:row.id,revision:row.revision,label:$('#review-label').value,scope:$('#review-scope').value,mode:$('#review-mode').value});
+    const result=await post('/api/label-review',{action_id:row.id,revision:row.revision,label:$('#review-label').value,scope:'similar',mode:$('#review-mode').value});
     if(result){
       if(['label_review','label_reviewed'].includes(filter)){
         const next=currentRows().filter(x=>x.labelReview?.status==='needs_review'&&x.status==='executed'&&x.id!==row.id).sort((a,b)=>a.id-b.id)[0];
@@ -254,9 +326,9 @@ function renderMemory(){
   $('#attention-rules').innerHTML=attentionRules.map(r=>`<div class="rule-row"><span><strong>${r.enabled?'Needs attention':'Attention off · exception'}</strong><br>${esc(state.attention_cues?.[r.cue]||'This email only')} · ${esc(r.scope==='*'?'All senders':r.scope.startsWith('email:')?'One email':r.scope)}<br><small>Visibility only. It does not change importance, escalation or permission.</small></span></div>`).join('')||'<p>No saved attention preferences yet. Choose an email and save a visibility preference.</p>';
   $('#draft-style-rules').innerHTML=(state.draft_style_rules||[]).filter(r=>r.active).map(r=>`<div class="rule-row"><span><strong>${esc(r.length)} · ${r.greeting==='include'?'greeting':'no greeting'} · ${r.signoff==='include'?'sign-off':'no sign-off'}</strong><br>${esc(state.label_kinds[r.kind]||r.kind)} · ${esc(r.scope==='*'?'All senders':r.scope)}<br><small>Improves draft wording only. Sending still requires approval.</small></span><button class="secondary" data-pause-draft-style="${r.id}">Pause</button></div>`).join('')||'<p>No confirmed draft style yet. Edit a generated draft, save it, then review the style Wajo found.</p>';
   $('#draft-style-rules').querySelectorAll('button').forEach(b=>b.addEventListener('click',async()=>{if(await post('/api/draft-style-rule-pause',{rule_id:Number(b.dataset.pauseDraftStyle)}))notify('Draft style preference paused.')}));
-  $('#organization-rules').innerHTML=(state.organization_rules||[]).filter(r=>r.active).map(r=>`<div class="rule-row"><span><strong>${esc(r.topic)} · ${esc(r.subtype)}${r.important?' · Important':''}</strong><br>${esc(state.label_kinds[r.kind]||r.kind)} · ${esc(r.scope==='*'?'All senders':r.scope)}<br><small>Explicit preference #${r.feedback_id}. It does not grant action permission.</small></span><button class="secondary" data-pause-organization="${r.id}">Pause</button></div>`).join('')||'<p>No saved organization preferences yet. Choose a future scope while organizing an email.</p>';
+$('#organization-rules').innerHTML=(state.organization_rules||[]).filter(r=>r.active).map(r=>`<div class="rule-row"><span><strong>${esc(r.topic)} · ${esc(r.subtype)}${r.important?' · Important':''}</strong><br>${esc(state.label_kinds[r.kind]||r.kind)} · ${esc(r.scope==='*'?'All senders':r.scope)}<br><small>Explicit preference #${r.feedback_id}. It does not grant action permission.</small></span><button class="secondary" data-pause-organization="${r.id}">Pause</button></div>`).join('')||'<p>No saved organization preferences yet. Organize an email, then review its suggested skill.</p>';
   $('#organization-rules').querySelectorAll('button').forEach(b=>b.addEventListener('click',async()=>{if(await post('/api/organization-rule-pause',{rule_id:Number(b.dataset.pauseOrganization)}))notify('Organization preference paused.')}));
-  $('#label-rules').innerHTML=(state.label_rules||[]).filter(r=>r.active).map(r=>`<div class="rule-row"><span><strong>${esc(r.label)}</strong><br>${esc(state.label_kinds[r.kind]||r.kind)} · ${esc(r.scope==='*'?'All senders':r.scope)}<br><small>Enabled by your review #${r.feedback_id}</small></span><button class="secondary" data-pause-label="${r.id}">Pause</button></div>`).join('')||'<p>No saved label preferences yet. Choose “Future similar emails” when reviewing a label.</p>';
+  $('#label-rules').innerHTML=(state.label_rules||[]).filter(r=>r.active).map(r=>`<div class="rule-row"><span><strong>${esc(r.label)}</strong><br>${esc(state.label_kinds[r.kind]||r.kind)} · ${esc(r.scope==='*'?'All senders':r.scope)}<br><small>Enabled by your review #${r.feedback_id}</small></span><button class="secondary" data-pause-label="${r.id}">Pause</button></div>`).join('')||'<p>No saved label preferences yet. Review a label, then save the suggested skill for similar emails.</p>';
   $('#label-rules').querySelectorAll('button').forEach(b=>b.addEventListener('click',async()=>{if(await post('/api/label-rule-pause',{rule_id:Number(b.dataset.pauseLabel)}))notify('Label preference paused. Review a similar email to set a new preference.')}));
   $('#event-skills').innerHTML=(state.event_skills||[]).filter(skill=>skill.status!=='deleted').map(skill=>{const context=skill.context||{},stateCopy=skill.status==='paused'?'Paused':skill.qualified?'Qualified · automatic local saving':`${skill.approval_streak||0} of 2 confirmations`;return `<div class="rule-row"><span><strong>${esc(context.meaning||context.subtopic||'Similar calendar events')}</strong><br>${esc(stateCopy)}<br><small>Meaning-first matching · sender is supporting context only</small></span><span class="rule-actions">${skill.status==='paused'?`<button class="secondary" data-event-skill="${skill.id}" data-revision="${skill.revision}" data-operation="resume">Resume</button>`:`<button class="secondary" data-event-skill="${skill.id}" data-revision="${skill.revision}" data-operation="pause">Pause</button>`}<button class="secondary" data-event-skill="${skill.id}" data-revision="${skill.revision}" data-operation="delete">Delete</button></span></div>`}).join('')||'<p>No Event Skills yet. Confirm a date found in an email to start one.</p>';
   $('#event-skills').querySelectorAll('[data-event-skill]').forEach(button=>button.addEventListener('click',async()=>{const operation=button.dataset.operation;if(await post('/api/event-skills/manage',{skill_id:Number(button.dataset.eventSkill),revision:Number(button.dataset.revision),operation}))notify(operation==='delete'?'Event Skill deleted.':`Event Skill ${operation}d.`)}));
@@ -306,7 +378,7 @@ function updateModelControls(){
   $('#model-key-field').classList.toggle('hidden',bundled);
   $('#model-quota-copy').textContent=bundled?'The bundled free tier uses shared Groq limits, so processing may pause when its quota is busy. Concurrency is fixed at 3.':mode==='user_groq'?'Your Groq account limits and availability apply. Higher concurrency can reach your quota sooner.':'OpenAI API usage is billed to your account. Higher concurrency can increase spend and reach rate limits sooner.';
   $('.model-apply .risky').classList.toggle('hidden',mode!=='user_openai');
-  $('#model-risk-copy').textContent=bundled?'Changing provider affects future AI analysis. The bundled option does not use a personal key.':mode==='user_openai'?'OpenAI is a paid external API. Applying this key can incur charges for future model requests.':'Your provider quota applies to future model requests. Keep this key private.';
+  $('#model-risk-copy').textContent=bundled?'Changing provider affects future AI analysis. The bundled option does not use a personal key.':mode==='user_openai'?'We have not manually tested the OpenAI integration and cannot guarantee it will work correctly with OpenAI models. Sorry—we ran out of time.':'Your provider quota applies to future model requests. Keep this key private.';
   const currentKey=$('#model-key').value.trim(),fresh=modelValidation.valid&&modelValidation.expires>Date.now();$('#model-apply').disabled=!bundled&&!(fresh&&modelValidation.mode===mode&&modelValidation.key===currentKey);
 }
 function renderModels(){
@@ -314,6 +386,17 @@ function renderModels(){
   $('#model-active').textContent=config.label||({bundled_groq:'Bundled free Groq',user_groq:'Your Groq',user_openai:'Your OpenAI'}[config.mode]||'Bundled free Groq');
   if(!modelsInitialized){const mode=['bundled_groq','user_groq','user_openai'].includes(config.mode)?config.mode:'bundled_groq';document.querySelector(`input[name="model-mode"][value="${mode}"]`).checked=true;$('#model-concurrency').value=String(Math.max(3,Math.min(12,Number(config.concurrency)||3)));modelsInitialized=true}
   updateModelControls();
+}
+function resetModelDraftToApplied(){
+  if(!state)return;
+  clearTimeout(modelValidationTimer);modelValidationRequest++;
+  modelValidation={mode:null,key:null,valid:false,token:null,expires:0};
+  const config=modelConfig(),mode=['bundled_groq','user_groq','user_openai'].includes(config.mode)?config.mode:'bundled_groq';
+  document.querySelector(`input[name="model-mode"][value="${mode}"]`).checked=true;
+  $('#model-concurrency').value=String(Math.max(3,Math.min(12,Number(config.concurrency)||3)));
+  $('#model-key').value='';$('#model-key-icon').textContent='';$('#model-key-icon').className='';$('#model-key-icon').title='';
+  $('#model-key-status').textContent=mode==='bundled_groq'?'No personal key is used.':'Enter a key to validate it.';
+  modelsInitialized=true;updateModelControls();
 }
 async function validateModelKey(){
   const mode=selectedModelMode(),key=$('#model-key').value.trim(),request=++modelValidationRequest;if(mode==='bundled_groq'||!key)return;
@@ -366,6 +449,7 @@ async function openAutosent(id){
 }
 function navigate(next){
   if(['special','autosent'].includes(next)&&!state?.superpowers?.enabled)return;
+  if(next==='models'&&page!=='models')resetModelDraftToApplied();
   page=next;
   $('#mail-view').classList.toggle('hidden',page!=='mail');$('#memory-view').classList.toggle('hidden',page!=='memory');$('#calendar-view').classList.toggle('hidden',page!=='calendar');$('#models-view').classList.toggle('hidden',page!=='models');$('#special-view').classList.toggle('hidden',page!=='special');$('#autosent-view').classList.toggle('hidden',page!=='autosent');
   for(const [name,id] of [['mail','nav-mail'],['calendar','nav-calendar'],['memory','nav-memory'],['models','nav-models'],['special','nav-special'],['autosent','nav-autosent']])$('#'+id).classList.toggle('active',page===name);

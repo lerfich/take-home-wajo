@@ -261,7 +261,7 @@ class GmailConnection:
             account = self.info["account"]
         from .gmail_sync import public
         state = public(self.app, account)["settings"]
-        if not state or not state["sync_enabled"]:
+        if not state:
             return False
         due = not state["next_poll_at"] or state["next_poll_at"] <= datetime.now(timezone.utc).isoformat()
         if not due:

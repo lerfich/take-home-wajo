@@ -83,6 +83,85 @@ function renderSkills(){
   host.querySelectorAll('[data-review-skill]').forEach(b=>b.onclick=()=>{const s=state.skills.find(x=>x.id===Number(b.dataset.reviewSkill));openSkillReview({skill_id:s.id,scope:s.config.scope})});
   host.querySelectorAll('[data-delete-skill]').forEach(b=>b.onclick=()=>$('#delete-skill-'+b.dataset.deleteSkill).classList.toggle('hidden'));
   host.querySelectorAll('[data-manage-skill]').forEach(b=>b.onclick=async()=>{const s=state.skills.find(x=>x.id===Number(b.dataset.manageSkill));if(await post('/api/skills/manage',{skill_id:s.id,revision:s.revision,operation:b.dataset.operation}))notify(b.dataset.operation==='delete'?'Skill and learning examples deleted. Mail and action history preserved.':'Skill updated')});
+  renderPreferencesNavigation();
+}
+
+let preferenceCategory='skills';
+const preferenceCategories=[
+  ['skills','Skills','Your learned routines'],
+  ['attention','Attention','What stays in sight'],
+  ['draft','Draft (pre-replies)','How your replies are written'],
+  ['organization','Organization','Topic, subtype & importance'],
+  ['labels','Label','Additional email labels'],
+  ['events','Events','Dates saved to your calendar'],
+];
+function selectPreferenceCategory(key){
+  preferenceCategory=key;
+  document.querySelectorAll('[data-preference-panel]').forEach(panel=>panel.classList.toggle('hidden',panel.dataset.preferencePanel!==key));
+  document.querySelectorAll('[data-preference-category]').forEach(button=>{
+    const selected=button.dataset.preferenceCategory===key;
+    button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));
+  });
+  $('#preference-whitelist').classList.toggle('selected',key==='whitelist');
+}
+function renderPreferencesNavigation(){
+  const view=$('#memory-view');
+  if(!$('#preference-categories')){
+    const grid=document.createElement('div');grid.id='preference-categories';grid.className='preference-categories';grid.setAttribute('aria-label','Preference categories');
+    grid.innerHTML=preferenceCategories.map(([key,label,note])=>`<button type="button" class="stat preference-tile" data-preference-category="${key}" aria-pressed="false" aria-controls="preference-panel-${key}"><span>${label}</span><strong data-preference-count="${key}">0</strong><small>${note}<span aria-hidden="true">↓</span></small></button>`).join('');
+    view.querySelector('.memory-intro').after(grid);
+    const definitions=[['skills',$('#skills-list')],['attention',$('#attention-rules').closest('.rule-section')],['draft',$('#draft-style-rules').closest('.rule-section')],['organization',$('#organization-rules').closest('.rule-section')],['labels',$('#label-rules').closest('.rule-section')],['events',$('#event-skills').closest('.rule-section')]];
+    definitions.forEach(([key,panel])=>{panel.dataset.preferencePanel=key;panel.id=key==='skills'?'skills-list':`preference-panel-${key}`;if(key==='skills')panel.setAttribute('aria-label','Skills');});
+    grid.querySelector('[data-preference-category="skills"]').setAttribute('aria-controls','skills-list');
+    const groups=$('#memory-groups');groups.dataset.preferencePanel='skills';groups.classList.add('preference-archive-learning');
+    const whitelist=$('#rule-form').closest('.rule-section');
+    whitelist.id='preference-panel-whitelist';whitelist.dataset.preferencePanel='whitelist';whitelist.classList.add('preference-exceptions');
+    whitelist.querySelector('h2').textContent='Senders kept in inbox';
+    const tile=document.createElement('section');tile.id='preference-whitelist';tile.className='stat preference-whitelist';
+    tile.innerHTML='<button type="button" class="preference-whitelist-title" data-preference-category="whitelist" aria-controls="preference-panel-whitelist" aria-pressed="false">Whitelist <span data-preference-count="whitelist">0</span></button>';
+    tile.append($('#rule-form'));grid.append(tile);
+    tile.addEventListener('focusin',()=>selectPreferenceCategory('whitelist'));
+    const note=whitelist.querySelector('p');note.classList.add('preference-exception-note');
+    note.textContent='Explicit exceptions override learned preferences.';
+    note.insertAdjacentHTML('afterend','<p class="preference-exception-explainer">Keep these senders in your inbox instead of automatically archiving their mail. Other learning and suggestions still work.</p>');
+    const glossary=document.createElement('button');glossary.type='button';glossary.id='open-glossary';glossary.className='secondary';glossary.textContent='Glossary';
+    const actions=document.createElement('div');actions.className='preference-heading-actions';actions.append(glossary,$('#back-mail'));view.querySelector('.section-heading').append(actions);
+    glossary.addEventListener('click',openPreferenceGlossary);
+    grid.querySelectorAll('[data-preference-category]').forEach(button=>button.addEventListener('click',()=>selectPreferenceCategory(button.dataset.preferenceCategory)));
+    view.querySelector('.memory-intro').textContent='Choose a category to see and manage what Wajo has learned.';
+  }
+  const count={skills:(state.skills||[]).length,attention:(state.attention_rules||[]).length,draft:(state.draft_style_rules||[]).filter(r=>r.active).length,organization:(state.organization_rules||[]).filter(r=>r.active).length,labels:(state.label_rules||[]).filter(r=>r.active).length,events:(state.event_skills||[]).filter(r=>r.status!=='deleted').length,whitelist:(state.archive_rules||[]).length};
+  document.querySelectorAll('[data-preference-count]').forEach(node=>node.textContent=String(count[node.dataset.preferenceCount]||0));
+  selectPreferenceCategory(preferenceCategory);
+}
+function openPreferenceGlossary(){
+  let dialog=$('#preference-glossary');
+  if(!dialog){
+    const terms=[
+      ['Topic','The main subject of an incoming email, such as Work or Account. Choose the broad group where you would look for it.'],
+      ['Subtype','A more specific kind inside a topic, such as Receipt or Security notice. Use it to tell similar-looking emails apart.'],
+      ['Organization','Topic, subtype and your Important marker together. Change these when an incoming email is filed in the wrong category.'],
+      ['Label','An extra tag for finding mail later. You can choose up to two additional labels, separately from Topic and Subtype. A proposed label still needs the review shown on that email.'],
+      ['Important','Your marker for mail that matters to you. Use it when you want to distinguish an important email; it does not ask for an action or send an alert.'],
+      ['Needs attention / Visibility','A place to keep mail in sight because you want to follow up. Use this when you do not want to overlook an email. It is separate from Important and does not approve any action.'],
+      ['Awaiting your decision','Wajo has a specific proposal for you to approve or reject, such as a reply or calendar date. Open the email and review the highlighted proposal.'],
+      ['Escalation','Wajo cannot safely decide on its own. Review the issue yourself, for example an unclear request involving money. A visibility preference does not remove this safety decision.'],
+      ['Notification','A message that brings an update or time-sensitive item to your attention. Seeing a notification does not mean you approved a reply.'],
+      ['Skill','A saved preference for future emails with similar meaning and context. Review its examples before activating it. Pause it to stop using it temporarily.'],
+      ['Pattern','The kind of routine an email represents, such as a receipt acknowledgement or periodic digest. It helps Wajo learn whether similar routine mail can be archived.'],
+      ['Related themes','Signals Wajo found in the email, such as a deadline, sensitive content or a request for a reply. They explain the context; they are not extra labels you need to assign.'],
+      ['Archive / Whitelist','Archive moves mail out of the inbox; it does not delete it. Add an exact sender to the whitelist to prevent automatic archiving. This does not disable other learning or prove who sent an email.'],
+      ['Draft / Pre-reply','A suggested reply you can edit, reject or approve and send. A Draft Skill changes the writing style of future similar replies. Editing a draft cancels any earlier approval of its text.'],
+      ['Event Skill','Learns which dates from emails you want in your local calendar. Two consecutive confirmations allow similar events to be saved automatically, independently of Superpowers.'],
+      ['Periodic digest','A recurring summary email, such as a weekly newsletter. Here it is a pattern for inbox cleanup, not a calendar event or a new summary generated by Wajo.'],
+      ['Superpowers','An optional mode for qualified Draft Skills to send matching replies automatically. Each Skill needs two unchanged approved sends on the current account, and safety checks still apply.'],
+    ];
+    dialog=document.createElement('dialog');dialog.id='preference-glossary';dialog.setAttribute('aria-labelledby','preference-glossary-title');
+    dialog.innerHTML='<div class="dialog-heading"><div><div class="eyebrow">A QUICK GUIDE</div><h2 id="preference-glossary-title">Wajo glossary</h2></div><button type="button" class="icon-button" aria-label="Close glossary">×</button></div><div class="glossary-cards">'+terms.map(([term,description])=>`<article class="glossary-card"><h3>${esc(term)}</h3><p>${esc(description)}</p></article>`).join('')+'</div>';
+    document.body.append(dialog);dialog.querySelector('button').onclick=()=>dialog.close();
+    dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)dialog.close()});
+  }
+  dialog.showModal();
 }
 
 function renderLabelConflict(row){

@@ -100,7 +100,7 @@ def set_rule(agent, action_id, enabled, scope, *, transaction=True):
     action=agent.get(action_id);email=agent.email_for(action_id);p=Proposal(**action['proposal'])
     cue=cue_for(email,p)
     if scope!='email' and cue not in set(ATTENTION_CUES) - {'none'}:
-        raise ValueError('This email has no evidenced attention cue; choose this email only')
+        raise ValueError('This email has no evidenced attention cue. A preference for future emails was not created.')
     key='email:'+email.id if scope=='email' else '*' if scope=='similar' else email.sender.casefold()
     with agent.db if transaction else nullcontext():
         account=account_for(agent,email.id)

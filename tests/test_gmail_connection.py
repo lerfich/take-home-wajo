@@ -240,6 +240,8 @@ class GmailConnectionTests(unittest.TestCase):
         self.check()
         with patch("mail_agent.gmail.service", return_value=self.api):
             self.run_operation("sync", self.modern_consent())
+            with self.app.connect() as db:
+                db.execute("UPDATE gmail_sync_settings SET sync_enabled=0 WHERE account=?", ("owner@example.test",))
             self.users.getProfile.return_value.execute.return_value = {
                 "emailAddress": "other@example.test", "historyId": "11"}
             self.assertTrue(self.connection.poll_if_due())

@@ -509,9 +509,44 @@ class Application:
                 self.gmail_connection.resume_history(account)
             return result
         with self.lock:
+            if route == "/api/retry":
+                # A model failure can be repeated; an external write with an
+                # uncertain result can only be reconciled, never replayed here.
+                with self.connect() as db:
+                    action = None
+                    if "action_id" in data:
+                        if type(data.get("action_id")) is not int or type(data.get("revision")) is not int:
+                            raise ValueError("The displayed action and version are required")
+                        action = db.execute("SELECT * FROM actions WHERE id=?", (data["action_id"],)).fetchone()
+                        if not action or action["revision"] != data["revision"]:
+                            raise ValueError("This email changed. Refresh before retrying.")
+                        email_id = action["email_id"]
+                    else:
+                        email_id = data.get("email_id")
+                        if type(email_id) is not str:
+                            raise ValueError("Choose the email to retry")
+                        action = db.execute("SELECT * FROM actions WHERE email_id=?", (email_id,)).fetchone()
+                    operations = db.execute("SELECT * FROM gmail_operations WHERE action_id=? ORDER BY id DESC",
+                                            (action["id"],)).fetchall() if action else []
+                    operation = next((row for row in operations if row["status"] in {"error", "unknown"}), None)
+                    if operations and not operation:
+                        raise ValueError("This email has a Gmail operation. Refresh its current status.")
+                    if not operation:
+                        job = db.execute("SELECT status FROM incoming_jobs WHERE id=?", (email_id,)).fetchone()
+                        if not job or job["status"] != "error":
+                            raise ValueError("Only failed processing can be retried")
+                        db.execute("UPDATE incoming_jobs SET status='queued',next_retry_at='' WHERE id=?", (email_id,))
+                if operation:
+                    if not self.gmail_token:
+                        raise ValueError("Connect Gmail to verify this operation.")
+                    self.run_gmail(operation["id"], check_only=True)
+                    return {"checked": True, "retried": False,
+                            "message": "Gmail status checked. An uncertain write is not repeated."}
+                self.wakeup.set()
+                return {"retried": True, "message": "Email processing queued again."}
             if route == "/api/gmail-check":
                 if not self.gmail_token:
-                    raise ValueError("Start the server with --gmail-live to check Gmail")
+                    raise ValueError("Connect Gmail to verify this operation.")
                 if type(data.get("operation_id")) is not int:
                     raise ValueError("Invalid Gmail operation ID")
                 self.run_gmail(data["operation_id"], check_only=True)
@@ -530,7 +565,7 @@ class Application:
                         raise ValueError("The displayed action and version are required")
                     row = agent.get(data["action_id"])
                     if row["transport"] == "gmail" and not self.gmail_token:
-                        raise ValueError("Start the server in Gmail live mode to update Gmail labels")
+                        raise ValueError("Connect Gmail to update its labels.")
                     from .label_preferences import submit
                     result = submit(agent, data["action_id"], data["revision"], data.get("label"),
                                     'email' if data.get('propose_skill') else data.get("scope", "email"), data.get("mode", "replace"))
@@ -720,6 +755,9 @@ class Handler(BaseHTTPRequestHandler):
                  "/app.js": ("app.js", "text/javascript; charset=utf-8"),
                  "/skills.js": ("skills.js", "text/javascript; charset=utf-8"),
                  "/skills.css": ("skills.css", "text/css; charset=utf-8"),
+                 "/shell-ux.js": ("shell-ux.js", "text/javascript; charset=utf-8"),
+                 "/shell-ux.css": ("shell-ux.css", "text/css; charset=utf-8"),
+                 "/review-ux.css": ("review-ux.css", "text/css; charset=utf-8"),
                  "/style.css": ("style.css", "text/css; charset=utf-8")}
         if self.path not in files:
             return self.send(404, {"error": "Not found"})
@@ -764,7 +802,6 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--demo", action="store_true", help="Scripted fixtures, no model calls; use a separate database")
     parser.add_argument("--gmail-live", action="store_true", help="Execute queued Gmail operations for explicitly live imports; sends require approval")
-    parser.add_argument("--local-simulation", action="store_true", help="Explicitly disable Gmail writes")
     parser.add_argument("--gmail-token", type=Path, default=Path("data/gmail-token.json"))
     parser.add_argument("--gmail-credentials", type=Path, default=Path("data/gmail-credentials.json"),
                         help="Local Google Desktop client JSON for Connect Gmail")
@@ -773,7 +810,7 @@ def main():
         parser.error("--demo cannot be combined with --gmail-live")
     args.db.parent.mkdir(parents=True, exist_ok=True)
     try:
-        server = create_server(args.db, args.port, args.demo, args.gmail_token if not (args.demo or args.local_simulation) else None,
+        server = create_server(args.db, args.port, args.demo, args.gmail_token if not args.demo else None,
                                args.gmail_token, args.gmail_credentials)
     except OSError as exc:
         if exc.errno == errno.EADDRINUSE:

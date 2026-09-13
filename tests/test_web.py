@@ -14,6 +14,30 @@ from mail_agent.model_settings import KeyValidation, USER_GROQ
 
 
 class WebTests(unittest.TestCase):
+    def test_retry_requeues_failed_analysis_but_not_healthy_job(self):
+        with self.server.app.connect() as db:
+            db.execute("INSERT INTO incoming_jobs(id,email,status,created_at) VALUES('retry-me','{}','error','now')")
+        self.assertTrue(self.post("/api/retry", {"email_id": "retry-me"})["retried"])
+        with self.server.app.connect() as db:
+            self.assertEqual(db.execute("SELECT status FROM incoming_jobs WHERE id='retry-me'").fetchone()[0], "queued")
+        with self.assertRaises(HTTPError):
+            self.post("/api/retry", {"email_id": "retry-me"})
+
+    def test_retry_uncertain_gmail_write_only_reconciles(self):
+        actions = self.post("/api/demo", {})
+        action = actions[0]
+        with self.server.app.connect() as db:
+            cursor = db.execute("INSERT INTO gmail_operations(action_id,revision,operation,status) VALUES(?,?,'label','unknown')",
+                                (action["id"], action["revision"]))
+            operation_id = cursor.lastrowid
+        self.server.app.gmail_token = Path(self.directory.name) / "token.json"
+        with patch.object(self.server.app, "run_gmail") as run:
+            response = self.post("/api/retry", {"action_id": action["id"], "revision": action["revision"]})
+            run.assert_called_once_with(operation_id, check_only=True)
+            self.assertFalse(response["retried"])
+        with self.server.app.connect() as db:
+            self.assertEqual(db.execute("SELECT status FROM gmail_operations WHERE id=?", (operation_id,)).fetchone()[0], "unknown")
+
     def test_model_settings_require_current_validation_and_never_expose_key(self):
         key = "gsk_private_test_key"
         with patch("mail_agent.web.validate_user_key", return_value=KeyValidation(True)):

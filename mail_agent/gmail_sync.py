@@ -7,7 +7,7 @@ from .gmail import message_fields
 HISTORY_MODES = {"last30": 30, "last100": 100, "all": None, "new": 0}
 PAGE_SIZE = 25
 INCOMPLETE_RETRY = timedelta(hours=1)
-POLL_INTERVAL = timedelta(minutes=1)
+POLL_INTERVAL = timedelta(seconds=10)
 MAX_HISTORY_LABELS = 10
 
 
@@ -51,7 +51,9 @@ def public_settings(db, account=None):
         return None
     result = dict(row)
     result["history_labels"] = json.loads(result["history_labels"])
-    result["sync_enabled"] = bool(result["sync_enabled"])
+    # New mail is always synchronized for a configured connection. Historical
+    # pause settings only control the optional initial-history import.
+    result["sync_enabled"] = True
     result["allow_groq"] = bool(result["allow_groq"])
     result["progress"] = progress(result)
     result.pop("history_id", None)
@@ -239,6 +241,8 @@ def set_history_status(app, account, status):
 def set_enabled(app, account, enabled):
     if type(enabled) is not bool:
         raise ValueError("Sync setting must be on or off")
+    if not enabled:
+        raise ValueError("New email sync is always on while Gmail is connected.")
     with app.connect() as db:
         if not db.execute("SELECT 1 FROM gmail_sync_settings WHERE account=?", (account,)).fetchone():
             raise ValueError("Configure Gmail sync first")
@@ -401,7 +405,7 @@ def poll_new(api, app, account, now=None):
     timestamp = now or datetime.now(timezone.utc)
     with app.connect() as db:
         row = db.execute("SELECT * FROM gmail_sync_settings WHERE account=?", (account,)).fetchone()
-    if not row or not row["sync_enabled"]:
+    if not row:
         return {"added": 0, "incomplete_recovered": 0}
     if row["next_poll_at"] and row["next_poll_at"] > timestamp.isoformat():
         return {"added": 0, "incomplete_recovered": 0}

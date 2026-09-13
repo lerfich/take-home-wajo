@@ -19,7 +19,7 @@ DEFAULT_OPENAI_MODEL = "gpt-5.6-luna"
 
 
 class OpenAIProposer(GroqProposer):
-    """OpenAI Chat Completions implementation of ``propose``/``rewrite_draft``."""
+    """Responses API transport for the shared analysis and draft contracts."""
 
     def __init__(self, api_key: str, model: str = DEFAULT_OPENAI_MODEL, max_retries: int = 2):
         if not api_key or any(character.isspace() for character in api_key):

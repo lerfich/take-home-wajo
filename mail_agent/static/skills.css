@@ -14,3 +14,33 @@
 .label-conflict small{display:block;margin-top:8px;line-height:1.6}
 .skill-card button:focus-visible,.skill-refinements summary:focus-visible{outline:3px solid #167a70;outline-offset:3px}
 @media(max-width:650px){.skill-card{padding:12px}.skill-card .decision-buttons button{flex:1}}
+.preference-categories{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 26px}
+.preference-categories .preference-tile{min-width:0;min-height:118px;position:relative;transition:border-color .15s,background .15s,box-shadow .15s}
+.preference-categories .preference-tile>span{font-size:12px;font-weight:600}
+.preference-categories .preference-tile strong{font-size:30px;line-height:1.6}
+.preference-categories .preference-tile.selected,.preference-whitelist.selected{border-color:#244e70;background:#f1f6fb;box-shadow:inset 0 0 0 1px #244e70}
+.preference-categories .preference-tile.selected strong{color:#244e70}
+.preference-whitelist{grid-column:span 2;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:10px}
+.preference-whitelist-title{display:flex;align-items:center;justify-content:space-between;border:0;background:transparent;color:#435464;font-size:12px;font-weight:600;padding:0;text-align:left}
+.preference-whitelist-title span{padding:3px 8px;background:#e4edf5;color:#244e70;border-radius:5px}
+.preference-whitelist .rule-form{margin:0;gap:8px}
+.preference-whitelist input{font-size:12px;padding:10px;min-width:0;width:100%}
+.preference-whitelist .rule-form button{white-space:nowrap;padding:10px}
+.preference-heading-actions{display:flex;gap:8px;align-items:center}
+#memory-view [data-preference-panel]{margin-top:18px}
+#memory-view .preference-exceptions>h2{text-align:center}
+#memory-view .preference-exception-note{text-align:center;margin-bottom:5px;color:#7b8c99}
+#memory-view .preference-exception-explainer{text-align:center;max-width:620px;margin:0 auto 22px;line-height:1.7}
+.preference-exceptions #rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.preference-exceptions .rule-row{border:1px solid #d4e3ed;border-left:3px solid #5c8caa;border-radius:10px;padding:15px;background:#f5f9fc;min-width:0;align-items:flex-start}
+.preference-exceptions .rule-row>span{line-height:1.7;min-width:0;color:#35546a}
+.preference-exceptions .rule-row button{flex-shrink:0;font-size:11px;padding:8px;background:white}
+.preference-exceptions #rules:empty:after{content:'No exceptions yet. Add a sender above to keep their mail in your inbox.';grid-column:1/-1;text-align:center;color:#7b8c99;font-size:12px;padding:24px}
+.preference-archive-learning{margin-bottom:20px}
+#preference-glossary{width:850px;max-height:85vh;padding:26px}
+.glossary-cards{display:grid;gap:12px;margin-top:22px}
+.glossary-card{border:1px solid #dce5ec;border-radius:10px;padding:20px;background:#f8fafc;display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,2fr);gap:20px;min-height:100px}
+.glossary-card h3{font-size:18px;line-height:1.4;color:#24455d;margin:0;align-self:start}
+.glossary-card p{font-size:13px;line-height:1.8;margin:12px 0 0;color:#617585;align-self:end}
+@media(max-width:1100px){.preference-categories{gap:9px}.preference-whitelist .rule-form{flex-wrap:wrap}.preference-whitelist .rule-form input{flex-basis:100%}.preference-categories .preference-tile{min-height:130px}.preference-exceptions #rules{grid-template-columns:1fr}}
+@media(max-width:800px){.preference-categories{grid-template-columns:repeat(2,minmax(0,1fr))}.preference-categories .preference-tile{min-height:118px}.preference-whitelist .rule-form{flex-wrap:nowrap}.preference-whitelist .rule-form input{flex-basis:auto}.preference-heading-actions{flex-wrap:wrap;justify-content:flex-end}.glossary-card{grid-template-columns:1fr;gap:2px}.glossary-card h3{font-size:17px}}

@@ -141,6 +141,21 @@ class ProviderContractTests(unittest.TestCase):
         self.assertEqual(result, "Thanks.")
         self.assertEqual(request.call_args.args[1]["response_format"]["type"], "json_schema")
 
+    def test_openai_label_review_uses_label_prompt_and_blocks_reply(self):
+        from mail_agent.label_provider import LabelReviewProposer
+        from mail_agent.groq_provider import ProviderError
+        provider = OpenAIProposer("sk-secret")
+        review = LabelReviewProposer(provider)
+        proposal = Proposal("label", "Categorize the update", label="AI: Work")
+        with patch.object(provider, "request", return_value=self.response(asdict(proposal))):
+            result = review.propose(self.email)
+        self.assertEqual(result.label, "AI: Work")
+        self.assertEqual(result.event_change, "none")
+        self.assertEqual(provider.prompt_version, "labels-v1")
+        with patch.object(provider, "request", return_value=self.response(asdict(self.proposal))):
+            with self.assertRaisesRegex(ProviderError, "only a category label"):
+                review.propose(self.email)
+
     def test_openai_http_error_and_validation_result_hide_key(self):
         key = "sk-secret-value"
         error = HTTPError(

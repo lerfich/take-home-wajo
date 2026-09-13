@@ -216,7 +216,19 @@ class GmailSyncTests(unittest.TestCase):
         with self.app.connect() as db:
             row = db.execute("SELECT history_id,next_poll_at FROM gmail_sync_settings").fetchone()
         self.assertEqual(row["history_id"], "10")
-        self.assertEqual(row["next_poll_at"], (start + timedelta(minutes=1)).isoformat())
+        self.assertEqual(row["next_poll_at"], (start + timedelta(seconds=10)).isoformat())
+
+    def test_new_mail_polling_ignores_legacy_disabled_setting(self):
+        from mail_agent.gmail_sync import set_enabled
+        self.config(mode="new")
+        with self.app.connect() as db:
+            db.execute("UPDATE gmail_sync_settings SET sync_enabled=0")
+        self.users.history.return_value.list.return_value.execute.return_value = {"historyId": "11"}
+        self.assertTrue(public(self.app, "owner@example.test")["settings"]["sync_enabled"])
+        poll_new(self.api, self.app, "owner@example.test")
+        self.users.history.return_value.list.assert_called_once()
+        with self.assertRaisesRegex(ValueError, "always on"):
+            set_enabled(self.app, "owner@example.test", False)
 
     def test_already_read_mail_suppresses_proactive_action_but_keeps_organization(self):
         email = Email("gmail:owner@example.test:read", "sender@example.test", "Question", "Please answer")

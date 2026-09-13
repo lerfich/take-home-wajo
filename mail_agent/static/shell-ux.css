@@ -1,0 +1,34 @@
+/* Shared workspace shell: retain IDs and application event handlers. */
+#new-email,#label-review-banner{display:none!important}
+#gmail-sync-controls .sync-toggle{display:none!important}
+header{align-items:flex-start;gap:24px}
+.header-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;max-width:42%}
+.header-actions #mode{font-size:10px;order:4}
+.header-actions .gmail-strip{width:max-content;max-width:100%;margin:0;padding:10px 12px;gap:10px}
+.header-actions .gmail-strip-copy strong{font-size:12px}
+.header-actions .gmail-strip-copy p{font-size:9px;line-height:1.5}
+.header-actions .gmail-icon{width:30px;height:30px;font-size:16px}
+.account-change{border:0;background:transparent;color:var(--teal);padding:2px 0;font-size:11px}
+.account-change:hover{text-decoration:underline}
+.profile{cursor:pointer}.profile:focus-visible{outline:2px solid #c4eee4;outline-offset:5px;border-radius:6px}
+.profile small{max-width:145px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-item>span:first-child{display:inline-flex;align-items:center;justify-content:center;color:#fff}
+#label-review-count{background:#1e365b;color:#fff}
+#label-review-count.has-reviews:not(.hidden){animation:review-nudge 1.6s ease-in-out infinite}
+@keyframes review-nudge{0%,70%,100%{transform:translateY(0)}80%{transform:translateY(-3px)}90%{transform:translateY(1px)}}
+#model-concurrency{appearance:none;-webkit-appearance:none;height:24px;padding:0;border:0;box-shadow:none;border-radius:0;background:transparent;--range-progress:0%;--range-offset:12px}
+#model-concurrency::-webkit-slider-runnable-track{height:8px;border-radius:99px;background:linear-gradient(to right,var(--teal) 0,var(--teal) calc(var(--range-progress) + var(--range-offset)),#e5e8e8 calc(var(--range-progress) + var(--range-offset)),#e5e8e8 100%)}
+#model-concurrency::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;margin-top:-8px;border:1px solid #d8dede;border-radius:50%;background:#fff;box-shadow:0 1px 4px #172d3b25}
+#model-concurrency::-moz-range-track{height:8px;border-radius:99px;background:#e5e8e8}
+#model-concurrency::-moz-range-progress{height:8px;border-radius:99px;background:var(--teal)}
+#model-concurrency::-moz-range-thumb{width:22px;height:22px;border:1px solid #d8dede;border-radius:50%;background:#fff;box-shadow:0 1px 4px #172d3b25}
+#model-concurrency:disabled{opacity:.55}#model-concurrency:focus-visible{outline:2px solid #9bcac4;outline-offset:4px;border-radius:12px}
+.history-options label{align-items:center}.history-options label>span{flex:1}.history-estimate{font-size:11px!important;white-space:nowrap;color:#647985;flex-shrink:0;margin-left:auto}
+.superpowers-toggle{background:#eef8f2;border-color:#a8d3b8;transition:background .5s,border-color .5s}.superpowers-toggle input{background:#378661}.superpowers-toggle:has(input:checked){background:#f9e9e8;border-color:#a45050}.superpowers-toggle:has(input:checked) strong{color:#7f242c}.superpowers-toggle input:checked{background:#842832}
+#superpowers-dialog{border:1px solid #8fbea3;box-shadow:0 0 0 5px #37866116,0 24px 80px #173a2c33;transition:border-color .5s,box-shadow .5s,background .5s;background:#fcfffd}
+#superpowers-dialog:has(#superpowers-toggle:checked){border-color:#842832;background:#fffafa;box-shadow:0 0 0 5px #84283222,0 24px 80px #681f3544}
+#calendar-month{border-radius:8px;padding:10px;cursor:pointer;user-select:none}#calendar-month:hover{background:#e7eeef}#calendar-month:focus-visible{outline:2px solid var(--teal)}#calendar-month:after{content:'⌄';margin-left:9px;color:#7c8c97}.current-month-hidden{visibility:hidden;pointer-events:none}
+#calendar-picker{width:min(360px,calc(100vw - 30px));padding:22px;border-radius:16px;border:1px solid #d9e3e8;color:var(--navy);box-shadow:0 18px 65px #152c3830}#calendar-picker::backdrop{background:#152c3855}#calendar-picker h2{font-size:19px}.picker-year-label{display:flex;align-items:center;justify-content:space-between;margin:18px 0!important;font-size:12px!important}.picker-year-label select{width:120px;margin:0!important;border:1px solid #d9e3e8;border-radius:8px;padding:9px;color:var(--navy);background:white}.picker-months{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.picker-months button{padding:12px 8px;background:#f5f8f9;color:var(--navy);border:1px solid transparent;border-radius:8px}.picker-months button:hover{background:#e8f1ef}.picker-months button.selected{background:var(--teal);color:#fff}.picker-months button:disabled{opacity:.3;cursor:default}
+@media(max-width:800px){.header-actions{max-width:48%}.header-actions .gmail-strip{padding:8px}.header-actions .gmail-strip-copy strong{font-size:10px}.header-actions .gmail-strip-copy p{font-size:8px}.header-actions .gmail-icon{display:none}.calendar-controls{gap:4px}.calendar-controls #calendar-today{font-size:10px;padding:9px}.calendar-controls #calendar-month{min-width:130px;font-size:12px}.nav-item>span:first-child{display:inline-flex}}
+@media(max-width:500px){header{flex-direction:column}.header-actions{width:100%;max-width:100%;align-items:flex-end}.header-actions .gmail-strip-copy{flex-basis:auto}.history-estimate{font-size:10px!important}}
+@media(prefers-reduced-motion:reduce){#label-review-count:not(.hidden){animation:none}.superpowers-toggle{transition:none}}

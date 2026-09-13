@@ -110,7 +110,7 @@ def current(agent, action_id):
 
 def submit(agent, action_id, topic, subtype, important, scope):
     if scope not in {"email", "similar", "sender"}:
-        raise ValueError("Choose this email, similar emails, or this sender")
+        raise ValueError("Invalid preference scope. Refresh the email and try again.")
     if type(important) is not bool:
         raise ValueError("Choose whether this email is important")
     topic, subtype = _text(topic, "topic"), _text(subtype, "subtype")
@@ -121,7 +121,7 @@ def submit(agent, action_id, topic, subtype, important, scope):
         proposal = Proposal(**action["proposal"])
         email = agent.email_for(action_id)
         if scope != "email" and not _eligible(proposal, email):
-            raise ValueError("This email has no supported, evidenced situation type. Organize this email only.")
+            raise ValueError("Wajo cannot identify a reliable matching context in this email. A preference for future emails was not created.")
         account = account_for(agent, email.id)
         key = "email:" + email.id if scope == "email" else "*" if scope == "similar" else email.sender.casefold()
         cursor = agent.db.execute("""INSERT INTO organization_feedback
