@@ -79,7 +79,7 @@ class GroqProposer:
     prompt_version = PROMPT_VERSION
     system = SYSTEM
     def __init__(self, api_key: str, model: str = DEFAULT_MODEL, max_retries: int = 2,
-                 serialize_calls: bool = True):
+                 serialize_calls: bool = True, capture_raw_response: bool = False):
         if not api_key or any(c.isspace() for c in api_key):
             raise ProviderError("Set a valid GROQ_API_KEY in task/.env or the environment")
         self._key = api_key
@@ -91,6 +91,7 @@ class GroqProposer:
             raise ValueError("serialize_calls must be a boolean")
         self.max_retries = max_retries
         self.serialize_calls = serialize_calls
+        self.capture_raw_response = capture_raw_response
         self.http_attempts = []
 
     def chat_gate(self):
@@ -219,6 +220,8 @@ class GroqProposer:
             with self.chat_gate():
                 result = self.request("chat/completions", payload)
             choice = result["choices"][0]
+            if self.capture_raw_response:
+                record["raw_structured_response"] = choice["message"].get("content", "")
             if choice["finish_reason"] != "stop" or choice["message"].get("refusal"):
                 raise ProviderError("Incomplete or refused model response")
             data = json.loads(choice["message"]["content"])

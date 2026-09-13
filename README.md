@@ -142,6 +142,25 @@ python3 -m unittest discover -s tests -v
 
 Tests cover all four modes, actual local changes, blocked operations, required approvals, stale/replayed approvals, rejection, malformed proposer output, persistence and archive learning. The fake provider's `suspicious` flag is only a test input: these tests do not measure detection of real attacks. Code still blocks unsupported operations even when that flag is absent.
 
+## G1 measured synthetic evaluation
+
+`reports/g1/dataset.json` contains 72 authored decision cases (18 expected situations for each autonomy level), 15 training emails with exact scripted evaluation-user feedback, and 24 linked similar or contrasting controls. `reports/g1/manifest.json` freezes the dataset, model, prompt and policy file hashes. The feedback is synthetic; it does not represent the owner's actions or change Qwen weights. The harness uses the application's bundled Groq adapter and `Agent.ingest` with isolated in-memory SQLite. It creates no Gmail binding and makes no delivery or UI call. Emails are processed one at a time through the adapter's bundled-rate serialization.
+
+After the owner approves this frozen set and command, run from `task/`:
+
+```sh
+.venv/bin/python -m mail_agent.g1 validate
+.venv/bin/python -m mail_agent.g1 run
+```
+
+Each ID is atomically saved under `reports/g1/results/`; a checkpoint is written every 11 IDs. Running the same command again skips all saved IDs, including errors, and reconstructs preferences from saved successful training responses. A nonzero exit indicates incomplete or erroneous measurement; inspect the saved errors without changing expectations. Rebuild the human-readable report without calling Groq:
+
+```sh
+.venv/bin/python -m mail_agent.g1 report
+```
+
+The report separates model classification, server-policy outcomes and the effect of saved preferences. Its figures do not measure Gmail delivery, UI behavior or verified Gmail-only Archive/Event Skill qualification; those have separate functional evidence in `VERIFICATION.md`.
+
 ## Archive preference learning
 
 Learning groups emails by communicative purpose across senders: `acknowledgement_only`, `periodic_digest`, `routine_success`, `informational_reference`. These are initial broad semantic categories, not automatically discovered clusters. Unknown cases do not qualify. Job applications, support tickets and material submissions can all be receipt acknowledgements; an interview invitation or substantive rejection is a different outcome.

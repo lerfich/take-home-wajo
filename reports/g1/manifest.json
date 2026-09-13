@@ -1,0 +1,26 @@
+{
+  "dataset_sha256": "83c6a7f67f3e58356af3e5eea93a918df90d778f0424f2a03244f3e6d9ae27b0",
+  "evaluation_mode": "direct_adapter_and_policy",
+  "feedback_actor": "synthetic_evaluation_user",
+  "files_sha256": {
+    "evaluation/g1_dataset.py": "11f90753b42a0e4e557c5a5b0bf493fb9de71d49022437e115732f7da36f2ec0",
+    "mail_agent/archive_skills.py": "4904eee6e445b8a9fd0b817e4da665dea398de24f448756d965be6c57b59a18d",
+    "mail_agent/attention.py": "83750334ce552b763e81c1e63b1087ad722b437d419319b645425226e3a334bb",
+    "mail_agent/core.py": "cfcdb9e39024674c9f9cef647108469a4854ff60fa50e5907d438971653be0f4",
+    "mail_agent/event_skills.py": "0b3c67b01ade29414cb282fdc080f13154a89a2e52566d8d46bf1b228c835558",
+    "mail_agent/events.py": "61281ff1b2d9e396c23bf71b472fd215e5a8d8030abd84fd84b754fd8a849afd",
+    "mail_agent/g1.py": "d6f9fb786bb9f0916736719aba23d2c861a04a59b4682ae95a1091cc1c0a23c8",
+    "mail_agent/groq_provider.py": "af76002fea3ff4073e1a080c14718b682984eb8d4b802d96df9a155946386229",
+    "mail_agent/organization.py": "897590b2233b232ca80e20f4d5913edd3f80fbfcef5326197523bca59a6de43d",
+    "mail_agent/prompts/triage-v9.txt": "30565703404a93af5f84587d80ab1750a80792fc63039c04adf68561783625e9",
+    "mail_agent/semantic_matcher.py": "f11588d3e795b78df285ae78b0bdaf32674b410ba9199f040947c1036228788f",
+    "mail_agent/skills.py": "a375f55a71d94cf11384b0160e1610d26678f73dcbe9843d5a9f66ea0583ed87"
+  },
+  "max_in_flight_emails": 1,
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": "triage-v9",
+  "provider": "bundled_groq",
+  "provider_serialization": true,
+  "schema": "wajo-g1-manifest-v1",
+  "transport": "none"
+}
