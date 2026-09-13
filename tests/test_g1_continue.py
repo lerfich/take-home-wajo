@@ -11,10 +11,12 @@ from mail_agent.core import Proposal
 
 class FakeProvider:
     calls_made = 0
+    models = []
 
     def __init__(self, *args, **kwargs):
         self.calls = []
         self.http_attempts = []
+        type(self).models.append(kwargs.get("model"))
 
     def propose(self, email):
         type(self).calls_made += 1
@@ -41,22 +43,100 @@ class G1ContinuationTests(unittest.TestCase):
             "one": {"id": "one", "status": "ok", "phase": "decision"},
             "two": {"id": "two", "status": "error", "phase": "decision"},
         }
-        info = {"dataset_sha256": "fixture", "files_sha256": {}}
+        info = {"dataset_sha256": "fixture", "files_sha256": {},
+                "model": "qwen/qwen3.8-27b", "prompt_version": "email-analysis-prompt-v9"}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             FakeProvider.calls_made = 0
+            FakeProvider.models = []
             with patch.object(g1_continue.g1, "OUT", root), \
                  patch.object(g1_continue.g1, "preflight", return_value=(cases, info, originals)), \
                  patch.object(g1_continue, "verify_frozen_files"), \
+                 patch.object(g1_continue, "continuation_api_key", return_value="fixture-key"), \
                  patch.object(g1_continue, "GroqProposer", FakeProvider), \
                  patch.object(g1_continue, "report", return_value={"unresolved_errors": 0}):
                 g1_continue.run(2)
             result = json.loads((root / "attempts" / "attempt-02" / "two.json").read_text())
+            attempt = json.loads((root / "attempts" / "attempt-02" / "attempt.json").read_text())
+            checkpoint = json.loads((root / "attempts" / "attempt-02" / "checkpoint.json").read_text())
             self.assertEqual(FakeProvider.calls_made, 1)
+            self.assertEqual(FakeProvider.models, ["qwen/qwen3.8-27b"])
             self.assertEqual(result["status"], "ok")
             self.assertEqual(result["attempt_number"], 2)
+            self.assertEqual(result["model"], "qwen/qwen3.8-27b")
+            self.assertEqual(attempt["model"], "qwen/qwen3.8-27b")
+            self.assertEqual(attempt["credential_source"], "task/.env (value not stored)")
+            self.assertEqual(checkpoint["last_id"], "two")
             self.assertEqual(originals["two"]["status"], "error")
             self.assertFalse((root / ".continue.lock").exists())
+
+    def test_attempt_cannot_switch_models(self):
+        info = {"model": "qwen/qwen3.8-27b", "prompt_version": "email-analysis-prompt-v9"}
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            g1_continue.attempt_manifest(target, 2, info)
+            path = target / "attempt.json"
+            changed = json.loads(path.read_text())
+            changed["model"] = "different/model"
+            path.write_text(json.dumps(changed))
+            with self.assertRaisesRegex(ValueError, "another model"):
+                g1_continue.attempt_manifest(target, 2, info)
+
+    def test_report_excludes_failed_only_configuration_from_scores(self):
+        expected = {"level": "silent", "suspicious": False}
+        assessment = {"level_correct": True, "unsafe_autonomous": False}
+        cases = [{"id": "one", "phase": "decision"},
+                 {"id": "two", "phase": "decision"}]
+        originals = {
+            "one": {"id": "one", "status": "ok", "phase": "decision",
+                    "expected": expected, "assessment": assessment,
+                    "structured_response": {"suspicious": False},
+                    "provider_calls": [{"model": "qwen/qwen3.8-27b",
+                                        "usage": {"total_tokens": 10}}]},
+            "two": {"id": "two", "status": "error", "phase": "decision",
+                    "expected": expected,
+                    "provider_calls": [{"model": "qwen/qwen3.8-27b"}]},
+        }
+        info = {"model": "qwen/qwen3.8-27b", "prompt_version": "email-analysis-prompt-v9"}
+        failed = {"id": "two", "attempt_number": 2, "status": "error",
+                  "phase": "decision", "expected": expected,
+                  "model": "discarded/configuration", "provider_calls": []}
+        continuation = {"id": "two", "attempt_number": 3, "status": "ok",
+                        "phase": "decision", "expected": expected,
+                        "assessment": assessment, "structured_response": {"suspicious": False},
+                        "model": "qwen/qwen3.8-27b",
+                        "provider_calls": [{"model": "qwen/qwen3.8-27b",
+                                            "usage": {"total_tokens": 20}}]}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            attempt = root / "attempts" / "attempt-02"
+            attempt.mkdir(parents=True)
+            (attempt / "two.json").write_text(json.dumps(failed))
+            attempt = root / "attempts" / "attempt-03"
+            attempt.mkdir(parents=True)
+            (attempt / "two.json").write_text(json.dumps(continuation))
+            with patch.object(g1_continue.g1, "OUT", root), \
+                 patch.object(g1_continue.g1, "preflight", return_value=(cases, info, originals)), \
+                 patch.object(g1_continue, "verify_frozen_files"):
+                counts = g1_continue.report()
+            report = (root / "REPORT.md").read_text()
+            self.assertEqual(counts["usable"], 2)
+            self.assertIn("### `qwen/qwen3.8-27b`", report)
+            self.assertNotIn("### `discarded/configuration`", report)
+            self.assertIn("same primary", report)
+
+    def test_continuation_requires_non_bundled_local_key(self):
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.object(g1_continue.g1, "ROOT", Path(directory)):
+            with self.assertRaisesRegex(ValueError, "task/.env"):
+                g1_continue.continuation_api_key()
+            (Path(directory) / ".env").write_text(
+                "GROQ_API_KEY=" + g1_continue.DEFAULT_BUNDLED_GROQ_API_KEY)
+            with self.assertRaisesRegex(ValueError, "Replace"):
+                g1_continue.continuation_api_key()
+            (Path(directory) / ".env").write_text("GROQ_API_KEY=new-account-fixture")
+            with patch.dict("os.environ", {"GROQ_API_KEY": "ignored-shell-key"}):
+                self.assertEqual(g1_continue.continuation_api_key(), "new-account-fixture")
 
 
 if __name__ == "__main__":

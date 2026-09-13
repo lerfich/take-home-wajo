@@ -165,7 +165,13 @@ If a completed initial run contains provider errors, preserve every file in `res
 .venv/bin/python -m mail_agent.g1_continue run --attempt 2
 ```
 
-Continuation files are written under `reports/g1/attempts/attempt-02/`; they never overwrite the first failure. A later attempt uses `--attempt 3`. The combined report selects a later successful response for measurement while retaining all earlier provider errors, and can be rebuilt offline with `.venv/bin/python -m mail_agent.g1_continue report`.
+Continuation files are written under `reports/g1/attempts/attempt-02/`; they never overwrite a prior result. Its `attempt.json` freezes the primary `qwen/qwen3.8-27b` model and continuation-harness hash. A later attempt uses the next number. The report selects a later successful response for measurement while retaining all earlier provider errors and can be rebuilt offline with `.venv/bin/python -m mail_agent.g1_continue report`. We chose the 111-email set to show broader evidence than a small smoke test. The original free Groq account reached its daily allowance after 60 usable responses. The remainder uses the same primary model with a new free-account credential, so all usable decisions are from `qwen/qwen3.8-27b`.
+
+Put the new account key in the ignored local file `task/.env` as `GROQ_API_KEY=...`. The key is read only by the continuation and is never copied into manifests or reports. For the current saved state, continue the 51 unresolved IDs as attempt 3:
+
+```sh
+.venv/bin/python -m mail_agent.g1_continue run --attempt 3
+```
 
 The report separates model classification, server-policy outcomes and the effect of saved preferences. Its figures do not measure Gmail delivery, UI behavior or verified Gmail-only Archive/Event Skill qualification; those have separate functional evidence in `VERIFICATION.md`.
 
