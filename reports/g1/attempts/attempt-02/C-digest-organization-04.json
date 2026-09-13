@@ -1,0 +1,278 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "escalate",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 35,
+      "important": false,
+      "kind": "work_review_request",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Review request",
+      "topic": "Work"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "assessment": {
+    "after": {
+      "action_id": 35,
+      "important": false,
+      "kind": "work_review_request",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Review request",
+      "topic": "Work"
+    },
+    "before": {
+      "action_id": 1,
+      "important": false,
+      "kind": "work_review_request",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Review request",
+      "topic": "Work"
+    },
+    "memory_applied": false,
+    "memory_should_apply": false,
+    "transfer_correct": true
+  },
+  "attempt_number": 2,
+  "before": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "escalate",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 1,
+      "important": false,
+      "kind": "work_review_request",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Review request",
+      "topic": "Work"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "email": {
+    "body": "Please review my design proposal and approve it by Friday.",
+    "sender": "control4@synthetic.example",
+    "subject": "Digest Organization"
+  },
+  "expected": {
+    "memory_should_apply": false,
+    "preference_family": "organization",
+    "relation": "contrast",
+    "source_training_ids": [
+      "T-digest-organization-01",
+      "T-digest-organization-02",
+      "T-digest-organization-03"
+    ],
+    "target_kind_or_cue": "newsletter"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6777, Requested 2596. Please try again in 20.34s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:30:51 GMT",
+        "retry-after": "21",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "965",
+        "x-ratelimit-remaining-tokens": "987",
+        "x-ratelimit-reset-requests": "50m24s",
+        "x-ratelimit-reset-tokens": "58.088s",
+        "x-request-id": "req_01m2e0jm4we6jsbp6bkhq8h1te"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.199,
+      "retry_delay_seconds": 21.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:31:14 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "964",
+        "x-ratelimit-remaining-tokens": "782",
+        "x-ratelimit-reset-requests": "51m50.399s",
+        "x-ratelimit-reset-tokens": "59.177s",
+        "x-request-id": "req_01m2e0k8tde3ga589jgf827dz8"
+      },
+      "http_status": 200,
+      "latency_seconds": 2.393,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "C-digest-organization-04",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 95,
+  "phase": "control",
+  "preference_state": {
+    "archive_skills": [],
+    "attention_rules": [],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "newsletter",
+        "scope": "*",
+        "subtype": "Weekly",
+        "topic": "Reading"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "854099dd119ba1f4be4b977633e42dda9a6752189dd5d3894d7b56b20cabf7ef",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6777, Requested 2596. Please try again in 20.34s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:30:51 GMT",
+            "retry-after": "21",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "965",
+            "x-ratelimit-remaining-tokens": "987",
+            "x-ratelimit-reset-requests": "50m24s",
+            "x-ratelimit-reset-tokens": "58.088s",
+            "x-request-id": "req_01m2e0jm4we6jsbp6bkhq8h1te"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.199,
+          "retry_delay_seconds": 21.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:31:14 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "964",
+            "x-ratelimit-remaining-tokens": "782",
+            "x-ratelimit-reset-requests": "51m50.399s",
+            "x-ratelimit-reset-tokens": "59.177s",
+            "x-request-id": "req_01m2e0k8tde3ga589jgf827dz8"
+          },
+          "http_status": 200,
+          "latency_seconds": 2.393,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 23.597,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"Please review my design proposal and approve it by Friday.\", \"archive_reason\": \"The email requests a substantive review and approval decision, so it must be kept for human action.\", \"archive_recommendation\": \"keep\", \"attention_cue\": \"decision_required\", \"attention_evidence\": \"Please review my design proposal and approve it by Friday.\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": true, \"independent_label\": true, \"label\": \"AI: Design Proposal Review Request\", \"label_kind\": \"work_review_request\", \"needs_human\": true, \"notify\": false, \"pattern\": \"unknown\", \"pattern_evidence\": \"Please review my design proposal and approve it by Friday.\", \"reason\": \"The email asks the recipient to review a design proposal and approve it by Friday, requiring a human decision.\", \"recipient\": \"\", \"requires_action\": true, \"sensitive\": false, \"significant_change\": false, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 287,
+        "prompt_tokens": 2596,
+        "total_tokens": 2883
+      }
+    }
+  ],
+  "scenario_id": "digest-organization",
+  "schema": "wajo-g1-continuation-result-v1",
+  "source_training_ids": [
+    "T-digest-organization-01",
+    "T-digest-organization-02",
+    "T-digest-organization-03"
+  ],
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "Please review my design proposal and approve it by Friday.",
+    "archive_reason": "The email requests a substantive review and approval decision, so it must be kept for human action.",
+    "archive_recommendation": "keep",
+    "attention_cue": "decision_required",
+    "attention_evidence": "Please review my design proposal and approve it by Friday.",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": true,
+    "independent_label": true,
+    "label": "AI: Design Proposal Review Request",
+    "label_kind": "work_review_request",
+    "needs_human": true,
+    "notify": false,
+    "pattern": "unknown",
+    "pattern_evidence": "Please review my design proposal and approve it by Friday.",
+    "reason": "The email asks the recipient to review a design proposal and approve it by Friday, requiring a human decision.",
+    "recipient": "",
+    "requires_action": true,
+    "sensitive": false,
+    "significant_change": false,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:30:51.124743+00:00"
+}

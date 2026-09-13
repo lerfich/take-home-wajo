@@ -1,0 +1,272 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "escalate",
+    "event": {
+      "automatic": 0,
+      "change_kind": "create",
+      "confidence": "ambiguous",
+      "kind": "calendar_event",
+      "status": "needs_clarification"
+    },
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 19,
+      "important": false,
+      "kind": "job_interview",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Interview",
+      "topic": "Applications"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "assessment": {
+    "after": {
+      "action_id": 19,
+      "important": false,
+      "kind": "job_interview",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Interview",
+      "topic": "Applications"
+    },
+    "before": {
+      "action_id": 1,
+      "important": false,
+      "kind": "job_interview",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Interview",
+      "topic": "Applications"
+    },
+    "memory_applied": false,
+    "memory_should_apply": false,
+    "transfer_correct": true
+  },
+  "attempt_number": 2,
+  "before": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "escalate",
+    "event": {
+      "automatic": 0,
+      "change_kind": "create",
+      "confidence": "ambiguous",
+      "kind": "calendar_event",
+      "status": "needs_clarification"
+    },
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 1,
+      "important": false,
+      "kind": "job_interview",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Interview",
+      "topic": "Applications"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "email": {
+    "body": "We reviewed your application and would like to schedule an interview by Friday.",
+    "sender": "control4@synthetic.example",
+    "subject": "Receipt Organization"
+  },
+  "expected": {
+    "memory_should_apply": false,
+    "preference_family": "organization",
+    "relation": "contrast",
+    "source_training_ids": [
+      "T-receipt-organization-01",
+      "T-receipt-organization-02",
+      "T-receipt-organization-03"
+    ],
+    "target_kind_or_cue": "job_application_receipt"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6778, Requested 2599. Please try again in 20.374285714s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:24:55 GMT",
+        "retry-after": "21",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "981",
+        "x-ratelimit-remaining-tokens": "974",
+        "x-ratelimit-reset-requests": "27m21.6s",
+        "x-ratelimit-reset-tokens": "58.097s",
+        "x-request-id": "req_01m2e07r9fechrhjdkke4w9fe2"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.158,
+      "retry_delay_seconds": 21.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:25:19 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "980",
+        "x-ratelimit-remaining-tokens": "783",
+        "x-ratelimit-reset-requests": "28m48s",
+        "x-ratelimit-reset-tokens": "59.185s",
+        "x-request-id": "req_01m2e08czhedmrg2g2z1m6jc2h"
+      },
+      "http_status": 200,
+      "latency_seconds": 2.942,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "C-receipt-organization-04",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 79,
+  "phase": "control",
+  "preference_state": {
+    "archive_skills": [],
+    "attention_rules": [],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "8b6c08cfcc3792edd573f1fb46a75544cc6c7d3ccbb8a6df4765babfa3037e35",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6778, Requested 2599. Please try again in 20.374285714s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:24:55 GMT",
+            "retry-after": "21",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "981",
+            "x-ratelimit-remaining-tokens": "974",
+            "x-ratelimit-reset-requests": "27m21.6s",
+            "x-ratelimit-reset-tokens": "58.097s",
+            "x-request-id": "req_01m2e07r9fechrhjdkke4w9fe2"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.158,
+          "retry_delay_seconds": 21.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:25:19 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "980",
+            "x-ratelimit-remaining-tokens": "783",
+            "x-ratelimit-reset-requests": "28m48s",
+            "x-ratelimit-reset-tokens": "59.185s",
+            "x-request-id": "req_01m2e08czhedmrg2g2z1m6jc2h"
+          },
+          "http_status": 200,
+          "latency_seconds": 2.942,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 24.1,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"We reviewed your application and would like to schedule an interview by Friday.\", \"archive_reason\": \"Substantive interview invitation requiring coordination.\", \"archive_recommendation\": \"keep\", \"attention_cue\": \"personal_commitment\", \"attention_evidence\": \"We reviewed your application and would like to schedule an interview by Friday.\", \"event_all_day\": false, \"event_ambiguity_reason\": \"The specific date and time for the interview are not provided, only a deadline of 'by Friday'.\", \"event_change\": \"create\", \"event_confidence\": \"ambiguous\", \"event_end\": \"\", \"event_evidence\": \"We reviewed your application and would like to schedule an interview by Friday.\", \"event_kind\": \"calendar_event\", \"event_original_text\": \"We reviewed your application and would like to schedule an interview by Friday.\", \"event_semantic_kind\": \"job_interview\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"Job Interview\", \"has_deadline\": true, \"independent_label\": true, \"label\": \"AI: Job Interview Invitation\", \"label_kind\": \"job_interview\", \"needs_human\": true, \"notify\": false, \"pattern\": \"unknown\", \"pattern_evidence\": \"We reviewed your application and would like to schedule an interview by Friday.\", \"reason\": \"The email requests scheduling an interview by a specific deadline, requiring human coordination.\", \"recipient\": \"\", \"requires_action\": true, \"sensitive\": false, \"significant_change\": true, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 336,
+        "prompt_tokens": 2599,
+        "total_tokens": 2935
+      }
+    }
+  ],
+  "scenario_id": "receipt-organization",
+  "schema": "wajo-g1-continuation-result-v1",
+  "source_training_ids": [
+    "T-receipt-organization-01",
+    "T-receipt-organization-02",
+    "T-receipt-organization-03"
+  ],
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "We reviewed your application and would like to schedule an interview by Friday.",
+    "archive_reason": "Substantive interview invitation requiring coordination.",
+    "archive_recommendation": "keep",
+    "attention_cue": "personal_commitment",
+    "attention_evidence": "We reviewed your application and would like to schedule an interview by Friday.",
+    "event_all_day": false,
+    "event_ambiguity_reason": "The specific date and time for the interview are not provided, only a deadline of 'by Friday'.",
+    "event_change": "create",
+    "event_confidence": "ambiguous",
+    "event_end": "",
+    "event_evidence": "We reviewed your application and would like to schedule an interview by Friday.",
+    "event_kind": "calendar_event",
+    "event_original_text": "We reviewed your application and would like to schedule an interview by Friday.",
+    "event_semantic_kind": "job_interview",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "Job Interview",
+    "has_deadline": true,
+    "independent_label": true,
+    "label": "AI: Job Interview Invitation",
+    "label_kind": "job_interview",
+    "needs_human": true,
+    "notify": false,
+    "pattern": "unknown",
+    "pattern_evidence": "We reviewed your application and would like to schedule an interview by Friday.",
+    "reason": "The email requests scheduling an interview by a specific deadline, requiring human coordination.",
+    "recipient": "",
+    "requires_action": true,
+    "sensitive": false,
+    "significant_change": true,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:24:54.952777+00:00"
+}

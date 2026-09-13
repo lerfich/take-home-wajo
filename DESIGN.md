@@ -50,10 +50,20 @@ The model returns a strict structured proposal and exact evidence quotes. It nev
 
 ## Evaluation
 
-G1 uses 111 new synthetic emails to provide broader evidence than a small smoke test: 72 decision cases, 15 training cases with scripted evaluation-user feedback, and 24 linked controls. Calls use the production Groq adapter and current policy and are serialized for the free quota. Each model response is saved atomically, checkpoints are written every 11 emails, and an interrupted run skips completed responses. The report can be rebuilt from saved responses without another model call. The original free Groq account reached its daily allowance after 60 usable responses, so the remaining 51 frozen IDs continue in a second attempt with a new free-account credential on the same primary `qwen/qwen3.8-27b` model. Provider failures without a model response are retryable infrastructure events and are not quality measurements; incorrect classifications in received model responses remain measured.
+G1 uses 111 new synthetic emails to provide broader evidence than a small smoke test: 72 decision cases, 15 training cases with scripted evaluation-user feedback, and 24 linked controls. Calls use the production Groq adapter and current policy and are serialized for the free quota. Each model response is saved atomically, checkpoints are written every 11 emails, and an interrupted run skips completed responses. The report can be rebuilt from saved responses without another model call. The original free Groq account reached its daily allowance after 60 usable responses, so the remaining 51 frozen IDs were completed in a second attempt with a new free-account credential on the same primary `qwen/qwen3.8-27b` model. Provider failures without a model response are retryable infrastructure events and are not quality measurements; incorrect classifications in received model responses remain measured.
 
-The G1 report will provide the measured counts in `reports/g1/REPORT.md`. **Final G1 numbers are pending completion of the frozen run and will be inserted here only from that report.** Scripted feedback represents an evaluation user, not project-owner activity, and before/after controls measure Wajo's stored memory rather than model training.
+The completed G1 run produced the following headline results:
+
+| Measure | Result |
+| --- | ---: |
+| Usable model responses | 111/111 |
+| Final policy level | 50/72 (69.4%) |
+| Unsafe autonomous primary actions | 0/72 |
+| Authored instruction-injection cases blocked | 6/6 |
+| Preference-transfer controls | 24/24 |
+
+Silent and Escalate were strongest at 18/18 and 17/18. Notify (6/18) and Ask (9/18) were substantially weaker, and Archive/Keep was the weakest component classification at 46/72. Preference transfer covered 14 similar and 10 contrasting controls for Organization and Attention only; it does not demonstrate fewer Ask prompts. Full component scores, frozen hashes, attempt history and limitations are in [reports/g1/REPORT.md](reports/g1/REPORT.md). Scripted feedback represents an evaluation user, not project-owner activity, and before/after controls measure Wajo's stored memory rather than model training.
 
 G1 measures model interpretation and local policy/memory on synthetic inputs. It does not measure UI usability, private-mail usefulness, Gmail delivery or Gmail-only qualification flows. Those paths have separate functional evidence and limitations in [VERIFICATION.md](VERIFICATION.md). A finite synthetic set cannot establish correctness for arbitrary mail or universal prompt-injection detection.
 
-Illustrative synthetic flows are in [examples/transcripts.md](examples/transcripts.md). They will be checked against the completed G1 artifacts before submission; they are not presented as measured G1 outputs.
+Synthetic flows and links to their saved G1 records are in [examples/transcripts.md](examples/transcripts.md). Any continuation beyond the direct harness boundary is explicitly marked as illustrative.

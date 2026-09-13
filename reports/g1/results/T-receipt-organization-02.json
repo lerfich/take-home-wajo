@@ -1,0 +1,83 @@
+{
+  "email": {
+    "body": "Your application for the designer role is in our system. No action is needed.",
+    "sender": "training2@synthetic.example",
+    "subject": "Receipt Organization"
+  },
+  "error": "Model or policy processing failed; see sanitized provider metadata",
+  "error_type": "ProviderError",
+  "expected": {
+    "attention_cue": "none",
+    "followup_control_ids": [
+      "C-receipt-organization-01",
+      "C-receipt-organization-02",
+      "C-receipt-organization-03",
+      "C-receipt-organization-04",
+      "C-receipt-organization-05"
+    ],
+    "label_kind": "job_application_receipt"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01k8e5gjmef0fvps190gdd4c0m` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199198, Requested 3012. Please try again in 15m54.72s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 17:48:00 GMT",
+        "retry-after": "955",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "938",
+        "x-ratelimit-remaining-tokens": "1188",
+        "x-ratelimit-reset-requests": "1h29m16.8s",
+        "x-ratelimit-reset-tokens": "56.468s",
+        "x-request-id": "req_01m2dy461jevy98krgdjbsbhwk"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.181,
+      "route": "chat/completions",
+      "status": "error"
+    }
+  ],
+  "id": "T-receipt-organization-02",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "order": 74,
+  "phase": "training",
+  "provider_calls": [
+    {
+      "error": "Groq HTTP 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01k8e5gjmef0fvps190gdd4c0m` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199198, Requested 3012. Please try again in 15m54.72s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01k8e5gjmef0fvps190gdd4c0m` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199198, Requested 3012. Please try again in 15m54.72s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 17:48:00 GMT",
+            "retry-after": "955",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "938",
+            "x-ratelimit-remaining-tokens": "1188",
+            "x-ratelimit-reset-requests": "1h29m16.8s",
+            "x-ratelimit-reset-tokens": "56.468s",
+            "x-request-id": "req_01m2dy461jevy98krgdjbsbhwk"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.181,
+          "route": "chat/completions",
+          "status": "error"
+        }
+      ],
+      "latency_seconds": 0.181,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "status": "error"
+    }
+  ],
+  "scenario_id": "receipt-organization",
+  "schema": "wajo-g1-result-v1",
+  "status": "error",
+  "timestamp_utc": "2026-09-13T17:48:00.790277+00:00"
+}

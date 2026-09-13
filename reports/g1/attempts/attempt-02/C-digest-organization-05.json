@@ -1,0 +1,278 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "escalate",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 36,
+      "important": false,
+      "kind": "service_failure",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Failure",
+      "topic": "Services"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "assessment": {
+    "after": {
+      "action_id": 36,
+      "important": false,
+      "kind": "service_failure",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Failure",
+      "topic": "Services"
+    },
+    "before": {
+      "action_id": 1,
+      "important": false,
+      "kind": "service_failure",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Failure",
+      "topic": "Services"
+    },
+    "memory_applied": false,
+    "memory_should_apply": false,
+    "transfer_correct": true
+  },
+  "attempt_number": 2,
+  "before": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "escalate",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 1,
+      "important": false,
+      "kind": "service_failure",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Failure",
+      "topic": "Services"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "email": {
+    "body": "The engineering release failed; decide whether to roll it back.",
+    "sender": "control5@synthetic.example",
+    "subject": "Digest Organization"
+  },
+  "expected": {
+    "memory_should_apply": false,
+    "preference_family": "organization",
+    "relation": "contrast",
+    "source_training_ids": [
+      "T-digest-organization-01",
+      "T-digest-organization-02",
+      "T-digest-organization-03"
+    ],
+    "target_kind_or_cue": "newsletter"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6619, Requested 2597. Please try again in 18.994285714s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:31:14 GMT",
+        "retry-after": "19",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "964",
+        "x-ratelimit-remaining-tokens": "1134",
+        "x-ratelimit-reset-requests": "51m50.399s",
+        "x-ratelimit-reset-tokens": "56.734s",
+        "x-request-id": "req_01m2e0kb6xesrbr7cwpx1sws6f"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.209,
+      "retry_delay_seconds": 19.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:31:35 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "963",
+        "x-ratelimit-remaining-tokens": "709",
+        "x-ratelimit-reset-requests": "53m16.799s",
+        "x-ratelimit-reset-tokens": "59.82s",
+        "x-request-id": "req_01m2e0kxy0e8e86p1h0d1679r6"
+      },
+      "http_status": 200,
+      "latency_seconds": 1.5,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "C-digest-organization-05",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 96,
+  "phase": "control",
+  "preference_state": {
+    "archive_skills": [],
+    "attention_rules": [],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "newsletter",
+        "scope": "*",
+        "subtype": "Weekly",
+        "topic": "Reading"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "0f8dd0804df839f0b2f48bf6f21e5e6f35ae58189c02a9151e0da9b61eb7fdd2",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6619, Requested 2597. Please try again in 18.994285714s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:31:14 GMT",
+            "retry-after": "19",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "964",
+            "x-ratelimit-remaining-tokens": "1134",
+            "x-ratelimit-reset-requests": "51m50.399s",
+            "x-ratelimit-reset-tokens": "56.734s",
+            "x-request-id": "req_01m2e0kb6xesrbr7cwpx1sws6f"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.209,
+          "retry_delay_seconds": 19.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:31:35 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "963",
+            "x-ratelimit-remaining-tokens": "709",
+            "x-ratelimit-reset-requests": "53m16.799s",
+            "x-ratelimit-reset-tokens": "59.82s",
+            "x-request-id": "req_01m2e0kxy0e8e86p1h0d1679r6"
+          },
+          "http_status": 200,
+          "latency_seconds": 1.5,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 20.714,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"The engineering release failed; decide whether to roll it back.\", \"archive_reason\": \"Requires a substantive human decision about a failed service operation.\", \"archive_recommendation\": \"keep\", \"attention_cue\": \"service_impact\", \"attention_evidence\": \"The engineering release failed; decide whether to roll it back.\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Service Failure Decision\", \"label_kind\": \"service_failure\", \"needs_human\": true, \"notify\": false, \"pattern\": \"unknown\", \"pattern_evidence\": \"The engineering release failed; decide whether to roll it back.\", \"reason\": \"The email reports a failed engineering release and explicitly requests a decision on whether to roll it back, requiring human judgment.\", \"recipient\": \"\", \"requires_action\": true, \"sensitive\": false, \"significant_change\": true, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 283,
+        "prompt_tokens": 2597,
+        "total_tokens": 2880
+      }
+    }
+  ],
+  "scenario_id": "digest-organization",
+  "schema": "wajo-g1-continuation-result-v1",
+  "source_training_ids": [
+    "T-digest-organization-01",
+    "T-digest-organization-02",
+    "T-digest-organization-03"
+  ],
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "The engineering release failed; decide whether to roll it back.",
+    "archive_reason": "Requires a substantive human decision about a failed service operation.",
+    "archive_recommendation": "keep",
+    "attention_cue": "service_impact",
+    "attention_evidence": "The engineering release failed; decide whether to roll it back.",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Service Failure Decision",
+    "label_kind": "service_failure",
+    "needs_human": true,
+    "notify": false,
+    "pattern": "unknown",
+    "pattern_evidence": "The engineering release failed; decide whether to roll it back.",
+    "reason": "The email reports a failed engineering release and explicitly requests a decision on whether to roll it back, requiring human judgment.",
+    "recipient": "",
+    "requires_action": true,
+    "sensitive": false,
+    "significant_change": true,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:31:14.732567+00:00"
+}

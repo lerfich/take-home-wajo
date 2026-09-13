@@ -1,0 +1,260 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "archive",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "silent",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 17,
+      "important": true,
+      "kind": "job_application_receipt",
+      "rule_id": 1,
+      "source": "Your preference",
+      "subtype": "Receipt",
+      "topic": "Applications"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "assessment": {
+    "after": {
+      "action_id": 17,
+      "important": true,
+      "kind": "job_application_receipt",
+      "rule_id": 1,
+      "source": "Your preference",
+      "subtype": "Receipt",
+      "topic": "Applications"
+    },
+    "before": {
+      "action_id": 1,
+      "important": false,
+      "kind": "job_application_receipt",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Receipt",
+      "topic": "Applications"
+    },
+    "memory_applied": true,
+    "memory_should_apply": true,
+    "transfer_correct": true
+  },
+  "attempt_number": 2,
+  "before": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "archive",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "silent",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 1,
+      "important": false,
+      "kind": "job_application_receipt",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Receipt",
+      "topic": "Applications"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "email": {
+    "body": "We logged your application for the researcher role. No action needed.",
+    "sender": "control2@synthetic.example",
+    "subject": "Receipt Organization"
+  },
+  "expected": {
+    "memory_should_apply": true,
+    "preference_family": "organization",
+    "relation": "similar",
+    "source_training_ids": [
+      "T-receipt-organization-01",
+      "T-receipt-organization-02",
+      "T-receipt-organization-03"
+    ],
+    "target_kind_or_cue": "job_application_receipt"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6807, Requested 2598. Please try again in 20.614285714s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:24:10 GMT",
+        "retry-after": "21",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "983",
+        "x-ratelimit-remaining-tokens": "947",
+        "x-ratelimit-reset-requests": "24m28.8s",
+        "x-ratelimit-reset-tokens": "58.345s",
+        "x-request-id": "req_01m2e06chjeagv8c23jcfcqbgw"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.153,
+      "retry_delay_seconds": 21.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:24:32 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "982",
+        "x-ratelimit-remaining-tokens": "753",
+        "x-ratelimit-reset-requests": "25m55.199s",
+        "x-ratelimit-reset-tokens": "59.442s",
+        "x-request-id": "req_01m2e0717ces0rcfjetp1hmde4"
+      },
+      "http_status": 200,
+      "latency_seconds": 1.349,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "C-receipt-organization-02",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 77,
+  "phase": "control",
+  "preference_state": {
+    "archive_skills": [],
+    "attention_rules": [],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "467dbd04229ecbe0f3d4afcdab60cdd1f97b22cac4441d83a7e34ab786af7410",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6807, Requested 2598. Please try again in 20.614285714s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:24:10 GMT",
+            "retry-after": "21",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "983",
+            "x-ratelimit-remaining-tokens": "947",
+            "x-ratelimit-reset-requests": "24m28.8s",
+            "x-ratelimit-reset-tokens": "58.345s",
+            "x-request-id": "req_01m2e06chjeagv8c23jcfcqbgw"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.153,
+          "retry_delay_seconds": 21.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:24:32 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "982",
+            "x-ratelimit-remaining-tokens": "753",
+            "x-ratelimit-reset-requests": "25m55.199s",
+            "x-ratelimit-reset-tokens": "59.442s",
+            "x-request-id": "req_01m2e0717ces0rcfjetp1hmde4"
+          },
+          "http_status": 200,
+          "latency_seconds": 1.349,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 22.508,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"We logged your application for the researcher role. No action needed.\", \"archive_reason\": \"Routine automated acknowledgement of an application with no requested action.\", \"archive_recommendation\": \"archive\", \"attention_cue\": \"none\", \"attention_evidence\": \"\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Job Application Receipt\", \"label_kind\": \"job_application_receipt\", \"needs_human\": false, \"notify\": false, \"pattern\": \"acknowledgement_only\", \"pattern_evidence\": \"We logged your application for the researcher role. No action needed.\", \"reason\": \"The email is an automated acknowledgement of a job application with no requested action.\", \"recipient\": \"\", \"requires_action\": false, \"sensitive\": false, \"significant_change\": false, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 267,
+        "prompt_tokens": 2598,
+        "total_tokens": 2865
+      }
+    }
+  ],
+  "scenario_id": "receipt-organization",
+  "schema": "wajo-g1-continuation-result-v1",
+  "source_training_ids": [
+    "T-receipt-organization-01",
+    "T-receipt-organization-02",
+    "T-receipt-organization-03"
+  ],
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "We logged your application for the researcher role. No action needed.",
+    "archive_reason": "Routine automated acknowledgement of an application with no requested action.",
+    "archive_recommendation": "archive",
+    "attention_cue": "none",
+    "attention_evidence": "",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Job Application Receipt",
+    "label_kind": "job_application_receipt",
+    "needs_human": false,
+    "notify": false,
+    "pattern": "acknowledgement_only",
+    "pattern_evidence": "We logged your application for the researcher role. No action needed.",
+    "reason": "The email is an automated acknowledgement of a job application with no requested action.",
+    "recipient": "",
+    "requires_action": false,
+    "sensitive": false,
+    "significant_change": false,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:24:10.157211+00:00"
+}

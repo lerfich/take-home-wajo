@@ -1,0 +1,13 @@
+{
+  "attempt_number": 2,
+  "base_manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "base_model": "qwen/qwen3.8-27b",
+  "continuation_harness_sha256": "030293bc4d7f274b17efdefbc70b3ce5d02ab14358121e1101a0d89e4ad4fb1c",
+  "created_at_utc": "2026-09-13T18:19:11.248036+00:00",
+  "credential_source": "task/.env (value not stored)",
+  "max_in_flight_emails": 1,
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider": "bundled_groq",
+  "schema": "wajo-g1-continuation-attempt-v1"
+}

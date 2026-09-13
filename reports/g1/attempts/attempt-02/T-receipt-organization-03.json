@@ -1,0 +1,234 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "archive",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "silent",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 15,
+      "important": true,
+      "kind": "job_application_receipt",
+      "rule_id": 1,
+      "source": "Your preference",
+      "subtype": "Receipt",
+      "topic": "Applications"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "assessment": {},
+  "attempt_number": 2,
+  "before": null,
+  "email": {
+    "body": "Your application for the editor role was received. We will review it later.",
+    "sender": "training3@synthetic.example",
+    "subject": "Receipt Organization"
+  },
+  "expected": {
+    "attention_cue": "none",
+    "followup_control_ids": [
+      "C-receipt-organization-01",
+      "C-receipt-organization-02",
+      "C-receipt-organization-03",
+      "C-receipt-organization-04",
+      "C-receipt-organization-05"
+    ],
+    "label_kind": "job_application_receipt"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6219, Requested 2600. Please try again in 15.591428571s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:23:30 GMT",
+        "retry-after": "16",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "985",
+        "x-ratelimit-remaining-tokens": "1600",
+        "x-ratelimit-reset-requests": "21m36s",
+        "x-ratelimit-reset-tokens": "53.305s",
+        "x-request-id": "req_01m2e055yee9ftkncxp8g5nrgr"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.152,
+      "retry_delay_seconds": 16.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:23:47 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "984",
+        "x-ratelimit-remaining-tokens": "685",
+        "x-ratelimit-reset-requests": "23m2.4s",
+        "x-ratelimit-reset-tokens": "59.382s",
+        "x-request-id": "req_01m2e05ns0ez8vqf4bfkftk9b3"
+      },
+      "http_status": 200,
+      "latency_seconds": 1.015,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "T-receipt-organization-03",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 75,
+  "phase": "training",
+  "preference_after": {
+    "archive_skills": [],
+    "attention_rules": [],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      }
+    ]
+  },
+  "preference_before": {
+    "archive_skills": [],
+    "attention_rules": [],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "d068aedcc9ea936235250c08c6c6645d53224531f0a7d590a070638f7bd0d06a",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6219, Requested 2600. Please try again in 15.591428571s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:23:30 GMT",
+            "retry-after": "16",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "985",
+            "x-ratelimit-remaining-tokens": "1600",
+            "x-ratelimit-reset-requests": "21m36s",
+            "x-ratelimit-reset-tokens": "53.305s",
+            "x-request-id": "req_01m2e055yee9ftkncxp8g5nrgr"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.152,
+          "retry_delay_seconds": 16.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:23:47 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "984",
+            "x-ratelimit-remaining-tokens": "685",
+            "x-ratelimit-reset-requests": "23m2.4s",
+            "x-ratelimit-reset-tokens": "59.382s",
+            "x-request-id": "req_01m2e05ns0ez8vqf4bfkftk9b3"
+          },
+          "http_status": 200,
+          "latency_seconds": 1.015,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 17.176,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"Your application for the editor role was received.\", \"archive_reason\": \"Routine application receipt with no new substantive result or next step.\", \"archive_recommendation\": \"archive\", \"attention_cue\": \"none\", \"attention_evidence\": \"\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Job Application Receipt\", \"label_kind\": \"job_application_receipt\", \"needs_human\": false, \"notify\": false, \"pattern\": \"acknowledgement_only\", \"pattern_evidence\": \"Your application for the editor role was received.\", \"reason\": \"The email is an automated acknowledgement of a job application receipt with no request for action.\", \"recipient\": \"\", \"requires_action\": false, \"sensitive\": false, \"significant_change\": false, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 262,
+        "prompt_tokens": 2600,
+        "total_tokens": 2862
+      }
+    }
+  ],
+  "scenario_id": "receipt-organization",
+  "schema": "wajo-g1-continuation-result-v1",
+  "scripted_feedback": {
+    "actor": "synthetic_evaluation_user",
+    "enabled": true,
+    "family": "organization",
+    "important": true,
+    "scope": "similar",
+    "subtype": "Receipt",
+    "text": "Save similar mail under Applications / Receipt; important=True.",
+    "topic": "Applications"
+  },
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "Your application for the editor role was received.",
+    "archive_reason": "Routine application receipt with no new substantive result or next step.",
+    "archive_recommendation": "archive",
+    "attention_cue": "none",
+    "attention_evidence": "",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Job Application Receipt",
+    "label_kind": "job_application_receipt",
+    "needs_human": false,
+    "notify": false,
+    "pattern": "acknowledgement_only",
+    "pattern_evidence": "Your application for the editor role was received.",
+    "reason": "The email is an automated acknowledgement of a job application receipt with no request for action.",
+    "recipient": "",
+    "requires_action": false,
+    "sensitive": false,
+    "significant_change": false,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:23:30.636762+00:00"
+}

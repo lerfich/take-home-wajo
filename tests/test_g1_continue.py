@@ -80,7 +80,13 @@ class G1ContinuationTests(unittest.TestCase):
             self.assertFalse((root / ".continue.lock").exists())
 
     def test_attempt_cannot_switch_models(self):
-        info = {"model": "qwen/qwen3.8-27b", "prompt_version": "email-analysis-prompt-v9"}
+        info = {"model": "qwen/qwen3.8-27b", "prompt_version": "email-analysis-prompt-v9",
+                "dataset_sha256": "dataset-fixture",
+                "files_sha256": {
+                    "mail_agent/prompts/email-analysis-prompt-v9.txt": "prompt-fixture",
+                    "mail_agent/core.py": "core-fixture",
+                    "mail_agent/g1.py": "harness-fixture",
+                }}
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory)
             g1_continue.attempt_manifest(target, 2, info)
@@ -92,15 +98,21 @@ class G1ContinuationTests(unittest.TestCase):
                 g1_continue.attempt_manifest(target, 2, info)
 
     def test_report_excludes_failed_only_configuration_from_scores(self):
-        expected = {"level": "silent", "suspicious": False}
-        assessment = {"level_correct": True, "unsafe_autonomous": False}
+        expected = {"level": "silent", "action": "none", "archive": "keep",
+                    "label_kind": "unknown", "attention_cue": "none",
+                    "event_kind": "none", "suspicious": False}
+        response = {"action": "none", "archive_recommendation": "keep",
+                    "label_kind": "unknown", "attention_cue": "none",
+                    "event_kind": "none", "suspicious": False}
+        assessment = {"level_correct": True, "level_actual": "silent",
+                      "unsafe_autonomous": False}
         cases = [{"id": "one", "phase": "decision"},
                  {"id": "two", "phase": "decision"},
                  {"id": "three", "phase": "decision"}]
         originals = {
             "one": {"id": "one", "status": "ok", "phase": "decision",
                     "expected": expected, "assessment": assessment,
-                    "structured_response": {"suspicious": False},
+                    "structured_response": response,
                     "provider_calls": [{"model": "qwen/qwen3.8-27b",
                                         "usage": {"total_tokens": 10}}]},
             "two": {"id": "two", "status": "error", "phase": "decision",
@@ -110,13 +122,19 @@ class G1ContinuationTests(unittest.TestCase):
                       "expected": expected,
                       "provider_calls": [{"model": "qwen/qwen3.8-27b"}]},
         }
-        info = {"model": "qwen/qwen3.8-27b", "prompt_version": "email-analysis-prompt-v9"}
+        info = {"model": "qwen/qwen3.8-27b", "prompt_version": "email-analysis-prompt-v9",
+                "dataset_sha256": "dataset-fixture",
+                "files_sha256": {
+                    "mail_agent/prompts/email-analysis-prompt-v9.txt": "prompt-fixture",
+                    "mail_agent/core.py": "core-fixture",
+                    "mail_agent/g1.py": "harness-fixture",
+                }}
         failed = {"id": "three", "attempt_number": 2, "status": "error",
                   "phase": "decision", "expected": expected,
                   "model": "discarded/configuration", "provider_calls": []}
         continuation = {"id": "two", "attempt_number": 2, "status": "ok",
                         "phase": "decision", "expected": expected,
-                        "assessment": assessment, "structured_response": {"suspicious": False},
+                        "assessment": assessment, "structured_response": response,
                         "model": "qwen/qwen3.8-27b",
                         "provider_calls": [{"model": "qwen/qwen3.8-27b",
                                             "usage": {"total_tokens": 20}}]}

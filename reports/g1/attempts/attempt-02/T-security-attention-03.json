@@ -1,0 +1,286 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": true,
+    "autonomy": "silent",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 39,
+      "important": false,
+      "kind": "account_notice",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Notice",
+      "topic": "Account"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "assessment": {},
+  "attempt_number": 2,
+  "before": null,
+  "email": {
+    "body": "A password reset was requested for your account at 09:00.",
+    "sender": "training3@synthetic.example",
+    "subject": "Security Attention"
+  },
+  "expected": {
+    "attention_cue": "account_security",
+    "followup_control_ids": [
+      "C-security-attention-01",
+      "C-security-attention-02",
+      "C-security-attention-03",
+      "C-security-attention-04",
+      "C-security-attention-05"
+    ],
+    "label_kind": "unknown"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6694, Requested 2601. Please try again in 19.671428571s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:32:21 GMT",
+        "retry-after": "20",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "961",
+        "x-ratelimit-remaining-tokens": "1064",
+        "x-ratelimit-reset-requests": "56m9.6s",
+        "x-ratelimit-reset-tokens": "57.377s",
+        "x-request-id": "req_01m2e0nbszehevzjxhvjyzd9ht"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.177,
+      "retry_delay_seconds": 20.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:32:42 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "960",
+        "x-ratelimit-remaining-tokens": "724",
+        "x-ratelimit-reset-requests": "57m36s",
+        "x-ratelimit-reset-tokens": "59.485s",
+        "x-request-id": "req_01m2e0nzgrexyvf6e75k301m3y"
+      },
+      "http_status": 200,
+      "latency_seconds": 1.87,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "T-security-attention-03",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 99,
+  "phase": "training",
+  "preference_after": {
+    "archive_skills": [],
+    "attention_rules": [
+      {
+        "account": "local_simulation",
+        "cue": "account_security",
+        "enabled": 1,
+        "kind": "account_notice",
+        "scope": "*"
+      }
+    ],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "newsletter",
+        "scope": "*",
+        "subtype": "Weekly",
+        "topic": "Reading"
+      }
+    ]
+  },
+  "preference_before": {
+    "archive_skills": [],
+    "attention_rules": [
+      {
+        "account": "local_simulation",
+        "cue": "account_security",
+        "enabled": 1,
+        "kind": "account_notice",
+        "scope": "*"
+      }
+    ],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "newsletter",
+        "scope": "*",
+        "subtype": "Weekly",
+        "topic": "Reading"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "fbd1610bc60f5511a58b63ca0ab25c69596460a06d30e3398c015dc6c70ceebb",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6694, Requested 2601. Please try again in 19.671428571s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:32:21 GMT",
+            "retry-after": "20",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "961",
+            "x-ratelimit-remaining-tokens": "1064",
+            "x-ratelimit-reset-requests": "56m9.6s",
+            "x-ratelimit-reset-tokens": "57.377s",
+            "x-request-id": "req_01m2e0nbszehevzjxhvjyzd9ht"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.177,
+          "retry_delay_seconds": 20.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:32:42 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "960",
+            "x-ratelimit-remaining-tokens": "724",
+            "x-ratelimit-reset-requests": "57m36s",
+            "x-ratelimit-reset-tokens": "59.485s",
+            "x-request-id": "req_01m2e0nzgrexyvf6e75k301m3y"
+          },
+          "http_status": 200,
+          "latency_seconds": 1.87,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 22.054,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"A password reset was requested for your account at 09:00.\", \"archive_reason\": \"Account security notification requires user review.\", \"archive_recommendation\": \"keep\", \"attention_cue\": \"account_security\", \"attention_evidence\": \"A password reset was requested for your account at 09:00.\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Account Security Notice\", \"label_kind\": \"account_notice\", \"needs_human\": false, \"notify\": false, \"pattern\": \"unknown\", \"pattern_evidence\": \"A password reset was requested for your account at 09:00.\", \"reason\": \"The email is a standard account security notification regarding a password reset request.\", \"recipient\": \"\", \"requires_action\": false, \"sensitive\": true, \"significant_change\": true, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 281,
+        "prompt_tokens": 2601,
+        "total_tokens": 2882
+      }
+    }
+  ],
+  "scenario_id": "security-attention",
+  "schema": "wajo-g1-continuation-result-v1",
+  "scripted_feedback": {
+    "actor": "synthetic_evaluation_user",
+    "enabled": true,
+    "family": "attention",
+    "important": true,
+    "scope": "similar",
+    "subtype": "",
+    "text": "Show similar account_security mail in Needs attention: True.",
+    "topic": ""
+  },
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "A password reset was requested for your account at 09:00.",
+    "archive_reason": "Account security notification requires user review.",
+    "archive_recommendation": "keep",
+    "attention_cue": "account_security",
+    "attention_evidence": "A password reset was requested for your account at 09:00.",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Account Security Notice",
+    "label_kind": "account_notice",
+    "needs_human": false,
+    "notify": false,
+    "pattern": "unknown",
+    "pattern_evidence": "A password reset was requested for your account at 09:00.",
+    "reason": "The email is a standard account security notification regarding a password reset request.",
+    "recipient": "",
+    "requires_action": false,
+    "sensitive": true,
+    "significant_change": true,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:32:20.901004+00:00"
+}

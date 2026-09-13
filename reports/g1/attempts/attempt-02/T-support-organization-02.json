@@ -1,0 +1,252 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "archive",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "silent",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 22,
+      "important": false,
+      "kind": "support_receipt",
+      "rule_id": 2,
+      "source": "Your preference",
+      "subtype": "Incoming",
+      "topic": "Support"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "assessment": {},
+  "attempt_number": 2,
+  "before": null,
+  "email": {
+    "body": "We logged your support request about exports. Please await a response.",
+    "sender": "training2@synthetic.example",
+    "subject": "Support Organization"
+  },
+  "expected": {
+    "attention_cue": "none",
+    "followup_control_ids": [
+      "C-support-organization-01",
+      "C-support-organization-02",
+      "C-support-organization-03",
+      "C-support-organization-04",
+      "C-support-organization-05"
+    ],
+    "label_kind": "support_receipt"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6723, Requested 2598. Please try again in 19.894285714s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:26:02 GMT",
+        "retry-after": "20",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "978",
+        "x-ratelimit-remaining-tokens": "1034",
+        "x-ratelimit-reset-requests": "31m40.8s",
+        "x-ratelimit-reset-tokens": "57.625s",
+        "x-request-id": "req_01m2e09syjett865r0cy91hwg0"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.149,
+      "retry_delay_seconds": 20.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:26:24 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "977",
+        "x-ratelimit-remaining-tokens": "705",
+        "x-ratelimit-reset-requests": "33m7.2s",
+        "x-ratelimit-reset-tokens": "59.751s",
+        "x-request-id": "req_01m2e0adm0egd8f0c031td32vd"
+      },
+      "http_status": 200,
+      "latency_seconds": 1.878,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "T-support-organization-02",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 82,
+  "phase": "training",
+  "preference_after": {
+    "archive_skills": [],
+    "attention_rules": [],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      }
+    ]
+  },
+  "preference_before": {
+    "archive_skills": [],
+    "attention_rules": [],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "7fc566da9ae7b854587225fb9df12f20ae066b3cf3b035984f0b2b469a13a70c",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6723, Requested 2598. Please try again in 19.894285714s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:26:02 GMT",
+            "retry-after": "20",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "978",
+            "x-ratelimit-remaining-tokens": "1034",
+            "x-ratelimit-reset-requests": "31m40.8s",
+            "x-ratelimit-reset-tokens": "57.625s",
+            "x-request-id": "req_01m2e09syjett865r0cy91hwg0"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.149,
+          "retry_delay_seconds": 20.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:26:24 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "977",
+            "x-ratelimit-remaining-tokens": "705",
+            "x-ratelimit-reset-requests": "33m7.2s",
+            "x-ratelimit-reset-tokens": "59.751s",
+            "x-request-id": "req_01m2e0adm0egd8f0c031td32vd"
+          },
+          "http_status": 200,
+          "latency_seconds": 1.878,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 22.028,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"We logged your support request about exports. Please await a response.\", \"archive_reason\": \"Routine automated acknowledgement of a support request with no new substantive result or next step.\", \"archive_recommendation\": \"archive\", \"attention_cue\": \"none\", \"attention_evidence\": \"\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Support Request Logged\", \"label_kind\": \"support_receipt\", \"needs_human\": false, \"notify\": false, \"pattern\": \"acknowledgement_only\", \"pattern_evidence\": \"We logged your support request about exports. Please await a response.\", \"reason\": \"The email is an automated acknowledgement that a support request has been logged, with no new information or required action.\", \"recipient\": \"\", \"requires_action\": false, \"sensitive\": false, \"significant_change\": false, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 278,
+        "prompt_tokens": 2598,
+        "total_tokens": 2876
+      }
+    }
+  ],
+  "scenario_id": "support-organization",
+  "schema": "wajo-g1-continuation-result-v1",
+  "scripted_feedback": {
+    "actor": "synthetic_evaluation_user",
+    "enabled": false,
+    "family": "organization",
+    "important": false,
+    "scope": "similar",
+    "subtype": "Incoming",
+    "text": "Save similar mail under Support / Incoming; important=False.",
+    "topic": "Support"
+  },
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "We logged your support request about exports. Please await a response.",
+    "archive_reason": "Routine automated acknowledgement of a support request with no new substantive result or next step.",
+    "archive_recommendation": "archive",
+    "attention_cue": "none",
+    "attention_evidence": "",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Support Request Logged",
+    "label_kind": "support_receipt",
+    "needs_human": false,
+    "notify": false,
+    "pattern": "acknowledgement_only",
+    "pattern_evidence": "We logged your support request about exports. Please await a response.",
+    "reason": "The email is an automated acknowledgement that a support request has been logged, with no new information or required action.",
+    "recipient": "",
+    "requires_action": false,
+    "sensitive": false,
+    "significant_change": false,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:26:02.193581+00:00"
+}

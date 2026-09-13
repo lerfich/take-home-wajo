@@ -1,0 +1,270 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "archive",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "silent",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 44,
+      "important": false,
+      "kind": "newsletter",
+      "rule_id": 3,
+      "source": "Your preference",
+      "subtype": "Weekly",
+      "topic": "Reading"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "assessment": {
+    "after": false,
+    "before": false,
+    "memory_applied": false,
+    "memory_should_apply": false,
+    "transfer_correct": true
+  },
+  "attempt_number": 2,
+  "before": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "archive",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "silent",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 1,
+      "important": false,
+      "kind": "newsletter",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Newsletter",
+      "topic": "Reading"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "email": {
+    "body": "The product newsletter mentions password reset trends only.",
+    "sender": "control5@synthetic.example",
+    "subject": "Security Attention"
+  },
+  "expected": {
+    "memory_should_apply": false,
+    "preference_family": "attention",
+    "relation": "contrast",
+    "source_training_ids": [
+      "T-security-attention-01",
+      "T-security-attention-02",
+      "T-security-attention-03"
+    ],
+    "target_kind_or_cue": "account_security"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6763, Requested 2594. Please try again in 20.202857142s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:34:11 GMT",
+        "retry-after": "21",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "956",
+        "x-ratelimit-remaining-tokens": "990",
+        "x-ratelimit-reset-requests": "1h3m21.6s",
+        "x-ratelimit-reset-tokens": "57.968s",
+        "x-request-id": "req_01m2e0rqzae0ja5sw2sgnt6rtk"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.185,
+      "retry_delay_seconds": 21.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:34:34 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "955",
+        "x-ratelimit-remaining-tokens": "829",
+        "x-ratelimit-reset-requests": "1h4m48s",
+        "x-ratelimit-reset-tokens": "59.031s",
+        "x-request-id": "req_01m2e0scn2eg989c543m0xk1fv"
+      },
+      "http_status": 200,
+      "latency_seconds": 1.668,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "C-security-attention-05",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 104,
+  "phase": "control",
+  "preference_state": {
+    "archive_skills": [],
+    "attention_rules": [
+      {
+        "account": "local_simulation",
+        "cue": "account_security",
+        "enabled": 1,
+        "kind": "account_notice",
+        "scope": "*"
+      }
+    ],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "newsletter",
+        "scope": "*",
+        "subtype": "Weekly",
+        "topic": "Reading"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "9a6b5ef1d92cc9bc9d5e25b227406c9d1f2a252759aac641a35c1357667e86d7",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6763, Requested 2594. Please try again in 20.202857142s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:34:11 GMT",
+            "retry-after": "21",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "956",
+            "x-ratelimit-remaining-tokens": "990",
+            "x-ratelimit-reset-requests": "1h3m21.6s",
+            "x-ratelimit-reset-tokens": "57.968s",
+            "x-request-id": "req_01m2e0rqzae0ja5sw2sgnt6rtk"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.185,
+          "retry_delay_seconds": 21.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:34:34 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "955",
+            "x-ratelimit-remaining-tokens": "829",
+            "x-ratelimit-reset-requests": "1h4m48s",
+            "x-ratelimit-reset-tokens": "59.031s",
+            "x-request-id": "req_01m2e0scn2eg989c543m0xk1fv"
+          },
+          "http_status": 200,
+          "latency_seconds": 1.668,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 22.858,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"The product newsletter mentions password reset trends only.\", \"archive_reason\": \"Routine informational newsletter with no personal request or action.\", \"archive_recommendation\": \"archive\", \"attention_cue\": \"none\", \"attention_evidence\": \"\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Product Newsletter\", \"label_kind\": \"newsletter\", \"needs_human\": false, \"notify\": false, \"pattern\": \"periodic_digest\", \"pattern_evidence\": \"The product newsletter mentions password reset trends only.\", \"reason\": \"The email is a brief informational newsletter update with no request, deadline, or personal action.\", \"recipient\": \"\", \"requires_action\": false, \"sensitive\": false, \"significant_change\": false, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 257,
+        "prompt_tokens": 2594,
+        "total_tokens": 2851
+      }
+    }
+  ],
+  "scenario_id": "security-attention",
+  "schema": "wajo-g1-continuation-result-v1",
+  "source_training_ids": [
+    "T-security-attention-01",
+    "T-security-attention-02",
+    "T-security-attention-03"
+  ],
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "The product newsletter mentions password reset trends only.",
+    "archive_reason": "Routine informational newsletter with no personal request or action.",
+    "archive_recommendation": "archive",
+    "attention_cue": "none",
+    "attention_evidence": "",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Product Newsletter",
+    "label_kind": "newsletter",
+    "needs_human": false,
+    "notify": false,
+    "pattern": "periodic_digest",
+    "pattern_evidence": "The product newsletter mentions password reset trends only.",
+    "reason": "The email is a brief informational newsletter update with no request, deadline, or personal action.",
+    "recipient": "",
+    "requires_action": false,
+    "sensitive": false,
+    "significant_change": false,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:34:11.656152+00:00"
+}

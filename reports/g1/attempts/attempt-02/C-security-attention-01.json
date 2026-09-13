@@ -1,0 +1,270 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": true,
+    "autonomy": "silent",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 40,
+      "important": false,
+      "kind": "account_notice",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Notice",
+      "topic": "Account"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "assessment": {
+    "after": true,
+    "before": false,
+    "memory_applied": true,
+    "memory_should_apply": true,
+    "transfer_correct": true
+  },
+  "attempt_number": 2,
+  "before": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "silent",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 1,
+      "important": false,
+      "kind": "account_notice",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Notice",
+      "topic": "Account"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "email": {
+    "body": "Your account was signed into from a new browser at 10:00.",
+    "sender": "control1@synthetic.example",
+    "subject": "Security Attention"
+  },
+  "expected": {
+    "memory_should_apply": true,
+    "preference_family": "attention",
+    "relation": "similar",
+    "source_training_ids": [
+      "T-security-attention-01",
+      "T-security-attention-02",
+      "T-security-attention-03"
+    ],
+    "target_kind_or_cue": "account_security"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6724, Requested 2602. Please try again in 19.937142857s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:32:43 GMT",
+        "retry-after": "20",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "960",
+        "x-ratelimit-remaining-tokens": "1024",
+        "x-ratelimit-reset-requests": "57m36s",
+        "x-ratelimit-reset-tokens": "57.634s",
+        "x-request-id": "req_01m2e0p1asebktv980z11eh95g"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.157,
+      "retry_delay_seconds": 20.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:33:04 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "959",
+        "x-ratelimit-remaining-tokens": "754",
+        "x-ratelimit-reset-requests": "59m2.4s",
+        "x-ratelimit-reset-tokens": "59.785s",
+        "x-request-id": "req_01m2e0pn0kedcvr3fet92bzemj"
+      },
+      "http_status": 200,
+      "latency_seconds": 1.825,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "C-security-attention-01",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 100,
+  "phase": "control",
+  "preference_state": {
+    "archive_skills": [],
+    "attention_rules": [
+      {
+        "account": "local_simulation",
+        "cue": "account_security",
+        "enabled": 1,
+        "kind": "account_notice",
+        "scope": "*"
+      }
+    ],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "newsletter",
+        "scope": "*",
+        "subtype": "Weekly",
+        "topic": "Reading"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "a519cf5bdefb48de8d5afa130fccc0c6eb6fb5650810a2b8ec3a43a3434e02c9",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6724, Requested 2602. Please try again in 19.937142857s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:32:43 GMT",
+            "retry-after": "20",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "960",
+            "x-ratelimit-remaining-tokens": "1024",
+            "x-ratelimit-reset-requests": "57m36s",
+            "x-ratelimit-reset-tokens": "57.634s",
+            "x-request-id": "req_01m2e0p1asebktv980z11eh95g"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.157,
+          "retry_delay_seconds": 20.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:33:04 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "959",
+            "x-ratelimit-remaining-tokens": "754",
+            "x-ratelimit-reset-requests": "59m2.4s",
+            "x-ratelimit-reset-tokens": "59.785s",
+            "x-request-id": "req_01m2e0pn0kedcvr3fet92bzemj"
+          },
+          "http_status": 200,
+          "latency_seconds": 1.825,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 21.986,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"Your account was signed into from a new browser at 10:00.\", \"archive_reason\": \"Account security notification requires user review.\", \"archive_recommendation\": \"keep\", \"attention_cue\": \"account_security\", \"attention_evidence\": \"Your account was signed into from a new browser at 10:00.\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Account Security Notice\", \"label_kind\": \"account_notice\", \"needs_human\": false, \"notify\": false, \"pattern\": \"unknown\", \"pattern_evidence\": \"Your account was signed into from a new browser at 10:00.\", \"reason\": \"The email is a standard account security notification regarding a new sign-in.\", \"recipient\": \"\", \"requires_action\": false, \"sensitive\": true, \"significant_change\": true, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 284,
+        "prompt_tokens": 2602,
+        "total_tokens": 2886
+      }
+    }
+  ],
+  "scenario_id": "security-attention",
+  "schema": "wajo-g1-continuation-result-v1",
+  "source_training_ids": [
+    "T-security-attention-01",
+    "T-security-attention-02",
+    "T-security-attention-03"
+  ],
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "Your account was signed into from a new browser at 10:00.",
+    "archive_reason": "Account security notification requires user review.",
+    "archive_recommendation": "keep",
+    "attention_cue": "account_security",
+    "attention_evidence": "Your account was signed into from a new browser at 10:00.",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Account Security Notice",
+    "label_kind": "account_notice",
+    "needs_human": false,
+    "notify": false,
+    "pattern": "unknown",
+    "pattern_evidence": "Your account was signed into from a new browser at 10:00.",
+    "reason": "The email is a standard account security notification regarding a new sign-in.",
+    "recipient": "",
+    "requires_action": false,
+    "sensitive": true,
+    "significant_change": true,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:32:42.962963+00:00"
+}

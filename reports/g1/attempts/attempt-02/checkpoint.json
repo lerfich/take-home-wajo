@@ -1,0 +1,8 @@
+{
+  "attempt_number": 2,
+  "last_id": "C-schedule-attention-04",
+  "model": "qwen/qwen3.8-27b",
+  "results_saved": 51,
+  "schema": "wajo-g1-continuation-checkpoint-v1",
+  "timestamp_utc": "2026-09-13T18:37:11.271332+00:00"
+}

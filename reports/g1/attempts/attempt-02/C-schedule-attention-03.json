@@ -1,0 +1,277 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "notify",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 50,
+      "important": false,
+      "kind": "travel_confirmation",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Booking",
+      "topic": "Travel"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "assessment": {
+    "after": false,
+    "before": false,
+    "memory_applied": false,
+    "memory_should_apply": false,
+    "transfer_correct": true
+  },
+  "attempt_number": 2,
+  "before": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "notify",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 1,
+      "important": false,
+      "kind": "travel_confirmation",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Booking",
+      "topic": "Travel"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "email": {
+    "body": "Your booked flight moved to September 26, 2026 at 12:00.",
+    "sender": "control3@synthetic.example",
+    "subject": "Schedule Attention"
+  },
+  "expected": {
+    "memory_should_apply": false,
+    "preference_family": "attention",
+    "relation": "contrast",
+    "source_training_ids": [
+      "T-schedule-attention-01",
+      "T-schedule-attention-02",
+      "T-schedule-attention-03"
+    ],
+    "target_kind_or_cue": "schedule_change"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6748, Requested 2608. Please try again in 20.194285714s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:36:26 GMT",
+        "retry-after": "21",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "950",
+        "x-ratelimit-remaining-tokens": "861",
+        "x-ratelimit-reset-requests": "1h12m0s",
+        "x-ratelimit-reset-tokens": "57.84s",
+        "x-request-id": "req_01m2e0wtzzex2v47cmhmbxdbag"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.143,
+      "retry_delay_seconds": 21.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:36:48 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "949",
+        "x-ratelimit-remaining-tokens": "664",
+        "x-ratelimit-reset-requests": "1h13m26.4s",
+        "x-ratelimit-reset-tokens": "59.04s",
+        "x-request-id": "req_01m2e0xfmzewwv8safsmmy3pmg"
+      },
+      "http_status": 200,
+      "latency_seconds": 1.196,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "C-schedule-attention-03",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 110,
+  "phase": "control",
+  "preference_state": {
+    "archive_skills": [],
+    "attention_rules": [
+      {
+        "account": "local_simulation",
+        "cue": "account_security",
+        "enabled": 1,
+        "kind": "account_notice",
+        "scope": "*"
+      },
+      {
+        "account": "local_simulation",
+        "cue": "schedule_change",
+        "enabled": 1,
+        "kind": "meeting_change",
+        "scope": "*"
+      }
+    ],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "newsletter",
+        "scope": "*",
+        "subtype": "Weekly",
+        "topic": "Reading"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "67e4c020eec2ae8a6b39c461a9828b6b2afbdab9cad4ff1175daf8d0b661d67a",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6748, Requested 2608. Please try again in 20.194285714s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:36:26 GMT",
+            "retry-after": "21",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "950",
+            "x-ratelimit-remaining-tokens": "861",
+            "x-ratelimit-reset-requests": "1h12m0s",
+            "x-ratelimit-reset-tokens": "57.84s",
+            "x-request-id": "req_01m2e0wtzzex2v47cmhmbxdbag"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.143,
+          "retry_delay_seconds": 21.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:36:48 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "949",
+            "x-ratelimit-remaining-tokens": "664",
+            "x-ratelimit-reset-requests": "1h13m26.4s",
+            "x-ratelimit-reset-tokens": "59.04s",
+            "x-request-id": "req_01m2e0xfmzewwv8safsmmy3pmg"
+          },
+          "http_status": 200,
+          "latency_seconds": 1.196,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 22.345,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"Your booked flight moved to September 26, 2026 at 12:00.\", \"archive_reason\": \"The email contains a substantive change to a personal travel booking, which requires user attention and does not fit the safe routine archive patterns.\", \"archive_recommendation\": \"keep\", \"attention_cue\": \"personal_commitment\", \"attention_evidence\": \"Your booked flight moved to September 26, 2026 at 12:00.\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Flight Schedule Change\", \"label_kind\": \"travel_confirmation\", \"needs_human\": false, \"notify\": true, \"pattern\": \"unknown\", \"pattern_evidence\": \"Your booked flight moved to September 26, 2026 at 12:00.\", \"reason\": \"The email notifies of a change to a booked flight, which is a personal commitment requiring user awareness.\", \"recipient\": \"\", \"requires_action\": false, \"sensitive\": false, \"significant_change\": true, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 328,
+        "prompt_tokens": 2608,
+        "total_tokens": 2936
+      }
+    }
+  ],
+  "scenario_id": "schedule-attention",
+  "schema": "wajo-g1-continuation-result-v1",
+  "source_training_ids": [
+    "T-schedule-attention-01",
+    "T-schedule-attention-02",
+    "T-schedule-attention-03"
+  ],
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "Your booked flight moved to September 26, 2026 at 12:00.",
+    "archive_reason": "The email contains a substantive change to a personal travel booking, which requires user attention and does not fit the safe routine archive patterns.",
+    "archive_recommendation": "keep",
+    "attention_cue": "personal_commitment",
+    "attention_evidence": "Your booked flight moved to September 26, 2026 at 12:00.",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Flight Schedule Change",
+    "label_kind": "travel_confirmation",
+    "needs_human": false,
+    "notify": true,
+    "pattern": "unknown",
+    "pattern_evidence": "Your booked flight moved to September 26, 2026 at 12:00.",
+    "reason": "The email notifies of a change to a booked flight, which is a personal commitment requiring user awareness.",
+    "recipient": "",
+    "requires_action": false,
+    "sensitive": false,
+    "significant_change": true,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:36:25.867070+00:00"
+}

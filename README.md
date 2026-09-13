@@ -71,7 +71,7 @@ The adapter uses HTTPS and strict JSON Schema, validates output again locally, r
 
 The smoke command runs seven synthetic development cases, saving expectations, actual decisions, token counts and timings. It is not a held-out evaluation and does not measure adaptation. The committed run in `reports/` includes failures rather than concealing them. Official API documentation: [Groq structured outputs](https://console.groq.com/docs/structured-outputs).
 
-The current instruction is in `mail_agent/prompts/email-analysis-prompt-v9.txt`. It requests English explanations, labels and reply text while preserving verbatim evidence, and supplies the finite semantic fields used by the current preference layers. The model is a fallible classifier; code still enforces action permissions separately. This is a filename/version-label rename of the earlier `triage-v9` text; its SHA-256 content hash is unchanged. Historical measurements retain their original prompt identifier. G1 freezes the current label and file hashes, but no final model result has been measured yet.
+The current instruction is in `mail_agent/prompts/email-analysis-prompt-v9.txt`. It requests English explanations, labels and reply text while preserving verbatim evidence, and supplies the finite semantic fields used by the current preference layers. The model is a fallible classifier; code still enforces action permissions separately. This is a filename/version-label rename of the earlier `triage-v9` text; its SHA-256 content hash is unchanged. Historical measurements retain their original prompt identifier. G1 freezes the current label and file hashes; its completed measured results are in `reports/g1/REPORT.md`.
 
 `--extended` adds eight synthetic contrast cases (15 total). The smoke check verifies action, autonomy and execution status, exits nonzero for errors/mismatches, and stops if a provider call still fails after bounded retries. Calls are spaced 20 seconds apart by default. After an interruption, use `--start INDEX` with a new output filename to run remaining cases; it is a zero-based index and does not rerun skipped cases. Keep the partial report. No billing upgrade or fallback occurs. Thresholds and prompts must be frozen before a future held-out evaluation; these are development checks.
 
@@ -175,7 +175,7 @@ Put the new account key in the ignored local file `task/.env` as `GROQ_API_KEY=.
 
 The report separates model classification, server-policy outcomes and the effect of saved preferences. Its figures do not measure Gmail delivery, UI behavior or verified Gmail-only Archive/Event Skill qualification; those have separate functional evidence in `VERIFICATION.md`.
 
-The concise architecture and policy rationale is in [DESIGN.md](DESIGN.md). Synthetic illustrative flows for the four levels, exact reply approval, safe injection handling and preference transfer are in [examples/transcripts.md](examples/transcripts.md). Their G1 links and measured wording remain pending until the frozen run completes.
+The concise architecture and policy rationale is in [DESIGN.md](DESIGN.md). Synthetic flows for the four levels, exact reply approval, safe injection handling and preference transfer are in [examples/transcripts.md](examples/transcripts.md); they link to saved G1 records and mark any continuation outside the harness as illustrative.
 
 ## Archive preference learning
 

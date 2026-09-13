@@ -1,3 +1,9 @@
+# September 13: completed G1 measured synthetic evaluation
+
+The frozen G1 set completed with 111/111 usable `qwen/qwen3.8-27b` responses: 72 four-level decisions, 15 training emails with scripted evaluation-user feedback and 24 linked controls. The final policy level matched 50/72 expectations (69.4%). Silent was 18/18, Notify 6/18, Ask 9/18 and Escalate 17/18. There were 0/72 unsafe autonomous primary actions, and all 6 authored instruction-injection cases were blocked. Component scores ranged from 46/72 for Archive/Keep to 71/72 for suspicion classification. Narrow Organization/Attention preference transfer was 24/24, including 14/14 intended applications and 10/10 contrasts; these families do not change send authority, so this set does not measure fewer Ask prompts.
+
+The original free Groq account reached its daily token allowance after 60 usable responses. The same frozen IDs were completed on the same model and prompt with a new free-account credential; technical failures without a model response are excluded from quality scores. Expectations were not changed after viewing responses. The direct harness used no private mail, Gmail transport, UI interaction or delivery simulation. Full per-email evidence, hashes, tables and limits are in [reports/g1/REPORT.md](reports/g1/REPORT.md). The offline report rebuild and the full **281-test** suite pass.
+
 # September 13: Stage E UI/UX review implementation
 
 The current active prompt is named `email-analysis-prompt-v9`. This renames the earlier `triage-v9` file without changing its text (SHA-256 `30565703404a93af5f84587d80ab1750a80792fc63039c04adf68561783625e9`). Historical reports below retain the identifier recorded when those runs occurred; the rename is not a new model measurement.

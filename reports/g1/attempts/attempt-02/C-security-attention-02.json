@@ -1,0 +1,270 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": true,
+    "autonomy": "escalate",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 41,
+      "important": false,
+      "kind": "account_notice",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Notice",
+      "topic": "Account"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "assessment": {
+    "after": true,
+    "before": false,
+    "memory_applied": true,
+    "memory_should_apply": true,
+    "transfer_correct": true
+  },
+  "attempt_number": 2,
+  "before": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "escalate",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 1,
+      "important": false,
+      "kind": "account_notice",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Notice",
+      "topic": "Account"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "email": {
+    "body": "Your account recovery phone changed this morning.",
+    "sender": "control2@synthetic.example",
+    "subject": "Security Attention"
+  },
+  "expected": {
+    "memory_should_apply": true,
+    "preference_family": "attention",
+    "relation": "similar",
+    "source_training_ids": [
+      "T-security-attention-01",
+      "T-security-attention-02",
+      "T-security-attention-03"
+    ],
+    "target_kind_or_cue": "account_security"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6761, Requested 2593. Please try again in 20.177142857s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:33:05 GMT",
+        "retry-after": "21",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "959",
+        "x-ratelimit-remaining-tokens": "984",
+        "x-ratelimit-reset-requests": "59m2.4s",
+        "x-ratelimit-reset-tokens": "57.951s",
+        "x-request-id": "req_01m2e0ppt0et0ty2jp9q8c9n0s"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.151,
+      "retry_delay_seconds": 21.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:33:27 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "958",
+        "x-ratelimit-remaining-tokens": "804",
+        "x-ratelimit-reset-requests": "1h0m28.8s",
+        "x-ratelimit-reset-tokens": "59.022s",
+        "x-request-id": "req_01m2e0qbf5esssrt3vevfes3cg"
+      },
+      "http_status": 200,
+      "latency_seconds": 1.69,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "C-security-attention-02",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 101,
+  "phase": "control",
+  "preference_state": {
+    "archive_skills": [],
+    "attention_rules": [
+      {
+        "account": "local_simulation",
+        "cue": "account_security",
+        "enabled": 1,
+        "kind": "account_notice",
+        "scope": "*"
+      }
+    ],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "newsletter",
+        "scope": "*",
+        "subtype": "Weekly",
+        "topic": "Reading"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "3affb51b76d1f3f7a82dd0dd2441a6db7b17f92aa65e3bd11391df0b25c4013b",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6761, Requested 2593. Please try again in 20.177142857s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:33:05 GMT",
+            "retry-after": "21",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "959",
+            "x-ratelimit-remaining-tokens": "984",
+            "x-ratelimit-reset-requests": "59m2.4s",
+            "x-ratelimit-reset-tokens": "57.951s",
+            "x-request-id": "req_01m2e0ppt0et0ty2jp9q8c9n0s"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.151,
+          "retry_delay_seconds": 21.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:33:27 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "958",
+            "x-ratelimit-remaining-tokens": "804",
+            "x-ratelimit-reset-requests": "1h0m28.8s",
+            "x-ratelimit-reset-tokens": "59.022s",
+            "x-request-id": "req_01m2e0qbf5esssrt3vevfes3cg"
+          },
+          "http_status": 200,
+          "latency_seconds": 1.69,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 22.847,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"Your account recovery phone changed this morning.\", \"archive_reason\": \"Account security notice requires user review.\", \"archive_recommendation\": \"keep\", \"attention_cue\": \"account_security\", \"attention_evidence\": \"Your account recovery phone changed this morning.\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Account Security Notice\", \"label_kind\": \"account_notice\", \"needs_human\": true, \"notify\": true, \"pattern\": \"unknown\", \"pattern_evidence\": \"Your account recovery phone changed this morning.\", \"reason\": \"The email reports a change to an account recovery phone, which is a security-sensitive account notice requiring human review.\", \"recipient\": \"\", \"requires_action\": true, \"sensitive\": true, \"significant_change\": true, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 265,
+        "prompt_tokens": 2593,
+        "total_tokens": 2858
+      }
+    }
+  ],
+  "scenario_id": "security-attention",
+  "schema": "wajo-g1-continuation-result-v1",
+  "source_training_ids": [
+    "T-security-attention-01",
+    "T-security-attention-02",
+    "T-security-attention-03"
+  ],
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "Your account recovery phone changed this morning.",
+    "archive_reason": "Account security notice requires user review.",
+    "archive_recommendation": "keep",
+    "attention_cue": "account_security",
+    "attention_evidence": "Your account recovery phone changed this morning.",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Account Security Notice",
+    "label_kind": "account_notice",
+    "needs_human": true,
+    "notify": true,
+    "pattern": "unknown",
+    "pattern_evidence": "Your account recovery phone changed this morning.",
+    "reason": "The email reports a change to an account recovery phone, which is a security-sensitive account notice requiring human review.",
+    "recipient": "",
+    "requires_action": true,
+    "sensitive": true,
+    "significant_change": true,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:33:04.960553+00:00"
+}

@@ -1,0 +1,260 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "escalate",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 20,
+      "important": false,
+      "kind": "job_outcome",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Outcome",
+      "topic": "Applications"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "assessment": {
+    "after": {
+      "action_id": 20,
+      "important": false,
+      "kind": "job_outcome",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Outcome",
+      "topic": "Applications"
+    },
+    "before": {
+      "action_id": 1,
+      "important": false,
+      "kind": "job_outcome",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Outcome",
+      "topic": "Applications"
+    },
+    "memory_applied": false,
+    "memory_should_apply": false,
+    "transfer_correct": true
+  },
+  "attempt_number": 2,
+  "before": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "escalate",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 1,
+      "important": false,
+      "kind": "job_outcome",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Outcome",
+      "topic": "Applications"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "email": {
+    "body": "Your application was rejected after review.",
+    "sender": "control5@synthetic.example",
+    "subject": "Receipt Organization"
+  },
+  "expected": {
+    "memory_should_apply": false,
+    "preference_family": "organization",
+    "relation": "contrast",
+    "source_training_ids": [
+      "T-receipt-organization-01",
+      "T-receipt-organization-02",
+      "T-receipt-organization-03"
+    ],
+    "target_kind_or_cue": "job_application_receipt"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6565, Requested 2592. Please try again in 18.488571428s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:25:19 GMT",
+        "retry-after": "19",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "980",
+        "x-ratelimit-remaining-tokens": "1146",
+        "x-ratelimit-reset-requests": "28m48s",
+        "x-ratelimit-reset-tokens": "56.271s",
+        "x-request-id": "req_01m2e08ftvea4r7m1bwszvv0b9"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.151,
+      "retry_delay_seconds": 19.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:25:40 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "979",
+        "x-ratelimit-remaining-tokens": "756",
+        "x-ratelimit-reset-requests": "30m14.4s",
+        "x-ratelimit-reset-tokens": "59.314s",
+        "x-request-id": "req_01m2e092hxe0vvjqhxsz47y7mg"
+      },
+      "http_status": 200,
+      "latency_seconds": 1.925,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "C-receipt-organization-05",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 80,
+  "phase": "control",
+  "preference_state": {
+    "archive_skills": [],
+    "attention_rules": [],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "adad9be14409b4c1c360a0cb72342ed9018d6ddeac74e36af49c6e64e237c3df",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6565, Requested 2592. Please try again in 18.488571428s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:25:19 GMT",
+            "retry-after": "19",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "980",
+            "x-ratelimit-remaining-tokens": "1146",
+            "x-ratelimit-reset-requests": "28m48s",
+            "x-ratelimit-reset-tokens": "56.271s",
+            "x-request-id": "req_01m2e08ftvea4r7m1bwszvv0b9"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.151,
+          "retry_delay_seconds": 19.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:25:40 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "979",
+            "x-ratelimit-remaining-tokens": "756",
+            "x-ratelimit-reset-requests": "30m14.4s",
+            "x-ratelimit-reset-tokens": "59.314s",
+            "x-request-id": "req_01m2e092hxe0vvjqhxsz47y7mg"
+          },
+          "http_status": 200,
+          "latency_seconds": 1.925,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 21.08,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"Your application was rejected after review.\", \"archive_reason\": \"Substantive rejection outcome requires human attention and does not match a safe routine archive pattern.\", \"archive_recommendation\": \"keep\", \"attention_cue\": \"decision_required\", \"attention_evidence\": \"Your application was rejected after review.\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Application Rejected\", \"label_kind\": \"job_outcome\", \"needs_human\": true, \"notify\": false, \"pattern\": \"unknown\", \"pattern_evidence\": \"Your application was rejected after review.\", \"reason\": \"The email states a substantive application rejection, which is a significant outcome requiring human awareness but no assistant action.\", \"recipient\": \"\", \"requires_action\": false, \"sensitive\": false, \"significant_change\": true, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 273,
+        "prompt_tokens": 2592,
+        "total_tokens": 2865
+      }
+    }
+  ],
+  "scenario_id": "receipt-organization",
+  "schema": "wajo-g1-continuation-result-v1",
+  "source_training_ids": [
+    "T-receipt-organization-01",
+    "T-receipt-organization-02",
+    "T-receipt-organization-03"
+  ],
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "Your application was rejected after review.",
+    "archive_reason": "Substantive rejection outcome requires human attention and does not match a safe routine archive pattern.",
+    "archive_recommendation": "keep",
+    "attention_cue": "decision_required",
+    "attention_evidence": "Your application was rejected after review.",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Application Rejected",
+    "label_kind": "job_outcome",
+    "needs_human": true,
+    "notify": false,
+    "pattern": "unknown",
+    "pattern_evidence": "Your application was rejected after review.",
+    "reason": "The email states a substantive application rejection, which is a significant outcome requiring human awareness but no assistant action.",
+    "recipient": "",
+    "requires_action": false,
+    "sensitive": false,
+    "significant_change": true,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:25:19.065802+00:00"
+}

@@ -1,0 +1,299 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": true,
+    "autonomy": "notify",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 47,
+      "important": false,
+      "kind": "meeting_change",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Change",
+      "topic": "Meetings"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "assessment": {},
+  "attempt_number": 2,
+  "before": null,
+  "email": {
+    "body": "The staff meeting moved from Monday to Wednesday, September 23, 2026.",
+    "sender": "training3@synthetic.example",
+    "subject": "Schedule Attention"
+  },
+  "expected": {
+    "attention_cue": "schedule_change",
+    "followup_control_ids": [
+      "C-schedule-attention-01",
+      "C-schedule-attention-02",
+      "C-schedule-attention-03",
+      "C-schedule-attention-04"
+    ],
+    "label_kind": "unknown"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6679, Requested 2605. Please try again in 19.577142857s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:35:19 GMT",
+        "retry-after": "20",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "953",
+        "x-ratelimit-remaining-tokens": "1040",
+        "x-ratelimit-reset-requests": "1h7m40.8s",
+        "x-ratelimit-reset-tokens": "57.248s",
+        "x-request-id": "req_01m2e0tt2ge5htvfwe1vtm6grf"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.158,
+      "retry_delay_seconds": 20.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:35:41 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "952",
+        "x-ratelimit-remaining-tokens": "793",
+        "x-ratelimit-reset-requests": "1h9m7.2s",
+        "x-ratelimit-reset-tokens": "59.34s",
+        "x-request-id": "req_01m2e0vdtqet1rfa0t6w2g5xhm"
+      },
+      "http_status": 200,
+      "latency_seconds": 2.221,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "T-schedule-attention-03",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 107,
+  "phase": "training",
+  "preference_after": {
+    "archive_skills": [],
+    "attention_rules": [
+      {
+        "account": "local_simulation",
+        "cue": "account_security",
+        "enabled": 1,
+        "kind": "account_notice",
+        "scope": "*"
+      },
+      {
+        "account": "local_simulation",
+        "cue": "schedule_change",
+        "enabled": 1,
+        "kind": "meeting_change",
+        "scope": "*"
+      }
+    ],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "newsletter",
+        "scope": "*",
+        "subtype": "Weekly",
+        "topic": "Reading"
+      }
+    ]
+  },
+  "preference_before": {
+    "archive_skills": [],
+    "attention_rules": [
+      {
+        "account": "local_simulation",
+        "cue": "account_security",
+        "enabled": 1,
+        "kind": "account_notice",
+        "scope": "*"
+      },
+      {
+        "account": "local_simulation",
+        "cue": "schedule_change",
+        "enabled": 1,
+        "kind": "meeting_change",
+        "scope": "*"
+      }
+    ],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "newsletter",
+        "scope": "*",
+        "subtype": "Weekly",
+        "topic": "Reading"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "e712f2ebdfb99a3c51ee9f1b6a355a7d5cb97878c6600761cfb3d2e51271c6f6",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6679, Requested 2605. Please try again in 19.577142857s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:35:19 GMT",
+            "retry-after": "20",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "953",
+            "x-ratelimit-remaining-tokens": "1040",
+            "x-ratelimit-reset-requests": "1h7m40.8s",
+            "x-ratelimit-reset-tokens": "57.248s",
+            "x-request-id": "req_01m2e0tt2ge5htvfwe1vtm6grf"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.158,
+          "retry_delay_seconds": 20.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:35:41 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "952",
+            "x-ratelimit-remaining-tokens": "793",
+            "x-ratelimit-reset-requests": "1h9m7.2s",
+            "x-ratelimit-reset-tokens": "59.34s",
+            "x-request-id": "req_01m2e0vdtqet1rfa0t6w2g5xhm"
+          },
+          "http_status": 200,
+          "latency_seconds": 2.221,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 22.387,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"The staff meeting moved from Monday to Wednesday, September 23, 2026.\", \"archive_reason\": \"Routine meeting schedule change requiring notification.\", \"archive_recommendation\": \"keep\", \"attention_cue\": \"schedule_change\", \"attention_evidence\": \"The staff meeting moved from Monday to Wednesday, September 23, 2026.\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Meeting Rescheduled\", \"label_kind\": \"meeting_change\", \"needs_human\": false, \"notify\": true, \"pattern\": \"unknown\", \"pattern_evidence\": \"The staff meeting moved from Monday to Wednesday, September 23, 2026.\", \"reason\": \"The email informs of a staff meeting time change, requiring notification but no direct action.\", \"recipient\": \"\", \"requires_action\": false, \"sensitive\": false, \"significant_change\": true, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 296,
+        "prompt_tokens": 2605,
+        "total_tokens": 2901
+      }
+    }
+  ],
+  "scenario_id": "schedule-attention",
+  "schema": "wajo-g1-continuation-result-v1",
+  "scripted_feedback": {
+    "actor": "synthetic_evaluation_user",
+    "enabled": true,
+    "family": "attention",
+    "important": true,
+    "scope": "similar",
+    "subtype": "",
+    "text": "Show similar schedule_change mail in Needs attention: True.",
+    "topic": ""
+  },
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "The staff meeting moved from Monday to Wednesday, September 23, 2026.",
+    "archive_reason": "Routine meeting schedule change requiring notification.",
+    "archive_recommendation": "keep",
+    "attention_cue": "schedule_change",
+    "attention_evidence": "The staff meeting moved from Monday to Wednesday, September 23, 2026.",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Meeting Rescheduled",
+    "label_kind": "meeting_change",
+    "needs_human": false,
+    "notify": true,
+    "pattern": "unknown",
+    "pattern_evidence": "The staff meeting moved from Monday to Wednesday, September 23, 2026.",
+    "reason": "The email informs of a staff meeting time change, requiring notification but no direct action.",
+    "recipient": "",
+    "requires_action": false,
+    "sensitive": false,
+    "significant_change": true,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:35:19.372959+00:00"
+}

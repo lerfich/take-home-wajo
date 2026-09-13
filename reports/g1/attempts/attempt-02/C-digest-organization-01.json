@@ -1,0 +1,278 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "archive",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "silent",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 32,
+      "important": false,
+      "kind": "newsletter",
+      "rule_id": 3,
+      "source": "Your preference",
+      "subtype": "Weekly",
+      "topic": "Reading"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "assessment": {
+    "after": {
+      "action_id": 32,
+      "important": false,
+      "kind": "newsletter",
+      "rule_id": 3,
+      "source": "Your preference",
+      "subtype": "Weekly",
+      "topic": "Reading"
+    },
+    "before": {
+      "action_id": 1,
+      "important": false,
+      "kind": "newsletter",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Newsletter",
+      "topic": "Reading"
+    },
+    "memory_applied": true,
+    "memory_should_apply": true,
+    "transfer_correct": true
+  },
+  "attempt_number": 2,
+  "before": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "archive",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "silent",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 1,
+      "important": false,
+      "kind": "newsletter",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Newsletter",
+      "topic": "Reading"
+    },
+    "safety": "allowed",
+    "status": "executed",
+    "stored_action": "none"
+  },
+  "email": {
+    "body": "This weekly product digest summarizes release notes; no action requested.",
+    "sender": "control1@synthetic.example",
+    "subject": "Digest Organization"
+  },
+  "expected": {
+    "memory_should_apply": true,
+    "preference_family": "organization",
+    "relation": "similar",
+    "source_training_ids": [
+      "T-digest-organization-01",
+      "T-digest-organization-02",
+      "T-digest-organization-03"
+    ],
+    "target_kind_or_cue": "newsletter"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6599, Requested 2597. Please try again in 18.822857142s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:29:46 GMT",
+        "retry-after": "19",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "968",
+        "x-ratelimit-remaining-tokens": "1179",
+        "x-ratelimit-reset-requests": "46m4.8s",
+        "x-ratelimit-reset-tokens": "56.562s",
+        "x-request-id": "req_01m2e0gmdxe3b89nj89khdt8x2"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.171,
+      "retry_delay_seconds": 19.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:30:07 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "967",
+        "x-ratelimit-remaining-tokens": "779",
+        "x-ratelimit-reset-requests": "47m31.2s",
+        "x-ratelimit-reset-tokens": "59.64s",
+        "x-request-id": "req_01m2e0h75eeb6bxw6ts5ncqh8t"
+      },
+      "http_status": 200,
+      "latency_seconds": 2.017,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "C-digest-organization-01",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 92,
+  "phase": "control",
+  "preference_state": {
+    "archive_skills": [],
+    "attention_rules": [],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "newsletter",
+        "scope": "*",
+        "subtype": "Weekly",
+        "topic": "Reading"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "4b1793b0f0b7305564e69a23c283727df9b416a6b856ff898a26c72a3b9cee2d",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6599, Requested 2597. Please try again in 18.822857142s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:29:46 GMT",
+            "retry-after": "19",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "968",
+            "x-ratelimit-remaining-tokens": "1179",
+            "x-ratelimit-reset-requests": "46m4.8s",
+            "x-ratelimit-reset-tokens": "56.562s",
+            "x-request-id": "req_01m2e0gmdxe3b89nj89khdt8x2"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.171,
+          "retry_delay_seconds": 19.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:30:07 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "967",
+            "x-ratelimit-remaining-tokens": "779",
+            "x-ratelimit-reset-requests": "47m31.2s",
+            "x-ratelimit-reset-tokens": "59.64s",
+            "x-request-id": "req_01m2e0h75eeb6bxw6ts5ncqh8t"
+          },
+          "http_status": 200,
+          "latency_seconds": 2.017,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 21.189,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"This weekly product digest summarizes release notes; no action requested.\", \"archive_reason\": \"Routine recurring informational digest with no personal task.\", \"archive_recommendation\": \"archive\", \"attention_cue\": \"none\", \"attention_evidence\": \"\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Product Digest\", \"label_kind\": \"newsletter\", \"needs_human\": false, \"notify\": false, \"pattern\": \"periodic_digest\", \"pattern_evidence\": \"This weekly product digest summarizes release notes; no action requested.\", \"reason\": \"The email is a routine weekly product digest with no requested action.\", \"recipient\": \"\", \"requires_action\": false, \"sensitive\": false, \"significant_change\": false, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 257,
+        "prompt_tokens": 2597,
+        "total_tokens": 2854
+      }
+    }
+  ],
+  "scenario_id": "digest-organization",
+  "schema": "wajo-g1-continuation-result-v1",
+  "source_training_ids": [
+    "T-digest-organization-01",
+    "T-digest-organization-02",
+    "T-digest-organization-03"
+  ],
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "This weekly product digest summarizes release notes; no action requested.",
+    "archive_reason": "Routine recurring informational digest with no personal task.",
+    "archive_recommendation": "archive",
+    "attention_cue": "none",
+    "attention_evidence": "",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Product Digest",
+    "label_kind": "newsletter",
+    "needs_human": false,
+    "notify": false,
+    "pattern": "periodic_digest",
+    "pattern_evidence": "This weekly product digest summarizes release notes; no action requested.",
+    "reason": "The email is a routine weekly product digest with no requested action.",
+    "recipient": "",
+    "requires_action": false,
+    "sensitive": false,
+    "significant_change": false,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:29:45.894565+00:00"
+}

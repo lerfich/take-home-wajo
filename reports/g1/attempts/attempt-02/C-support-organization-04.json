@@ -1,0 +1,269 @@
+{
+  "after": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "escalate",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 27,
+      "important": false,
+      "kind": "support_response",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Response",
+      "topic": "Support"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "assessment": {
+    "after": {
+      "action_id": 27,
+      "important": false,
+      "kind": "support_response",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Response",
+      "topic": "Support"
+    },
+    "before": {
+      "action_id": 1,
+      "important": false,
+      "kind": "support_response",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Response",
+      "topic": "Support"
+    },
+    "memory_applied": false,
+    "memory_should_apply": false,
+    "transfer_correct": true
+  },
+  "attempt_number": 2,
+  "before": {
+    "archive": {
+      "automatic": 0,
+      "chosen": "",
+      "recommendation": "keep",
+      "skill_id": null,
+      "status": "awaiting_confirmation"
+    },
+    "attention_visible": false,
+    "autonomy": "escalate",
+    "event": null,
+    "gmail_operations": 0,
+    "organization": {
+      "action_id": 1,
+      "important": false,
+      "kind": "support_response",
+      "rule_id": null,
+      "source": "Agent suggestion",
+      "subtype": "Response",
+      "topic": "Support"
+    },
+    "safety": "review_required",
+    "status": "escalated",
+    "stored_action": "none"
+  },
+  "email": {
+    "body": "Support resolved your login issue; please confirm the fix.",
+    "sender": "control4@synthetic.example",
+    "subject": "Support Organization"
+  },
+  "expected": {
+    "memory_should_apply": false,
+    "preference_family": "organization",
+    "relation": "contrast",
+    "source_training_ids": [
+      "T-support-organization-01",
+      "T-support-organization-02",
+      "T-support-organization-03"
+    ],
+    "target_kind_or_cue": "support_receipt"
+  },
+  "http_attempts": [
+    {
+      "attempt": 1,
+      "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6773, Requested 2596. Please try again in 20.305714285s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+      "body_truncated": false,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:27:53 GMT",
+        "retry-after": "21",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "973",
+        "x-ratelimit-remaining-tokens": "979",
+        "x-ratelimit-reset-requests": "38m52.8s",
+        "x-ratelimit-reset-tokens": "58.054s",
+        "x-request-id": "req_01m2e0d68hej2rfs3my3yqznaa"
+      },
+      "http_status": 429,
+      "latency_seconds": 0.154,
+      "retry_delay_seconds": 21.0,
+      "route": "chat/completions",
+      "status": "error"
+    },
+    {
+      "attempt": 2,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Sun, 13 Sep 2026 18:28:20 GMT",
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-requests": "972",
+        "x-ratelimit-remaining-tokens": "770",
+        "x-ratelimit-reset-requests": "40m19.2s",
+        "x-ratelimit-reset-tokens": "59.091s",
+        "x-request-id": "req_01m2e0dtzme0d82r43h1xze23b"
+      },
+      "http_status": 200,
+      "latency_seconds": 6.45,
+      "route": "chat/completions",
+      "status": "ok"
+    }
+  ],
+  "id": "C-support-organization-04",
+  "manifest_sha256": "558a9b81259ebd72c29a957f07cd6977b6cc5a76d93fdad53f450e97b944f5de",
+  "model": "qwen/qwen3.8-27b",
+  "order": 87,
+  "phase": "control",
+  "preference_state": {
+    "archive_skills": [],
+    "attention_rules": [],
+    "organization_rules": [
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 1,
+        "kind": "job_application_receipt",
+        "scope": "*",
+        "subtype": "Receipt",
+        "topic": "Applications"
+      },
+      {
+        "account": "local_simulation",
+        "active": 1,
+        "important": 0,
+        "kind": "support_receipt",
+        "scope": "*",
+        "subtype": "Incoming",
+        "topic": "Support"
+      }
+    ]
+  },
+  "prior_attempt": {
+    "sha256": "39d38fe0928bdc9efafbc763bb38fbc304d0e6d59027561aed984d5685ba3110",
+    "status": "error"
+  },
+  "prompt_version": "email-analysis-prompt-v9",
+  "provider_calls": [
+    {
+      "http_attempts": [
+        {
+          "attempt": 1,
+          "body": "{\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m2dzg6stenj8d12cqhry0wn1` service tier `on_demand` on input tokens per minute (ITPM): Limit 7000, Used 6773, Requested 2596. Please try again in 20.305714285s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\n",
+          "body_truncated": false,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:27:53 GMT",
+            "retry-after": "21",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "973",
+            "x-ratelimit-remaining-tokens": "979",
+            "x-ratelimit-reset-requests": "38m52.8s",
+            "x-ratelimit-reset-tokens": "58.054s",
+            "x-request-id": "req_01m2e0d68hej2rfs3my3yqznaa"
+          },
+          "http_status": 429,
+          "latency_seconds": 0.154,
+          "retry_delay_seconds": 21.0,
+          "route": "chat/completions",
+          "status": "error"
+        },
+        {
+          "attempt": 2,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sun, 13 Sep 2026 18:28:20 GMT",
+            "x-ratelimit-limit-requests": "1000",
+            "x-ratelimit-limit-tokens": "8000",
+            "x-ratelimit-remaining-requests": "972",
+            "x-ratelimit-remaining-tokens": "770",
+            "x-ratelimit-reset-requests": "40m19.2s",
+            "x-ratelimit-reset-tokens": "59.091s",
+            "x-request-id": "req_01m2e0dtzme0d82r43h1xze23b"
+          },
+          "http_status": 200,
+          "latency_seconds": 6.45,
+          "route": "chat/completions",
+          "status": "ok"
+        }
+      ],
+      "latency_seconds": 27.61,
+      "model": "qwen/qwen3.8-27b",
+      "prompt_version": "email-analysis-prompt-v9",
+      "raw_structured_response": "{\"action\": \"none\", \"archive_evidence\": \"Support resolved your login issue; please confirm the fix.\", \"archive_reason\": \"Substantive support response requiring confirmation, not a routine auto-acknowledgement.\", \"archive_recommendation\": \"keep\", \"attention_cue\": \"account_security\", \"attention_evidence\": \"Support resolved your login issue; please confirm the fix.\", \"event_all_day\": false, \"event_ambiguity_reason\": \"\", \"event_change\": \"none\", \"event_confidence\": \"none\", \"event_end\": \"\", \"event_evidence\": \"\", \"event_kind\": \"none\", \"event_original_text\": \"\", \"event_semantic_kind\": \"\", \"event_start\": \"\", \"event_timezone\": \"\", \"event_title\": \"\", \"has_deadline\": false, \"independent_label\": true, \"label\": \"AI: Support Resolution\", \"label_kind\": \"support_response\", \"needs_human\": true, \"notify\": false, \"pattern\": \"unknown\", \"pattern_evidence\": \"Support resolved your login issue; please confirm the fix.\", \"reason\": \"The email reports a resolved login issue and asks for confirmation, which is a substantive support response requiring human verification.\", \"recipient\": \"\", \"requires_action\": true, \"sensitive\": true, \"significant_change\": true, \"suspicious\": false, \"text\": \"\"}",
+      "response_model": "qwen/qwen3.8-27b",
+      "status": "ok",
+      "usage": {
+        "completion_tokens": 283,
+        "prompt_tokens": 2596,
+        "total_tokens": 2879
+      }
+    }
+  ],
+  "scenario_id": "support-organization",
+  "schema": "wajo-g1-continuation-result-v1",
+  "source_training_ids": [
+    "T-support-organization-01",
+    "T-support-organization-02",
+    "T-support-organization-03"
+  ],
+  "status": "ok",
+  "structured_response": {
+    "action": "none",
+    "archive_evidence": "Support resolved your login issue; please confirm the fix.",
+    "archive_reason": "Substantive support response requiring confirmation, not a routine auto-acknowledgement.",
+    "archive_recommendation": "keep",
+    "attention_cue": "account_security",
+    "attention_evidence": "Support resolved your login issue; please confirm the fix.",
+    "event_all_day": false,
+    "event_ambiguity_reason": "",
+    "event_change": "none",
+    "event_confidence": "none",
+    "event_end": "",
+    "event_evidence": "",
+    "event_kind": "none",
+    "event_original_text": "",
+    "event_semantic_kind": "",
+    "event_start": "",
+    "event_timezone": "",
+    "event_title": "",
+    "has_deadline": false,
+    "independent_label": true,
+    "label": "AI: Support Resolution",
+    "label_kind": "support_response",
+    "needs_human": true,
+    "notify": false,
+    "pattern": "unknown",
+    "pattern_evidence": "Support resolved your login issue; please confirm the fix.",
+    "reason": "The email reports a resolved login issue and asks for confirmation, which is a substantive support response requiring human verification.",
+    "recipient": "",
+    "requires_action": true,
+    "sensitive": true,
+    "significant_change": true,
+    "suspicious": false,
+    "text": ""
+  },
+  "timestamp_utc": "2026-09-13T18:27:53.102639+00:00"
+}
