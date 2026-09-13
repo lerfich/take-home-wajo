@@ -76,6 +76,14 @@ Scripted evaluation-user feedback was saved for 15/15 training emails. The same 
 
 These controls test narrowly scoped Organization and Attention preferences. Those preference families do not change send authority or the four-level autonomy decision, so this run does not measure a reduction in Ask prompts.
 
+### Expected improvement with continued feedback
+
+As the user confirms, rejects and corrects proposals, Wajo can accumulate narrowly scoped Skills for recurring situations. We expect this to increase the share of correct final outcomes on genuinely similar, eligible future emails and to reduce repeated review for the specific actions that a Skill is allowed to perform. Negative feedback can narrow, reset or revoke a learned preference.
+
+This is a product hypothesis supported here only by 24/24 Organization/Attention transfer controls; it is not a measured forecast for overall accuracy. Feedback changes Wajo's stored policy state, not Qwen's weights, and it does not fix the model's interpretation of novel situations. Confirming a proposal also never expands payment, deletion or ordinary send authority.
+
+The current error profile suggests three separate model improvements: bias Archive toward Keep when uncertainty or significance exists, clarify the Notify/Ask boundary and strengthen event/deadline extraction. Any prompt or policy change must receive a new version and be measured on a fresh frozen set rather than rescoring these observed cases.
+
 ## Reproducibility
 
 | Frozen item | Value |
