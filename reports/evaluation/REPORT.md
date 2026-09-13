@@ -106,4 +106,4 @@ All completed model responses counted by this report use the same primary model.
 
 All emails are synthetic. Scripted feedback is from an evaluation user, not Nikita. Qwen weights did not change; preferences are stored in Wajo state.
 This direct adapter/policy test has no Gmail binding, transport delivery, UI, external sends or private inbox. Archive and Event Skill qualification that requires verified Gmail messages is outside this run.
-Before/after controls reuse one actual model response and isolate preference memory. Prior functional checks in `task/VERIFICATION.md` are not included in these denominators.
+Before/after controls reuse one actual model response and isolate preference memory. Prior functional checks in [VERIFICATION.md](../../VERIFICATION.md) are not included in these denominators.

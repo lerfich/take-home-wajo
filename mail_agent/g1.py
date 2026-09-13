@@ -298,7 +298,7 @@ def report():
     lines += ["", "## Limits", "", "All emails are synthetic. Scripted feedback is from an evaluation user, not Nikita. Qwen weights did not change; preferences are stored in Wajo state.",
               "This direct adapter/policy test has no Gmail binding, transport delivery, UI, external sends or private inbox. Archive and Event Skill qualification that requires verified Gmail messages is outside this run.",
               "The before/after control comparison reuses one actual model response and isolates preference memory. Provider errors remain saved and count as missing measurements, never as successes.",
-              "Prior functional checks are described separately in task/VERIFICATION.md; they are not included in these denominators.",
+              "Prior functional checks are described separately in [VERIFICATION.md](../../VERIFICATION.md); they are not included in these denominators.",
               "", "## Artifacts", "", "- `dataset.json`: frozen authored inputs and expectations.",
               "- `manifest.json`: exact file hashes, prompt and model.",
               "- `results/*.json`: parsed structured model response, provider metadata, policy decision, per-email assessment and feedback links.",
