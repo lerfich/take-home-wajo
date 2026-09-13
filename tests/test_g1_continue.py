@@ -26,6 +26,11 @@ class FakeProvider:
 
 
 class G1ContinuationTests(unittest.TestCase):
+    def test_only_second_attempt_is_allowed(self):
+        self.assertEqual(g1_continue.attempt_dir(2).name, "attempt-02")
+        with self.assertRaisesRegex(ValueError, "second attempt"):
+            g1_continue.attempt_dir(4)
+
     def test_failed_id_gets_separate_second_attempt(self):
         cases = [
             {"id": "one", "phase": "decision", "scenario_id": "test", "order": 1,
@@ -47,6 +52,10 @@ class G1ContinuationTests(unittest.TestCase):
                 "model": "qwen/qwen3.8-27b", "prompt_version": "email-analysis-prompt-v9"}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            attempt_root = root / "attempts" / "attempt-02"
+            attempt_root.mkdir(parents=True)
+            (attempt_root / "two.json").write_text(json.dumps(
+                {"id": "two", "attempt_number": 2, "status": "error", "phase": "decision"}))
             FakeProvider.calls_made = 0
             FakeProvider.models = []
             with patch.object(g1_continue.g1, "OUT", root), \
@@ -86,7 +95,8 @@ class G1ContinuationTests(unittest.TestCase):
         expected = {"level": "silent", "suspicious": False}
         assessment = {"level_correct": True, "unsafe_autonomous": False}
         cases = [{"id": "one", "phase": "decision"},
-                 {"id": "two", "phase": "decision"}]
+                 {"id": "two", "phase": "decision"},
+                 {"id": "three", "phase": "decision"}]
         originals = {
             "one": {"id": "one", "status": "ok", "phase": "decision",
                     "expected": expected, "assessment": assessment,
@@ -96,12 +106,15 @@ class G1ContinuationTests(unittest.TestCase):
             "two": {"id": "two", "status": "error", "phase": "decision",
                     "expected": expected,
                     "provider_calls": [{"model": "qwen/qwen3.8-27b"}]},
+            "three": {"id": "three", "status": "error", "phase": "decision",
+                      "expected": expected,
+                      "provider_calls": [{"model": "qwen/qwen3.8-27b"}]},
         }
         info = {"model": "qwen/qwen3.8-27b", "prompt_version": "email-analysis-prompt-v9"}
-        failed = {"id": "two", "attempt_number": 2, "status": "error",
+        failed = {"id": "three", "attempt_number": 2, "status": "error",
                   "phase": "decision", "expected": expected,
                   "model": "discarded/configuration", "provider_calls": []}
-        continuation = {"id": "two", "attempt_number": 3, "status": "ok",
+        continuation = {"id": "two", "attempt_number": 2, "status": "ok",
                         "phase": "decision", "expected": expected,
                         "assessment": assessment, "structured_response": {"suspicious": False},
                         "model": "qwen/qwen3.8-27b",
@@ -111,16 +124,15 @@ class G1ContinuationTests(unittest.TestCase):
             root = Path(directory)
             attempt = root / "attempts" / "attempt-02"
             attempt.mkdir(parents=True)
-            (attempt / "two.json").write_text(json.dumps(failed))
-            attempt = root / "attempts" / "attempt-03"
-            attempt.mkdir(parents=True)
             (attempt / "two.json").write_text(json.dumps(continuation))
+            (attempt / "three.json").write_text(json.dumps(failed))
             with patch.object(g1_continue.g1, "OUT", root), \
                  patch.object(g1_continue.g1, "preflight", return_value=(cases, info, originals)), \
                  patch.object(g1_continue, "verify_frozen_files"):
                 counts = g1_continue.report()
             report = (root / "REPORT.md").read_text()
             self.assertEqual(counts["usable"], 2)
+            self.assertEqual(counts["unresolved_errors"], 1)
             self.assertIn("### `qwen/qwen3.8-27b`", report)
             self.assertNotIn("### `discarded/configuration`", report)
             self.assertIn("same primary", report)

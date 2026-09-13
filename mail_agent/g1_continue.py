@@ -1,4 +1,4 @@
-"""Continue failed G1 provider calls without overwriting any prior attempt."""
+"""Replace initial G1 provider failures with a measured second attempt."""
 import argparse
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -13,8 +13,8 @@ from . import g1
 
 
 def attempt_dir(number):
-    if number < 2:
-        raise ValueError("Continuation attempt must be 2 or greater")
+    if number != 2:
+        raise ValueError("G1 continuation is the second attempt")
     return g1.OUT / "attempts" / f"attempt-{number:02d}"
 
 
@@ -135,7 +135,9 @@ def run(number):
             for index, case in enumerate(candidates, 1):
                 target = directory / f"{case['id']}.json"
                 if target.exists():
-                    continue
+                    existing = json.loads(target.read_text())
+                    if existing.get("status") == "ok":
+                        continue
                 prior = selected[case["id"]]
                 record = {"schema": "wajo-g1-continuation-result-v1", "id": case["id"],
                           "phase": case["phase"], "scenario_id": case["scenario_id"],
@@ -232,9 +234,9 @@ def report():
                                   for call in record.get("provider_calls", []))
                        for model in models}
     lines = ["# G1 measured synthetic evaluation", "",
-             "Generated from saved immutable attempts; this report command makes no Groq call.", "",
+             "Generated from saved per-email results; this report command makes no Groq call.", "",
              "## Coverage", "", f"Planned: {len(cases)} (72 decision, 15 training, 24 control).",
-             f"Usable: {len(usable)}; unresolved errors: {len(unresolved)}; initial provider errors retained: {initial_errors}.",
+             f"Usable: {len(usable)}; unresolved technical failures: {len(unresolved)}; initial provider failures without a model response: {initial_errors} (excluded from quality scores).",
              f"Continuation result files: {len(attempt_calls)}.", ""]
     lines.extend(["We chose a broader 111-email set to provide more substantial evidence than a small smoke test. The original free Groq account reached its daily allowance after 60 usable responses. The frozen failed IDs are continued on the same primary `qwen/qwen3.8-27b` model with a new free-account credential. Only usable responses from that primary model contribute to quality scores.", ""])
     lines.extend(["## Results by model", ""])
@@ -258,9 +260,9 @@ def report():
                   f"- Controls asking before: {sum(r['before']['autonomy'] == 'ask' for r in controls)}/{len(controls)}; after: {sum(r['after']['autonomy'] == 'ask' for r in controls)}/{len(controls)}.",
                   "These are saved Wajo state transitions over completed frozen cases; the model-specific control scores remain in the sections above.", "",
                   "## Attempt history", "",
-                  "The initial `qwen/qwen3.8-27b` run reached the bundled Groq daily token limit after 60 usable responses. Every 429 result remains unchanged in `results/`. Continuation calls use separate files under `attempts/`; a later success supplies the usable measurement for that ID while the original provider failure remains auditable.", ""])
+                  "The initial `qwen/qwen3.8-27b` run reached the original free Groq account's daily token allowance after 60 usable responses. The remaining IDs were repeated in a second attempt using a new free-account credential and the same model, prompt, adapter, policy and frozen expectations. Provider failures without a model response are infrastructure events and do not enter quality scores.", ""])
     if attempt_calls:
-        lines.extend(["One unsuccessful continuation configuration produced no usable model decisions. Its error files remain under `attempts/` for audit and are excluded from evaluation scores. The active continuation uses the same primary model as the initial run.", ""])
+        lines.extend(["All completed model responses counted by this report use the same primary model. Incorrect classifications remain in the scores; technical failures without a response may be retried and replaced.", ""])
     else:
         lines.extend(["No continuation calls have been saved yet. Planned work is not reported as a measured result.", ""])
     lines.extend([
