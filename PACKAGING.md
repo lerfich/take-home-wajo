@@ -4,7 +4,7 @@ Mailward runs locally on your computer. The reviewer flow is the same with eithe
 
 ## Local Python
 
-Install Python 3.11 or newer. From `task/`:
+Install Python 3.11 or newer. From the directory containing `run.sh` and `compose.yaml` (the submission repository root, or `task/` in the development repository):
 
 ```sh
 ./run.sh
@@ -14,7 +14,7 @@ On first launch, this creates `.venv`, installs the pinned Gmail dependencies, a
 
 ## Docker Desktop or Docker Engine
 
-Start Docker Desktop (macOS/Windows) or the Docker daemon (Linux). Docker Compose v2 is required. From `task/`:
+Start Docker Desktop (macOS/Windows) or the Docker daemon (Linux). Docker Compose v2 is required. From the directory containing `run.sh` and `compose.yaml` (the submission repository root, or `task/` in the development repository):
 
 ```sh
 docker compose up --build
