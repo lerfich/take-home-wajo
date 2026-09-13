@@ -10,7 +10,7 @@ from unittest.mock import patch
 from urllib.error import HTTPError
 
 from mail_agent.core import Email, Proposal
-from mail_agent.groq_provider import GroqProposer, ProviderError
+from mail_agent.groq_provider import DEFAULT_BUNDLED_GROQ_API_KEY, DEFAULT_MODEL, GroqProposer, ProviderError
 from mail_agent.model_settings import (
     BUNDLED_GROQ,
     USER_GROQ,
@@ -81,6 +81,15 @@ class ModelSettingsTests(unittest.TestCase):
                 create_provider(ModelSettings(), self.credentials, Path("task/.env")), "bundled"
             )
             factory.assert_called_once_with(Path("task/.env"))
+
+    def test_bundled_groq_works_without_env_and_can_be_overridden(self):
+        missing_env = Path(self.temp.name) / "missing.env"
+        with patch.dict(os.environ, {}, clear=True):
+            provider = GroqProposer.from_env(missing_env)
+            self.assertTrue(provider._key == DEFAULT_BUNDLED_GROQ_API_KEY)
+            self.assertEqual(provider.model, DEFAULT_MODEL)
+        with patch.dict(os.environ, {"GROQ_API_KEY": "gsk_override_for_test"}, clear=True):
+            self.assertEqual(GroqProposer.from_env(missing_env)._key, "gsk_override_for_test")
 
     def test_missing_user_key_fails_without_changing_mode(self):
         settings = save_model_settings(self.db, USER_OPENAI, 3)

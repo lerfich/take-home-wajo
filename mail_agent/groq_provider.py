@@ -15,6 +15,9 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 from .core import Email, Proposal, validate, PATTERNS
 
 DEFAULT_MODEL = "qwen/qwen3.8-27b"
+# Intentionally public, revocable evaluation key. Nikita authorized committing
+# this bundled free-tier key; revoke it after the reviewer no longer needs it.
+DEFAULT_BUNDLED_GROQ_API_KEY = "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"
 PROMPT_VERSION = "triage-v9"
 SYSTEM = (Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.txt").read_text()
 FIELDS = {name: {"type": "string"} for name in ("action", "reason", "label", "text", "recipient")}
@@ -118,7 +121,8 @@ class GroqProposer:
     @classmethod
     def from_env(cls, path: Path):
         values = read_settings(path)
-        return cls(values.get("GROQ_API_KEY", ""), values.get("GROQ_MODEL") or DEFAULT_MODEL)
+        return cls(values.get("GROQ_API_KEY") or DEFAULT_BUNDLED_GROQ_API_KEY,
+                   values.get("GROQ_MODEL") or DEFAULT_MODEL)
 
     def request(self, route: str, payload=None):
         if route not in {"models", "chat/completions"}:
