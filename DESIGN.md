@@ -68,4 +68,6 @@ Continued explicit confirmations, rejections and corrections are expected to imp
 
 This evaluation measures model interpretation and local policy/memory on synthetic inputs. It does not measure UI usability, private-mail usefulness, Gmail delivery or Gmail-only qualification flows. Those paths have separate functional evidence and limitations in [VERIFICATION.md](VERIFICATION.md). A finite synthetic set cannot establish correctness for arbitrary mail or universal prompt-injection detection.
 
+The evaluation includes Russian-language emails, and language may have affected classification and Skill behavior. The project owner's subjective expectation is that results on comparable English-language emails would be at least as good. The frozen evaluation did not compare languages, so this remains a hypothesis rather than a measured finding.
+
 Synthetic flows and links to their saved evaluation records are in [examples/transcripts.md](examples/transcripts.md). Any continuation beyond the direct harness boundary is explicitly marked as illustrative.
