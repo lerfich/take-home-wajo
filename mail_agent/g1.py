@@ -21,7 +21,7 @@ DATASET = OUT / "dataset.json"
 RESULTS = OUT / "results"
 SOURCE = ROOT / "evaluation" / "g1_dataset.py"
 HASHED = [SOURCE, Path(__file__), ROOT / "mail_agent" / "groq_provider.py",
-          ROOT / "mail_agent" / "core.py", ROOT / "mail_agent" / "prompts" / "triage-v9.txt",
+          ROOT / "mail_agent" / "core.py", ROOT / "mail_agent" / "prompts" / "email-analysis-prompt-v9.txt",
           ROOT / "mail_agent" / "organization.py", ROOT / "mail_agent" / "attention.py",
           ROOT / "mail_agent" / "skills.py", ROOT / "mail_agent" / "archive_skills.py",
           ROOT / "mail_agent" / "events.py", ROOT / "mail_agent" / "event_skills.py",
@@ -181,7 +181,7 @@ def validate_saved(cases, records, current):
 
 def preflight():
     cases = read_cases()
-    if DEFAULT_MODEL != "qwen/qwen3.8-27b" or PROMPT_VERSION != "triage-v9":
+    if DEFAULT_MODEL != "qwen/qwen3.8-27b" or PROMPT_VERSION != "email-analysis-prompt-v9":
         raise ValueError("Wrong model or prompt version")
     if not DEFAULT_BUNDLED_GROQ_API_KEY:
         raise ValueError("Bundled key unavailable")

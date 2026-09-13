@@ -18,7 +18,7 @@ DEFAULT_MODEL = "qwen/qwen3.8-27b"
 # Intentionally public, revocable evaluation key. Nikita authorized committing
 # this bundled free-tier key; revoke it after the reviewer no longer needs it.
 DEFAULT_BUNDLED_GROQ_API_KEY = "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"
-PROMPT_VERSION = "triage-v9"
+PROMPT_VERSION = "email-analysis-prompt-v9"
 SYSTEM = (Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.txt").read_text()
 FIELDS = {name: {"type": "string"} for name in ("action", "reason", "label", "text", "recipient")}
 FIELDS.update({name: {"type": "boolean"} for name in ("notify", "suspicious", "needs_human")})
