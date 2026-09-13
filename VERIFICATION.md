@@ -6,7 +6,7 @@ The [evaluation report](reports/evaluation/REPORT.md) contains the saved model r
 
 ## Application checks
 
-The Python suite passes 281 tests, including policy boundaries, approval revisions, Gmail reconciliation, learning, OAuth connection states, and mocked transport. The browser review-guard script also passes. A clean local Python launch and a clean Docker Compose launch both opened the UI with bundled Groq; a model-catalog request from Docker returned the configured Qwen model. The owner reported that the fresh Docker browser check worked; exact Gmail OAuth steps and synchronization scope were not recorded. These checks are functional evidence, not additional model-quality measurements.
+The Python suite passes 285 tests, including policy boundaries, approval revisions, Gmail reconciliation, learning, OAuth connection states, and mocked transport. The browser review-guard script also passes. A clean local Python launch and a clean Docker Compose launch both opened the UI with bundled Groq; a model-catalog request from Docker returned the configured Qwen model. The owner reported that the fresh Docker browser check worked; exact Gmail OAuth steps and synchronization scope were not recorded. These checks are functional evidence, not additional model-quality measurements.
 
 ## Submission packaging check — September 13, 2026
 
@@ -16,8 +16,17 @@ The Python suite passed all 281 tests, and `node tests/test_review_ui.js` passed
 
 These checks confirm clean installation and application startup. They do not establish a new live Gmail OAuth, synchronization, delivery, or model-inference result.
 
+## Bundled Google sign-in correction — September 13, 2026
+
+The initial packaging check above covered startup only and missed an absent Google client in a fresh copy. With the owner's explicit permission, Mailward now ships its existing Desktop OAuth client in `mail_agent/gmail-credentials.json`; Docker copies it with the application. A local `data/gmail-credentials.json` remains an optional override. An explicitly configured missing path fails without silently choosing another client.
+
+A fresh export, without a custom client or saved user token, installed with `./run.sh` and reached `Gmail connected` with manage access using the bundled client. No emails, analysis jobs or Gmail actions were created, and synchronization was not started. A separate clean Docker data directory exposed an enabled Google connection, generated the expected Google authorization URL with PKCE and `gmail.modify`, and received a simulated denial through its published loopback callback on port 8766. No Docker user token was created. This verifies the container callback wiring, not a completed live Google consent flow in Docker; that check remains outstanding.
+
+All 285 Python tests and the browser review-guard script passed. Four new regression tests cover fresh-copy defaults, custom overrides, missing explicit paths and keeping client secrets/user tokens out of public state. The bundled client is intentionally distributed; user tokens, mailbox databases and user API keys remain outside the repository and image.
+
 ## Known limits
 
+- The original bundled Groq key has a reported revocation scheduled for September 16, 2026. A replacement evaluation key can be supplied privately and entered through Models → Your Groq → Apply, without an `.env` file.
 - The bundled Groq account is free and quota-limited. About 65 emails per day is an operational estimate, not a guaranteed allowance.
 - The OpenAI adapter has contract and mock coverage but has not been checked with a live OpenAI key.
 - Docker does not provide macOS Notification Center banners. Use the local Python launch for those while the server is running.

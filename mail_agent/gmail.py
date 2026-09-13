@@ -12,6 +12,7 @@ from pathlib import Path
 from html.parser import HTMLParser
 
 from .web import Application
+from .gmail_connection import default_credentials_path
 
 READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 MANAGE_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
@@ -184,7 +185,8 @@ def main():
     auth = sub.add_parser("auth", help="User authorizes the selected Gmail access profile in browser")
     auth.add_argument("--access", choices=sorted(ACCESS_SCOPES), default="readonly",
                       help="readonly (default), or manage: read, labels, archive, drafts and send; no permanent deletion")
-    auth.add_argument("--credentials", type=Path, default=Path("data/gmail-credentials.json"))
+    auth.add_argument("--credentials", type=Path, default=default_credentials_path(),
+                      help="Optional Google Desktop client override; Mailward's client is included by default")
     imp = sub.add_parser("import", help="Queue selected test-label emails for local Groq analysis")
     imp.add_argument("--db", type=Path, default=Path("data/web-groq.sqlite3"))
     imp.add_argument("--gmail-live", action="store_true", help="Bind NEW imports to real Gmail operations, including approved replies; existing imports stay unchanged")

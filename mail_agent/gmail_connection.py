@@ -10,6 +10,15 @@ from pathlib import Path
 import threading
 
 
+BUNDLED_CREDENTIALS_PATH = Path(__file__).with_name("gmail-credentials.json")
+
+
+def default_credentials_path():
+    """Use an optional local client override, otherwise the shipped Mailward client."""
+    local = Path("data/gmail-credentials.json")
+    return local if local.is_file() else BUNDLED_CREDENTIALS_PATH
+
+
 class GmailConnection:
     def __init__(self, app, token_path, credentials_path):
         self.app = app
@@ -39,7 +48,7 @@ class GmailConnection:
                 if data:
                     raise ValueError("Gmail access is determined by the server mode.")
                 if not self.credentials_path.is_file():
-                    raise ValueError("Google client setup is required. Follow the setup instructions in the Gmail panel.")
+                    raise ValueError("Google client setup is missing. Reinstall Mailward or check your custom client path.")
             elif operation == "sync":
                 legacy = set(data) == {"allow_groq", "account", "live", "limit"}
                 modern = set(data) == {"allow_groq", "account", "live", "history_mode", "label_ids"}
@@ -201,7 +210,7 @@ class GmailConnection:
                 message = "Install requirements-gmail.txt in the app's Python environment, then try again."
             elif operation == "connect":
                 message = ("Gmail connection did not complete. Google access may have been declined or timed out. "
-                           "Check your Desktop client and Google test-user setup, then retry or check the existing connection.")
+                           "Make sure your Google account is on Mailward's test-user allowlist, then retry or check the existing connection.")
             elif operation == "sync":
                 message = ("Sync did not complete. Some messages may already be queued for analysis. "
                            "Check the connection and inbox before retrying; existing message IDs are not imported twice.")

@@ -52,9 +52,9 @@ class Application:
         self.model_validation_lock = threading.Lock()
         self.credentials = CredentialStore(Path(self.db_path).parent / "model-credentials.json")
         self.label_review_lock = threading.Lock()
-        from .gmail_connection import GmailConnection
+        from .gmail_connection import GmailConnection, default_credentials_path
         self.gmail_connection = GmailConnection(self, gmail_token or connection_token or Path("data/gmail-token.json"),
-                                                 gmail_credentials or Path("data/gmail-credentials.json"))
+                                                 gmail_credentials if gmail_credentials is not None else default_credentials_path())
         with self.connect() as db:
             db.execute("""CREATE TABLE IF NOT EXISTS incoming_jobs (
                 id TEXT PRIMARY KEY, email TEXT NOT NULL, status TEXT NOT NULL,
@@ -894,8 +894,8 @@ def main():
     parser.add_argument("--demo", action="store_true", help="Scripted fixtures, no model calls; use a separate database")
     parser.add_argument("--gmail-live", action="store_true", help="Execute queued Gmail operations for explicitly live imports; sends require approval")
     parser.add_argument("--gmail-token", type=Path, default=Path("data/gmail-token.json"))
-    parser.add_argument("--gmail-credentials", type=Path, default=Path("data/gmail-credentials.json"),
-                        help="Local Google Desktop client JSON for Connect Gmail")
+    parser.add_argument("--gmail-credentials", type=Path,
+                        help="Optional Google Desktop client override; Mailward's client is included by default")
     args = parser.parse_args()
     if args.demo and args.gmail_live:
         parser.error("--demo cannot be combined with --gmail-live")

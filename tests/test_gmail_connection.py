@@ -1,4 +1,5 @@
 import json
+from contextlib import chdir
 from pathlib import Path
 import tempfile
 import threading
@@ -8,6 +9,111 @@ from unittest.mock import MagicMock, patch, ANY
 from mail_agent.gmail import MANAGE_SCOPE, READONLY_SCOPE
 from mail_agent.core import Email
 from mail_agent.web import Application
+
+
+class BundledGoogleClientTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        # Exercise a fresh installation, independently of the developer's data/.
+        self.enterContext(chdir(self.directory.name))
+        self.token = Path("data/gmail-token.json")
+        self.apps = []
+        self.addCleanup(self.join_connections)
+        self.api = MagicMock()
+        self.api.users.return_value.getProfile.return_value.execute.return_value = {
+            "emailAddress": "reviewer@example.test", "historyId": "10"}
+        self.api.users.return_value.labels.return_value.list.return_value.execute.return_value = {
+            "labels": []}
+
+    def join_connections(self):
+        for app in self.apps:
+            if app.gmail_connection.thread:
+                app.gmail_connection.thread.join(3)
+                self.assertFalse(app.gmail_connection.thread.is_alive())
+
+    def make_app(self, **kwargs):
+        app = Application(Path(self.directory.name) / "state.sqlite3",
+                          gmail_token=self.token, **kwargs)
+        self.apps.append(app)
+        return app
+
+    def connect(self, app, expected_client):
+        def save_token(_client, token, access, **kwargs):
+            token.parent.mkdir(parents=True, exist_ok=True)
+            token.write_text(json.dumps({"scopes": [MANAGE_SCOPE],
+                                         "token": "PRIVATE-ACCESS-TOKEN",
+                                         "refresh_token": "PRIVATE-REFRESH-TOKEN"}))
+
+        with patch("mail_agent.gmail.authorize", side_effect=save_token) as authorize, \
+             patch("mail_agent.gmail.service", return_value=self.api) as service:
+            self.assertEqual(app.mutate("/api/gmail/connect", {}), {"started": "connect"})
+            app.gmail_connection.thread.join(3)
+            self.assertFalse(app.gmail_connection.thread.is_alive())
+            authorize.assert_called_once_with(expected_client, self.token, "manage", on_url=ANY)
+            service.assert_called_once_with(self.token)
+        state = app.state()
+        self.assertEqual(state["gmail_connection"]["status"], "connected")
+        self.assertEqual(state["gmail_connection"]["access"], "manage")
+        self.api.users.return_value.messages.assert_not_called()
+        self.assertNotIn("PRIVATE-ACCESS-TOKEN", json.dumps(state))
+        self.assertNotIn("PRIVATE-REFRESH-TOKEN", json.dumps(state))
+        return state
+
+    def test_fresh_install_connects_with_bundled_client_without_exposing_credentials(self):
+        from mail_agent.gmail_connection import BUNDLED_CREDENTIALS_PATH
+
+        self.assertFalse(Path("data/gmail-credentials.json").exists())
+        self.assertFalse(self.token.exists())
+        self.assertTrue(BUNDLED_CREDENTIALS_PATH.is_file(), "Google client must ship with the app")
+        config = json.loads(BUNDLED_CREDENTIALS_PATH.read_text())
+        self.assertIn("installed", config, "The bundled Google client must be a Desktop client")
+        self.assertTrue(config["installed"].get("client_id"))
+        self.assertTrue(config["installed"].get("client_secret"))
+        app = self.make_app()
+        self.assertEqual(app.gmail_connection.credentials_path, BUNDLED_CREDENTIALS_PATH)
+        before = app.state()
+        self.assertTrue(before["gmail_connection"]["client_ready"])
+        self.assertFalse(before["gmail_connection"]["token_present"])
+        self.assertEqual(before["gmail_connection"]["status"], "disconnected")
+        after = self.connect(app, BUNDLED_CREDENTIALS_PATH)
+        for state in (before, after):
+            serialized = json.dumps(state)
+            self.assertNotIn("client_secret", serialized)
+            self.assertFalse(config["installed"]["client_secret"] in serialized,
+                             "Public state must never contain the bundled client secret")
+
+    def test_existing_local_client_still_takes_precedence_over_bundled_client(self):
+        client = Path("data/gmail-credentials.json")
+        client.parent.mkdir()
+        client.write_text(json.dumps({"installed": {"client_secret": "PRIVATE-LOCAL-CLIENT"}}))
+        app = self.make_app()
+        self.assertEqual(app.gmail_connection.credentials_path, client)
+        self.assertNotIn("PRIVATE-LOCAL-CLIENT", json.dumps(self.connect(app, client)))
+
+    def test_explicit_client_path_takes_precedence_over_local_and_bundled_clients(self):
+        local = Path("data/gmail-credentials.json")
+        local.parent.mkdir()
+        local.write_text("{}")
+        explicit = Path(self.directory.name) / "custom-google-client.json"
+        explicit.write_text(json.dumps({"installed": {"client_secret": "PRIVATE-CUSTOM-CLIENT"}}))
+        app = self.make_app(gmail_credentials=explicit)
+        self.assertEqual(app.gmail_connection.credentials_path, explicit)
+        self.assertNotIn("PRIVATE-CUSTOM-CLIENT", json.dumps(self.connect(app, explicit)))
+
+    def test_explicit_missing_client_blocks_connect_without_falling_back(self):
+        explicit = Path(self.directory.name) / "missing-google-client.json"
+        app = self.make_app(gmail_credentials=explicit)
+        self.assertEqual(app.gmail_connection.credentials_path, explicit)
+        self.assertFalse(app.gmail_connection.snapshot()["client_ready"])
+        with patch("mail_agent.gmail.authorize") as authorize, \
+             patch("mail_agent.gmail.service") as service:
+            with self.assertRaises(ValueError):
+                app.mutate("/api/gmail/connect", {})
+            authorize.assert_not_called()
+            service.assert_not_called()
+        self.assertIsNone(app.gmail_connection.thread)
+        self.assertFalse(self.token.exists())
 
 
 class GmailConnectionTests(unittest.TestCase):

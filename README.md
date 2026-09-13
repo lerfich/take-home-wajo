@@ -4,7 +4,9 @@ Mailward is a local email agent. It connects to Gmail, sorts incoming mail, sugg
 
 ## Start
 
-You need internet access. To connect Gmail, place your own Google Desktop OAuth client JSON at `data/gmail-credentials.json` (see [Google setup](GMAIL_SETUP.md)). The bundled free Groq model is ready to use without an API key or `.env` file.
+You need internet access and a Google account that Nikita has added to Mailward's test-user allowlist. Mailward includes its Google sign-in configuration and a free Groq model: no Google Cloud project, JSON download, API key, or `.env` file is needed.
+
+The bundled Groq key is temporary. If it becomes unavailable, request a replacement evaluation key from Nikita privately. In **Models → Your Groq**, paste it into **API key**, wait for the green validation check, then click **Apply**. No `.env` file is needed; keep the replacement key out of GitHub.
 
 Choose one launch method from this directory:
 
@@ -16,7 +18,9 @@ Choose one launch method from this directory:
 docker compose up --build   # Docker Desktop or Docker Engine with Compose v2
 ```
 
-Open <http://127.0.0.1:8765/>. Click **Connect Gmail**, sign in with Google, review the account and initial history, allow the selected mail text to be sent to the active model, and start synchronization. Stop with Ctrl+C; for Docker, also run `docker compose down`. The local SQLite database and OAuth token remain in `data/`, which is excluded from Git and Docker images. Do not run two servers against the same `data/` directory.
+Open <http://127.0.0.1:8765/>. Click **Connect Gmail → Connect with Google** and sign in to your account. In Docker, open **Continue with Google** from the connection panel. Google may show a Testing warning and ask you to approve access. Back in Mailward, review the account and initial history, allow the selected mail text to be sent to the active model, and start synchronization. See [Gmail connection details](GMAIL_SETUP.md) if needed.
+
+Stop with Ctrl+C; for Docker, also run `docker compose down`. Your Gmail token, SQLite database, and any API keys you add remain in local `data/`, excluded from Git and Docker images. Do not run two servers against the same `data/` directory.
 
 ## Use the app
 
