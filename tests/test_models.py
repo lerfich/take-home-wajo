@@ -84,6 +84,7 @@ class ModelSettingsTests(unittest.TestCase):
 
     def test_bundled_groq_works_without_env_and_can_be_overridden(self):
         missing_env = Path(self.temp.name) / "missing.env"
+        missing_env.write_text("GROQ_API_KEY=obsolete-local-key\n")
         with patch.dict(os.environ, {}, clear=True):
             provider = GroqProposer.from_env(missing_env)
             self.assertTrue(provider._key == DEFAULT_BUNDLED_GROQ_API_KEY)

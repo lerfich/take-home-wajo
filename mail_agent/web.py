@@ -9,6 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
 import secrets
+import signal
 import sqlite3
 import threading
 import time
@@ -870,10 +871,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send(500, {"error": "Operation failed. Refresh the page and check the email status."})
 
 
-def create_server(db_path, port=8765, demo=False, gmail_token=None, connection_token=None, gmail_credentials=None):
+def create_server(db_path, port=8765, demo=False, gmail_token=None, connection_token=None,
+                  gmail_credentials=None, bind="127.0.0.1"):
     # Bind before touching persistent queue state: a duplicate launch must not
     # requeue a job currently being processed by the existing server.
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    server = ThreadingHTTPServer((bind, port), Handler)
     try:
         server.app = Application(db_path, demo, gmail_token=gmail_token,
                                  connection_token=connection_token, gmail_credentials=gmail_credentials)
@@ -887,6 +889,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", type=Path, default=Path("data/web.sqlite3"))
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--bind", choices=("127.0.0.1", "0.0.0.0"), default="127.0.0.1",
+                        help="Container use only: bind all container interfaces; publish the port on host loopback")
     parser.add_argument("--demo", action="store_true", help="Scripted fixtures, no model calls; use a separate database")
     parser.add_argument("--gmail-live", action="store_true", help="Execute queued Gmail operations for explicitly live imports; sends require approval")
     parser.add_argument("--gmail-token", type=Path, default=Path("data/gmail-token.json"))
@@ -898,7 +902,7 @@ def main():
     args.db.parent.mkdir(parents=True, exist_ok=True)
     try:
         server = create_server(args.db, args.port, args.demo, args.gmail_token if not args.demo else None,
-                               args.gmail_token, args.gmail_credentials)
+                               args.gmail_token, args.gmail_credentials, bind=args.bind)
     except OSError as exc:
         if exc.errno == errno.EADDRINUSE:
             parser.exit(2, f"Port {args.port} is already in use. If Wajo is running, open "
@@ -912,6 +916,9 @@ def main():
         server.app.notifications.start()
     print(f"Wajo local mailbox: http://127.0.0.1:{server.server_address[1]} "
           f"({'scripted demo' if args.demo else server.app._model_label(server.app.model_settings().mode)})", flush=True)
+    def stop_on_sigterm(_signum, _frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, stop_on_sigterm)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -47,7 +47,9 @@ def authorize(credentials_path, token_path, access="readonly", on_url=None):
             on_url(result[0])
             return result
         flow.authorization_url = authorization_url
-    credentials = flow.run_local_server(host="127.0.0.1", port=0, open_browser=True,
+    container = os.environ.get("WAJO_CONTAINER") == "1"
+    credentials = flow.run_local_server(host="127.0.0.1", bind_addr="0.0.0.0" if container else None,
+        port=8766 if container else 0, open_browser=not container,
         timeout_seconds=180, prompt="consent",
         authorization_prompt_message=f"Authorize Gmail {access} access in your browser.",
         success_message="Wajo: Gmail authorization received. You may close this window.")

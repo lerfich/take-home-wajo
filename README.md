@@ -1,8 +1,8 @@
-# Email agent — development prototype
+# Wajo — local email agent
 
 ## Start the current Gmail workspace
 
-From `task/`, run `./run.sh` and open http://127.0.0.1:8765. This uses the project virtual environment and `data/web-groq.sqlite3`. Install dependencies once in that environment as described in GMAIL_SETUP.md. Do not run two servers against one database.
+From `task/`, run `./run.sh` and open http://127.0.0.1:8765. On first launch the script creates `.venv` and installs the pinned Gmail dependencies. Python 3.11+ and internet access for this one-time install are required. The app starts with a new `data/web-groq.sqlite3` if none exists. The bundled Groq evaluation key is already in the code; no `.env` or separate key setup is needed. Do not run two servers against one database. For Docker instructions and a clean-room check, see [PACKAGING.md](PACKAGING.md).
 
 Gmail is enabled by default in the web server. The saved token is checked on startup; Gmail settings displays the verified account. Connect/Reconnect opens Google and also provides a **Continue with Google** link while authorization is pending. If verification finds a different account, synchronization and analysis stop until the user chooses **Keep previous data** or **Start fresh**. Keep preserves the shared local timeline and its portable Skills; Start fresh shows deletion counts and atomically clears Wajo's local mail-derived state without changing Gmail. The normal web app uses live Gmail; existing local records never become live actions. Use `--demo` with a separate database for scripted checks. The standalone Gmail import CLI still requires `--gmail-live` to create live bindings.
 
@@ -48,13 +48,13 @@ Preferences lists the Skill's source account, family, source feedback, scope, co
 
 Both the email list and detail pane scroll independently on desktop. Filters include Pending, Needs attention, Escalated, Archived, To review and Reviewed.
 
-Local execution and safety prototype for the Wajo take-home. **Not the finished AI agent.**
+Local execution and safety prototype for the Wajo take-home.
 
-Two explicit modes are available: **scripted demo** (offline fixtures) and **Groq** (real model inference). Local simulation remains the default; explicit Gmail live mode supports labels, archive, restore, drafts and approved replies. Live Gmail replies create a draft and send only after exact-version approval; local sends remain simulations. Initial permissions, versioned approvals, a SQLite audit trail, managed Skills and a local web interface are implemented. Small real-model development checks are recorded in `VERIFICATION.md`; they are not final evaluation. Gmail OAuth/import and limited reversible writes have been exercised; the latest private-mail Stage C attempt imported 30 messages, but Groq access later returned HTTP 403, so it is explicitly recorded as partial rather than successful end-to-end validation. See `GMAIL_SETUP.md` and `VERIFICATION.md`.
+The reviewer-facing web launch uses Gmail and Groq. A separate `--demo` mode is retained for internal scripted diagnostics. Live Gmail supports labels, archive, restore, drafts and approved replies. Initial permissions, versioned approvals, a SQLite audit trail, managed Skills and a local web interface are implemented. The bounded Stage C Gmail exercise and independent synthetic G1 evaluation are described with their limits in `VERIFICATION.md`. See `GMAIL_SETUP.md` for OAuth setup.
 
 ## Real model via Groq
 
-Bundled Groq has an intentionally public, revocable free-tier evaluation key in `mail_agent/groq_provider.py`, authorized by the project owner so a reviewer can run the repository without setting `GROQ_API_KEY`. The owner will revoke it after review. For private use, set `GROQ_API_KEY` in an untracked `.env` or the environment to override that default; environment variables take precedence. The default model is `qwen/qwen3.8-27b`; `GROQ_MODEL` can explicitly override it. There is no provider fallback or automatic upgrade. Account billing is controlled in Groq, not by this application.
+Bundled Groq has an intentionally public, revocable free-tier evaluation key in `mail_agent/groq_provider.py`, authorized by the project owner so a reviewer can run the repository without key setup. The owner will revoke it after review. A process-level `GROQ_API_KEY` can override that default; `.env` files are not read by the application. The default model is `qwen/qwen3.8-27b`; `GROQ_MODEL` can explicitly override it. There is no provider fallback or automatic upgrade. Account billing is controlled in Groq, not by this application.
 
 Transient inference failures (HTTP 408/429/500/502/503/504 and transport failures) get at most two retries. `Retry-After` is respected; without it pauses are 5 and 10 seconds. A delay above 45 seconds or total planned waiting above 60 seconds stops the request. Other HTTP errors, including 401/403, and invalid model responses are not automatically retried. This retry applies only to model inference/catalog calls, never email delivery. Every HTTP attempt, response status, safe diagnostic headers and error body (up to 64 KiB, with explicit truncation flag) is recorded; API keys are redacted. A 429 alone is not reported as an exhausted daily quota. Failed responses can contain input excerpts: keep real-mail diagnostics local. See [Groq rate-limit headers](https://console.groq.com/docs/rate-limits).
 
@@ -77,7 +77,7 @@ The current instruction is in `mail_agent/prompts/email-analysis-prompt-v9.txt`.
 
 ## Run
 
-Requires Python 3.11+; core, Groq, web and evaluations use the standard library. Optional Gmail import needs `requirements-gmail.txt`. Run commands from this directory (`task/`).
+Requires Python 3.11+; core, Groq, web and evaluations use the standard library. Gmail integration needs the dependencies in `requirements-gmail.lock.txt`, installed automatically by `./run.sh`. Run commands from this directory (`task/`).
 
 ## Local web interface
 
@@ -167,10 +167,10 @@ If the initial run stops on provider failures without model responses, resolve t
 
 Continuation files are written under `reports/g1/attempts/attempt-02/`. Its `attempt.json` freezes the primary `qwen/qwen3.8-27b` model and continuation-harness hash. The report selects the completed response for each ID and can be rebuilt offline with `.venv/bin/python -m mail_agent.g1_continue report`. We chose the 111-email set to show broader evidence than a small smoke test. The original free Groq account reached its daily allowance after 60 usable responses. The remainder uses the same primary model with a new free-account credential, so all measured decisions are from `qwen/qwen3.8-27b`.
 
-Put the new account key in the ignored local file `task/.env` as `GROQ_API_KEY=...`. The key is read only by the continuation and is never copied into manifests or reports. Continue the 51 unresolved IDs as the second attempt:
+Historical note: the completed G1 continuation used a separate, ignored `task/.env` credential for the second evaluation account; only `g1_continue` reads that legacy file. The packaged application does not use it. The saved results can be rebuilt offline without that credential:
 
 ```sh
-.venv/bin/python -m mail_agent.g1_continue run --attempt 2
+.venv/bin/python -m mail_agent.g1_continue report
 ```
 
 The report separates model classification, server-policy outcomes and the effect of saved preferences. Its figures do not measure Gmail delivery, UI behavior or verified Gmail-only Archive/Event Skill qualification; those have separate functional evidence in `VERIFICATION.md`.
@@ -210,7 +210,7 @@ The default set uses three training fixtures with scripted evaluation-user appro
 - Sending requires approval by default; only an enabled, account-bound Superpowers permission for a qualified Draft Skill revision can bypass per-message approval. Archiving initially asks and can use learned permission as described above. `AI: ` labels and drafts use initial permissions.
 - One model proposal per incoming event; live replies can progress through draft creation, edits and exact-version approved sending.
 - Local SQLite operations execute in one transaction. This does **not** promise atomic or exactly-once Gmail delivery.
-- Period summaries, Docker and comprehensive final evaluation are not implemented yet. Local event reminders are implemented; their current evidence is synthetic/mocked plus a startup macOS banner, not a complete live-mail exercise. Gmail pagination, reconnect account choice, persisted Pause/Resume, cursor-based polling, thread grouping, special-message context, portable Skills and Superpowers are implemented; their evidence and caveats are recorded in `VERIFICATION.md`.
-- The scripted demo requires no credentials. Bundled Groq uses the intentionally public evaluation key unless overridden; user-provided keys remain local. Local databases and `.env` are excluded from Git.
+- Period summaries are not implemented. Local event reminders are implemented; macOS banners require the local Python launch and are unavailable in Docker. Gmail pagination, reconnect account choice, persisted Pause/Resume, cursor-based polling, thread grouping, special-message context, portable Skills and Superpowers are implemented; their evidence and caveats are recorded in `VERIFICATION.md`.
+- The scripted demo requires no credentials. Bundled Groq uses the intentionally public evaluation key unless overridden; user-provided keys remain local. Local databases are excluded from Git.
 
 Default live reply workflow: review From/To/Subject/Body, save edits as a new verified Gmail draft revision, then explicitly approve sending. Only the separately enabled and qualified Superpowers path can omit that last per-message approval. Unknown delivery outcomes allow read-only reconciliation and never automatic resend. See [GMAIL_SETUP.md](GMAIL_SETUP.md) for bounds and manual-intervention cases.

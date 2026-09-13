@@ -59,16 +59,8 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 def read_settings(path: Path) -> dict:
-    """Small literal KEY=value reader; never source/evaluate a shell file."""
+    """Read optional process overrides; packaged launches need no .env file."""
     values = {}
-    if path.exists():
-        for line in path.read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            name, sep, value = line.partition("=")
-            if sep and name.strip() in {"GROQ_API_KEY", "GROQ_MODEL"}:
-                values[name.strip()] = value.strip().strip("\"'")
     for name in ("GROQ_API_KEY", "GROQ_MODEL"):
         if name in os.environ:
             values[name] = os.environ[name]
@@ -81,7 +73,7 @@ class GroqProposer:
     def __init__(self, api_key: str, model: str = DEFAULT_MODEL, max_retries: int = 2,
                  serialize_calls: bool = True, capture_raw_response: bool = False):
         if not api_key or any(c.isspace() for c in api_key):
-            raise ProviderError("Set a valid GROQ_API_KEY in task/.env or the environment")
+            raise ProviderError("Set a valid GROQ_API_KEY in the process environment")
         self._key = api_key
         self.model = model
         self.calls = []
