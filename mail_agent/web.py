@@ -369,6 +369,8 @@ class Application:
                 action["proposal"] = asdict(p)
                 from .archive_skills import public as public_archive_decision
                 action["archive_decision"] = public_archive_decision(agent.db, action["id"])
+                from .label_preferences import public_independent
+                action["independent_label"] = public_independent(agent.db, action["id"])
                 from .label_preferences import account_for
                 from .attention import cue_for, effective_rule
                 email = email_map[action["email_id"]]
@@ -557,6 +559,22 @@ class Application:
                     raise ValueError("Invalid Gmail operation ID")
                 self.run_gmail(data["operation_id"], check_only=True)
                 return {"checked": True}
+            if route == "/api/label-status":
+                if type(data.get("action_id")) is not int or type(data.get("revision")) is not int:
+                    raise ValueError("The displayed label decision and version are required")
+                if not self.gmail_token:
+                    raise ValueError("Connect Gmail before checking label status")
+                with self.connect() as db:
+                    from .label_preferences import public_independent
+                    decision = public_independent(db, data["action_id"])
+                    operation = db.execute("""SELECT id,status FROM gmail_operations
+                        WHERE action_id=? AND operation='label-independent'""", (data["action_id"],)).fetchone()
+                    if (not decision or decision["revision"] != data["revision"] or not operation
+                            or operation["status"] not in {"unknown", "error"}):
+                        raise ValueError("No uncertain label operation is waiting for a status check")
+                    operation_id = operation["id"]
+                self.run_gmail(operation_id, check_only=True)
+                return {"checked": True}
             agent = self.agent()
             try:
                 if data.get('propose_skill') and route in {'/api/approve', '/api/reject', '/api/correct'}:
@@ -575,6 +593,17 @@ class Application:
                     from .label_preferences import submit
                     result = submit(agent, data["action_id"], data["revision"], data.get("label"),
                                     'email' if data.get('propose_skill') else data.get("scope", "email"), data.get("mode", "replace"))
+                    self.wakeup.set()
+                    return result
+                if route == "/api/label-decision":
+                    if type(data.get("action_id")) is not int or type(data.get("revision")) is not int:
+                        raise ValueError("The displayed label decision and version are required")
+                    if not self.gmail_token:
+                        raise ValueError("Connect Gmail before updating its labels")
+                    from .label_preferences import decide_independent
+                    with agent.db:
+                        result = decide_independent(agent, data["action_id"], data["revision"],
+                                                    data.get("choice"), data.get("label", ""))
                     self.wakeup.set()
                     return result
                 if route == "/api/attention":

@@ -46,6 +46,138 @@ def initialize(db):
         db.execute("ALTER TABLE label_feedback ADD COLUMN mode TEXT NOT NULL DEFAULT 'replace'")
 
 
+def initialize_independent(db):
+    """A separate, versioned label decision for new unread Gmail messages."""
+    db.execute("""CREATE TABLE IF NOT EXISTS independent_label_decisions (
+        action_id INTEGER PRIMARY KEY REFERENCES actions(id),
+        recommendation TEXT NOT NULL, current_label TEXT NOT NULL,
+        kind TEXT NOT NULL, basis TEXT NOT NULL,
+        status TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1,
+        error TEXT NOT NULL DEFAULT ''
+    )""")
+
+
+def register_independent(agent, action_id, proposal, preference, *, enabled):
+    if not enabled:
+        return
+    label = normalize_label(proposal.label)
+    basis = ("Reviewed Label Skill" if preference and preference.get("id", 0) < 0 else
+             "Saved label preference" if preference else "Model suggestion")
+    agent.db.execute("""INSERT OR IGNORE INTO independent_label_decisions
+        (action_id,recommendation,current_label,kind,basis,status)
+        VALUES(?,?,?,?,?,'awaiting_confirmation')""",
+        (action_id, label, label, proposal.label_kind, basis))
+    if agent.db.execute("SELECT changes()").fetchone()[0]:
+        agent.log(action_id, "independent_label_proposed", {"label": label, "basis": basis})
+
+
+def public_independent(db, action_id):
+    row = db.execute("SELECT * FROM independent_label_decisions WHERE action_id=?", (action_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def decide_independent(agent, action_id, revision, choice, label=""):
+    """Confirm/change or skip this label without touching Reply, Archive or Event."""
+    if choice not in {"confirm", "skip"}:
+        raise ValueError("Choose Confirm label or No label")
+    with agent.db:
+        agent.db.execute("BEGIN IMMEDIATE")
+        action = agent.get(action_id)
+        row = public_independent(agent.db, action_id)
+        if (not row or row["revision"] != revision or row["status"] != "awaiting_confirmation"
+                or action["transport"] != "gmail"):
+            raise ValueError("This label decision changed. Refresh the email before deciding")
+        binding = agent.db.execute("SELECT * FROM gmail_bindings WHERE email_id=?", (action["email_id"],)).fetchone()
+        if not binding or not binding["initial_unread"]:
+            raise ValueError("Only an unread connected Gmail message has this label decision")
+        if choice == "skip":
+            agent.db.execute("UPDATE independent_label_decisions SET status='skipped' WHERE action_id=?", (action_id,))
+            agent.log(action_id, "independent_label_skipped", {"revision": revision})
+            return public_independent(agent.db, action_id)
+        target = normalize_label(label or row["current_label"])
+        if target != row["current_label"]:
+            revision += 1
+        # One durable external operation; never mutate the primary action's
+        # status/revision, since a reply or event may be pending concurrently.
+        agent.db.execute("""UPDATE independent_label_decisions
+            SET current_label=?,status='executing',revision=?,error='' WHERE action_id=?""",
+            (target, revision, action_id))
+        agent.db.execute("""INSERT INTO gmail_operations
+            (action_id,revision,operation,status,approved,feedback_scope,automatic)
+            VALUES(?,?,'label-independent','queued',1,'general',0)""", (action_id, revision))
+        agent.log(action_id, "independent_label_queued", {"label": target, "revision": revision})
+        return public_independent(agent.db, action_id)
+
+
+def _finish_independent(agent, row):
+    action = agent.get(row["action_id"])
+    email = agent.email_for(action["id"])
+    agent.db.execute("INSERT OR IGNORE INTO labels VALUES(?,?)", (email.id, row["current_label"]))
+    agent.db.execute("""UPDATE independent_label_decisions
+        SET status='confirmed',error='' WHERE action_id=?""", (action["id"],))
+    # Existing Label Skill collection consumes this verified feedback. Its
+    # source is the independent decision, not approval of the primary action.
+    agent.db.execute("""INSERT OR IGNORE INTO label_feedback
+        (action_id,revision,old_label,new_label,scope,account,kind,status,created_at,mode)
+        VALUES(?,?,?,?,?,?,?,'verified',?,'add')""",
+        (action["id"], row["revision"], row["recommendation"], row["current_label"], "*",
+         account_for(agent, email.id), row["kind"], datetime.now(timezone.utc).isoformat()))
+    # A verified choice may suggest a Label Skill, but confirmation of one
+    # message must not silently activate a rule for later messages.
+    agent.log(action["id"], "independent_label_confirmed", {"label": row["current_label"]})
+
+
+def run_independent(agent, executor, candidate, check_only):
+    """Versioned Gmail label write; uncertain results get read-only reconciliation."""
+    from .gmail_executor import ScopeError
+    operation = dict(candidate)
+    allowed = {"unknown", "error"} if check_only else {"queued"}
+    if operation["status"] not in allowed:
+        raise ValueError("Label operation is not available")
+    try:
+        with agent.db:
+            agent.db.execute("BEGIN IMMEDIATE")
+            action = agent.get(operation["action_id"])
+            row = public_independent(agent.db, action["id"])
+            binding = agent.db.execute("SELECT * FROM gmail_bindings WHERE email_id=?", (action["email_id"],)).fetchone()
+            if (not row or row["revision"] != operation["revision"] or not operation["approved"]
+                    or operation["operation"] != "label-independent" or action["transport"] != "gmail"
+                    or not binding or not binding["initial_unread"] or row["status"] not in
+                    ({"unknown", "error"} if check_only else {"executing"})):
+                raise ScopeError("The label decision version or permission is invalid")
+            label = normalize_label(row["current_label"])
+            agent.db.execute("UPDATE gmail_operations SET status='processing',error='' WHERE id=?", (operation["id"],))
+        result = executor.apply(dict(binding), "label", label, check_only=check_only)
+        with agent.db:
+            agent.db.execute("BEGIN IMMEDIATE")
+            if result.get("conflict"):
+                status, reason = "error", "Two AI labels already exist. Choose labels before trying again."
+            elif not result["verified"]:
+                status = "error" if check_only else "unknown"
+                reason = "Gmail does not confirm the label. Check status without repeating the write."
+            else:
+                _finish_independent(agent, row)
+                agent.db.execute("UPDATE gmail_operations SET status='done',error='' WHERE id=?", (operation["id"],))
+                return True
+            agent.db.execute("UPDATE gmail_operations SET status=?,error=? WHERE id=?", (status, reason, operation["id"]))
+            agent.db.execute("UPDATE independent_label_decisions SET status=?,error=? WHERE action_id=?",
+                             (status, reason, action["id"]))
+        return True
+    except Exception as exc:
+        agent.db.rollback()
+        status = "error" if isinstance(exc, ScopeError) else "unknown"
+        reason = (str(exc) if isinstance(exc, ScopeError) else
+                  "Gmail label result is uncertain. Check status without repeating the write.")
+        with agent.db:
+            agent.db.execute("UPDATE gmail_operations SET status=?,error=? WHERE id=?",
+                             (status, reason, operation["id"]))
+            agent.db.execute("UPDATE independent_label_decisions SET status=?,error=? WHERE action_id=?",
+                             (status, reason, operation["action_id"]))
+            agent.log(operation["action_id"], "independent_label_" + status,
+                      {"reason": reason, "exception_type": type(exc).__name__})
+        return True
+
+
 def normalize_label(value):
     if type(value) is not str:
         raise ValueError("Enter a label name")

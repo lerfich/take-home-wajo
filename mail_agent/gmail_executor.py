@@ -115,6 +115,9 @@ def run_one(db_path, executor, operation_id=None, check_only=False):
         if candidate is not None and candidate["operation"].startswith("label-review:"):
             from .label_preferences import run_review
             return run_review(agent, executor, candidate, check_only)
+        if candidate is not None and candidate["operation"] == "label-independent":
+            from .label_preferences import run_independent
+            return run_independent(agent, executor, candidate, check_only)
         if candidate is not None and candidate['operation'].startswith('labels-set:'):
             from .multi_labels import run_resolution
             return run_resolution(agent, executor, candidate, check_only)

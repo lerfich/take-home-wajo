@@ -30,6 +30,15 @@ const archiveBlock=context.archiveDecisionBlock({email:{archived:false},status:'
 assert.equal(archiveBlock.required,true);
 assert.ok(archiveBlock.content.includes('Confirm keep in inbox'));
 assert.ok(archiveBlock.content.includes('Archive instead'));
+vm.runInContext(extract('function independentLabelBlock(', 'async function saveAndSendEditedReply('), context);
+const labelBlock=context.independentLabelBlock({proposal:{label:'AI: Work Update'},independent_label:{status:'awaiting_confirmation',recommendation:'AI: Work Update',revision:1}});
+assert.equal(labelBlock.required,true);
+assert.ok(labelBlock.content.includes('Confirm label'));
+assert.ok(labelBlock.content.includes('Do not add label'));
+assert.ok(source.includes("row.independent_label?.status==='awaiting_confirmation'"));
+assert.ok(source.includes('decision-required-badge'));
+assert.ok(source.includes('data-review-key="escalation"'));
+assert.ok(source.includes("'requires-review':''}")); // Date clarification and final event confirmation.
 assert.ok(source.includes("event-proposal ${['awaiting_confirmation','needs_clarification'].includes(item.status)?'requires-review':''}"));
 assert.ok(source.includes('data-event-approve'));
 assert.ok(source.includes('data-escalation-choice="handled"'));

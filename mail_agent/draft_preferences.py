@@ -7,7 +7,16 @@ from .label_preferences import LABEL_KINDS, account_for
 
 
 GREETINGS = re.compile(r"^(hi|hello|hey|dear|привет|здравствуйте)\b", re.I)
-SIGNOFFS = re.compile(r"^(best(?: regards)?|kind regards|thanks|thank you|regards|sincerely|спасибо|с уважением)[,!.]?$", re.I)
+SIGNOFF_WORDS = (
+    "best", "best regards", "best wishes", "all the best", "kind regards",
+    "warm regards", "regards", "sincerely", "sincerely yours", "respectfully",
+    "many thanks", "thanks", "thank you", "cheers", "take care",
+    "спасибо", "благодарю", "с уважением", "с наилучшими пожеланиями",
+)
+SIGNOFFS = re.compile(r"^(?:" + "|".join(re.escape(word) for word in SIGNOFF_WORDS) + r")[,!.]?\s*$", re.I)
+INLINE_SIGNOFF = re.compile(
+    r"^(?:" + "|".join(re.escape(word) for word in SIGNOFF_WORDS) + r"),\s+(.+)$", re.I)
+NAME = re.compile(r"[^\W\d_]+(?:[ '\u2019-][^\W\d_]+){0,3}\.?", re.UNICODE)
 EXAMPLE_LIMIT = 1000
 
 
@@ -43,6 +52,21 @@ def _lines(text):
     return [line.strip() for line in text.strip().splitlines() if line.strip()]
 
 
+def _signature_name(lines):
+    if not lines:
+        return ""
+    if len(lines) >= 2 and SIGNOFFS.fullmatch(lines[-2]):
+        candidate = lines[-1]
+    else:
+        match = INLINE_SIGNOFF.fullmatch(lines[-1])
+        candidate = match.group(1) if match else ""
+    # A signature is a short personal name, not arbitrary prose or a placeholder.
+    if (not candidate or len(candidate) > 60 or not NAME.fullmatch(candidate)
+            or any(not part[0].isupper() for part in candidate.split())):
+        return ""
+    return candidate.rstrip(".")
+
+
 def derive(original, edited):
     original_words, edited_words = _words(original), _words(edited)
     if edited_words <= 35:
@@ -54,9 +78,7 @@ def derive(original, edited):
     lines = _lines(edited)
     greeting = "include" if lines and GREETINGS.search(lines[0]) else "omit"
     # A conventional closing may be followed by the author's name.
-    named_closing = (len(lines) >= 2 and SIGNOFFS.fullmatch(lines[-2])
-                     and re.fullmatch(r"[^\W\d_]+(?:[ '-][^\W\d_]+){0,3}", lines[-1]))
-    signoff = "include" if lines and (SIGNOFFS.fullmatch(lines[-1]) or named_closing) else "omit"
+    signoff = "include" if lines and (SIGNOFFS.fullmatch(lines[-1]) or _signature_name(lines)) else "omit"
     return {"length": length, "greeting": greeting, "signoff": signoff,
             "original_words": original_words, "edited_words": edited_words}
 
@@ -171,11 +193,7 @@ def choose(agent, proposal, email):
 
 
 def signature_name(text):
-    lines = _lines(text)
-    if (len(lines) >= 2 and SIGNOFFS.fullmatch(lines[-2])
-            and re.fullmatch(r"[^\W\d_]+(?:[ '-][^\W\d_]+){0,3}", lines[-1])):
-        return lines[-1]
-    return ""
+    return _signature_name(_lines(text))
 
 
 def apply(agent, proposal, email):

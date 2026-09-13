@@ -27,6 +27,7 @@ FIELDS["pattern"] = {"type": "string", "enum": sorted(PATTERNS | {"unknown"})}
 FIELDS["pattern_evidence"] = {"type": "string"}
 from .label_preferences import LABEL_KINDS
 FIELDS["label_kind"] = {"type": "string", "enum": sorted(set(LABEL_KINDS) | {"unknown"})}
+FIELDS["independent_label"] = {"type": "boolean"}
 from .attention import ATTENTION_CUES
 FIELDS["attention_cue"] = {"type": "string", "enum": sorted(set(ATTENTION_CUES) | {"unknown"})}
 FIELDS["attention_evidence"] = {"type": "string"}

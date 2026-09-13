@@ -124,7 +124,10 @@ function renderPreferencesNavigation(){
     whitelist.querySelector('h2').textContent='Senders kept in inbox';
     const tile=document.createElement('section');tile.id='preference-whitelist';tile.className='stat preference-whitelist';
     tile.innerHTML='<button type="button" class="preference-whitelist-title" data-preference-category="whitelist" aria-controls="preference-panel-whitelist" aria-pressed="false">Whitelist <span data-preference-count="whitelist">0</span></button>';
-    tile.append($('#rule-form'));grid.append(tile);
+    tile.append($('#rule-form'));
+    const archiveOnly=document.createElement('small');archiveOnly.className='preference-whitelist-scope';
+    archiveOnly.textContent='Only prevents automatic archiving. Other analysis and learning still apply.';
+    tile.append(archiveOnly);grid.append(tile);
     tile.addEventListener('focusin',()=>selectPreferenceCategory('whitelist'));
     const note=whitelist.querySelector('p');note.classList.add('preference-exception-note');
     note.textContent='Explicit exceptions override learned preferences.';

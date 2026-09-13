@@ -26,6 +26,7 @@
 .preference-whitelist .rule-form{margin:0;gap:8px}
 .preference-whitelist input{font-size:12px;padding:10px;min-width:0;width:100%}
 .preference-whitelist .rule-form button{white-space:nowrap;padding:10px}
+.preference-whitelist-scope{font-size:10px;color:#748895;line-height:1.45}
 .preference-heading-actions{display:flex;gap:8px;align-items:center}
 #memory-view [data-preference-panel]{margin-top:18px}
 #memory-view .preference-exceptions>h2{text-align:center}

@@ -54,9 +54,12 @@ class DraftPreferenceTests(unittest.TestCase):
         self.assertIn("concise", preview(self.agent, self.edited_action(), 2)["summary"])
 
     def test_named_signoff_is_preserved(self):
-        for closing in ("Best,\nNikita", "Best regards,\nNikita Smith", "С уважением,\nНикита"):
+        for closing in ("Best,\nNikita", "Best regards,\nNikita Smith", "С уважением,\nНикита",
+                        "Kind regards,\nNikita", "Warm regards, Nikita", "Many thanks, Nikita",
+                        "Cheers,\nNikita", "С наилучшими пожеланиями,\nНикита"):
             with self.subTest(closing=closing):
                 self.assertEqual(derive("Original", "Hi,\n\nReceived.\n\n" + closing)["signoff"], "include")
+                self.assertIn(signature_name(closing), {"Nikita", "Nikita Smith", "Никита"})
 
     def test_signature_identity_is_account_bound(self):
         skill = {'id': 10, 'account': 'owner@example.test',
@@ -73,6 +76,10 @@ class DraftPreferenceTests(unittest.TestCase):
 
     def test_body_thanks_is_not_a_named_signoff(self):
         self.assertEqual(derive("Original", "Thanks,\nPlease review the updated document tomorrow.")["signoff"], "omit")
+        for body in ("Thanks, please review the document.", "Regards, [User Name]",
+                     "Best,\nPlease review", "Best,\n1234", "Best,\nexample@example.com"):
+            with self.subTest(body=body):
+                self.assertEqual(signature_name(body), "")
 
     def test_confirmed_style_transfers_without_send_permission(self):
         save(self.agent, self.edited_action(), 2, "similar")

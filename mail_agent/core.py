@@ -32,6 +32,9 @@ class Proposal:
     sensitive: bool = True
     pattern_evidence: str = ""
     label_kind: str = "unknown"
+    # The new four-stream provider returns a label independently of the mail
+    # reply/action. Old saved proposals and fixtures keep the legacy action.
+    independent_label: bool = False
     attention_cue: str = ""  # Missing legacy field; explicit none/unknown stay authoritative.
     attention_evidence: str = ""
     # Inbox placement is an independent learned decision, like calendar events.
@@ -99,7 +102,7 @@ def validate(proposal: Proposal) -> None:
         if type(getattr(proposal, name)) is not str:
             raise ValueError(f"Invalid {name}")
     for name in ("notify", "suspicious", "needs_human", "requires_action", "has_deadline", "significant_change", "sensitive",
-                 "event_all_day"):
+                 "event_all_day", "independent_label"):
         if type(getattr(proposal, name)) is not bool:
             raise ValueError(f"Invalid {name}")
     if proposal.pattern not in PATTERNS | {"unknown"}:
@@ -107,6 +110,10 @@ def validate(proposal: Proposal) -> None:
     from .label_preferences import LABEL_KINDS
     if proposal.label_kind not in set(LABEL_KINDS) | {"unknown"}:
         raise ValueError("Invalid label situation type")
+    if proposal.independent_label:
+        from .label_preferences import normalize_label
+        if normalize_label(proposal.label) != proposal.label:
+            raise ValueError("Independent label must be a valid AI label")
     from .attention import ATTENTION_CUES
     if proposal.attention_cue not in set(ATTENTION_CUES) | {"unknown", ""}:
         raise ValueError("Invalid attention cue")
@@ -237,6 +244,8 @@ class Agent:
         initialize_event_skills(self.db)
         from .archive_skills import initialize as initialize_archive_skills
         initialize_archive_skills(self.db)
+        from .label_preferences import initialize_independent
+        initialize_independent(self.db)
 
     def queue_gmail(self, action_id, operation, approved=False, scope="general", automatic=False):
         if scope not in {"general", "sender"}:
@@ -392,13 +401,21 @@ class Agent:
                 suppressed_action = proposal.action if proposal.action != "label" else ""
                 keep_label = proposal.action == "label"
                 proposal = replace(proposal, action="label" if keep_label else "none",
-                                   label=proposal.label if keep_label else "", text="", recipient="", notify=False,
+                                   label=proposal.label if keep_label else "", independent_label=False,
+                                   text="", recipient="", notify=False,
                                    suspicious=False, needs_human=False, requires_action=False,
                                    has_deadline=False, significant_change=False, sensitive=False,
                                    reason="Already read in Gmail; organization only. " + proposal.reason)
             original_label = proposal.label
             from .label_preferences import choose
-            proposal, label_preference = choose(self, proposal, email)
+            independent_label = bool(binding and binding["initial_unread"] and proposal.independent_label)
+            if independent_label:
+                # Reuse only the label preference lookup. Its result does not
+                # authorize a Gmail write; the separate decision still asks.
+                label_view, label_preference = choose(self, replace(proposal, action="label"), email)
+                proposal = replace(label_view, action="none" if proposal.action == "label" else proposal.action)
+            else:
+                proposal, label_preference = choose(self, proposal, email)
             from .draft_preferences import apply as apply_draft_style
             proposal, draft_style_application = apply_draft_style(self, proposal, email)
             from .attention import matches
@@ -423,6 +440,9 @@ class Agent:
         with self.db:
             if existing:
                 action_id = existing["id"]
+                # The independently approved Gmail label may already have a
+                # durable operation. Reanalysis of the primary action must not
+                # delete that decision or create a second write.
                 for table in ("attention_items", "label_reviews", "email_organization", "draft_style_applications", "archive_decisions", "drafts"):
                     self.db.execute(f"DELETE FROM {table} WHERE action_id=?", (action_id,))
                 self.db.execute("""UPDATE actions SET proposal=?,autonomy=?,safety=?,status=?,reason=?,revision=revision+1
@@ -444,6 +464,9 @@ class Agent:
                 self.db.execute("INSERT INTO attention_items VALUES(?,'Your attention preference applies',0)",(action_id,))
             from .label_preferences import register
             register(self, action_id, original_label, proposal, label_preference)
+            from .label_preferences import register_independent
+            register_independent(self, action_id, proposal, label_preference,
+                                 enabled=bool(binding and binding["initial_unread"] and proposal.independent_label))
             from .organization import register as register_organization
             register_organization(self, action_id, proposal, email)
             from .draft_preferences import register_application
@@ -584,4 +607,4 @@ class Agent:
 
     def snapshot(self) -> dict:
         return {table: [dict(row) for row in self.db.execute(f"SELECT * FROM {table}")]
-                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "archive_decisions", "archive_skill_feedback", "archive_skills", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items", "attention_feedback", "organization_feedback", "organization_rules", "email_organization", "draft_style_feedback", "draft_style_rules", "draft_style_applications", "draft_edit_versions", "skills", "skill_examples", "skill_legacy_links", "skill_feedback_seen", "skill_draft_seen", "label_targets", "label_conflicts")}
+                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "archive_decisions", "archive_skill_feedback", "archive_skills", "gmail_operations", "label_reviews", "independent_label_decisions", "label_feedback", "label_rules", "attention_rules", "attention_items", "attention_feedback", "organization_feedback", "organization_rules", "email_organization", "draft_style_feedback", "draft_style_rules", "draft_style_applications", "draft_edit_versions", "skills", "skill_examples", "skill_legacy_links", "skill_feedback_seen", "skill_draft_seen", "label_targets", "label_conflicts")}
