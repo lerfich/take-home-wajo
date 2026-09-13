@@ -10,9 +10,12 @@
 @media(prefers-reduced-motion:reduce){.review-pulse{animation:none}}
 .requires-review{position:relative;border:2px solid #b8cbd9;box-shadow:0 0 0 3px #244e7509}
 .decision-required-badge,.section-optional-badge{position:absolute;top:-9px;right:10px;z-index:3;display:inline-flex;align-items:center;padding:2px 7px;border:1px solid #aeb7bd;border-radius:999px;background:#fafbfb;color:#7f8a91;font-size:8px;font-weight:550;line-height:1.35;letter-spacing:.02em;opacity:.62;pointer-events:none;white-space:nowrap}
+.decision-required-badge{top:5px}
 .optional-section{position:relative}
 .review-slot{min-width:0;border-radius:9px;background:#fff}
 .review-slot>.review-section{border:0}
+.review-slot.requires-review>.review-section{padding-top:26px}
+.reply-pane.requires-review,.human-review.requires-review,.event-proposal.requires-review{padding-top:30px}
 .review-orbit{position:absolute;inset:-3px;width:calc(100% + 6px);height:calc(100% + 6px);pointer-events:none;overflow:visible}
 .review-orbit rect{width:calc(100% - 4px);height:calc(100% - 4px);fill:none;stroke:#204a78;stroke-width:2.5;stroke-dasharray:10 4;animation:review-orbit-clockwise 1.25s linear infinite}
 .review-orbit.counterclockwise rect{animation-name:review-orbit-counterclockwise}
@@ -26,7 +29,7 @@
 .decision-approve.escalation-orange:hover{background:#ffe4c6!important;color:#6e3f13!important}
 .decision-approve:disabled{animation:none!important;box-shadow:none!important;opacity:.55}
 .decision-button-orbit{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);pointer-events:none;overflow:visible;z-index:2}
-.decision-button-orbit rect{width:calc(100% - 4px);height:calc(100% - 4px);fill:none;stroke:var(--decision-orbit);stroke-width:2;stroke-dasharray:19 4;animation:decision-orbit-clockwise 1.65s linear infinite}
+.decision-button-orbit rect{width:calc(100% - 4px);height:calc(100% - 4px);fill:none;stroke:var(--decision-orbit);stroke-width:2;stroke-dasharray:19 4;animation:decision-orbit-clockwise 11.55s linear infinite}
 .decision-button-orbit.counterclockwise rect{animation-name:decision-orbit-counterclockwise}
 @keyframes decision-orbit-clockwise{to{stroke-dashoffset:-46}}
 @keyframes decision-orbit-counterclockwise{to{stroke-dashoffset:46}}
