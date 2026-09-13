@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../mail_agent/static/app.js'), 'utf8');
+const reviewStyles = fs.readFileSync(path.join(__dirname, '../mail_agent/static/review-ux.css'), 'utf8');
 function extract(start, end) { return source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start))); }
 const context = vm.createContext({});
 vm.runInContext(extract('function exactEditedReply(', 'async function saveAndSendEditedReply('), context);
@@ -44,6 +45,12 @@ assert.ok(source.includes("'requires-review':''}")); // Date clarification and f
 assert.ok(source.includes("event-proposal ${['awaiting_confirmation','needs_clarification'].includes(item.status)?'requires-review':''}"));
 assert.ok(source.includes('data-event-approve'));
 assert.ok(source.includes('data-escalation-choice="handled"'));
+assert.ok(source.includes('class="primary escalation-final escalation-purple" data-escalation-choice="handled"'));
+assert.ok(source.includes('class="secondary escalation-final escalation-orange" data-escalation-choice="attention"'));
+assert.ok(source.includes('button:is(.primary,.escalation-final):not([disabled]):not(.hidden)'));
+assert.ok(reviewStyles.includes('.decision-approve.escalation-purple'));
+assert.ok(reviewStyles.includes('.decision-approve.escalation-orange'));
+assert.ok(reviewStyles.includes('stroke-dasharray:19 4'));
 console.log('Review UI guards passed: exact edit approval and whole-word previews.');
 async function testEditedApproval(status, mutate, accountChanged=false) {
   const calls=[],errors=[];
