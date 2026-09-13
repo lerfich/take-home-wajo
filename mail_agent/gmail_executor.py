@@ -88,15 +88,21 @@ def recover(db_path):
             for row in rows:
                 agent.db.execute("UPDATE gmail_operations SET status='unknown',error=? WHERE id=?",
                                  ("Server stopped during Gmail operation. Check Gmail status.", row["id"]))
-                independent = row["operation"] in {"archive-independent", "restore-independent"}
-                if independent:
+                archive_independent = row["operation"] in {"archive-independent", "restore-independent"}
+                label_independent = row["operation"] == "label-independent"
+                if archive_independent:
                     agent.db.execute(
                         "UPDATE archive_decisions SET status='unknown',error=?,updated_at=datetime('now') WHERE action_id=?",
                         ("Server stopped during Gmail operation. Check Gmail status.", row["action_id"]),
                     )
+                elif label_independent:
+                    agent.db.execute(
+                        "UPDATE independent_label_decisions SET status='unknown',error=? WHERE action_id=?",
+                        ("Server stopped during Gmail operation. Check Gmail status.", row["action_id"]),
+                    )
                 else:
                     agent.db.execute("UPDATE actions SET status='unknown' WHERE id=?", (row["action_id"],))
-                if row["automatic"] and not independent:
+                if row["automatic"] and not archive_independent and not label_independent:
                     from .superpowers import record_failed_auto
                     record_failed_auto(agent, row["action_id"], "unknown")
                 agent.log(row["action_id"], "gmail_unknown", {"operation": row["operation"], "reason": "Interrupted operation"})

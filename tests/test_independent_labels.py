@@ -5,7 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from mail_agent.core import Agent, Email, Proposal
-from mail_agent.gmail_executor import run_one
+from mail_agent.gmail_executor import recover, run_one
 from mail_agent.label_preferences import decide_independent, public_independent
 
 
@@ -72,7 +72,7 @@ class IndependentLabelTests(unittest.TestCase):
                                           (action_id,)).fetchone()[0]
         executor = VerifiedExecutor()
         self.assertTrue(run_one(self.path, executor, operation))
-        self.assertEqual(executor.calls, [("label", "AI: Work Update", False)])
+        self.assertEqual(executor.calls, [("label", ["AI: Work Update"], False)])
         self.assertEqual(public_independent(self.agent.db, action_id)["status"], "confirmed")
         self.assertEqual([row["label"] for row in self.agent.snapshot()["labels"]], ["AI: Work Update"])
         self.assertEqual(self.agent.db.execute("SELECT status FROM archive_decisions WHERE action_id=?",
@@ -99,7 +99,7 @@ class IndependentLabelTests(unittest.TestCase):
         self.assertEqual(self.agent.snapshot()["labels"], [])
         checked = VerifiedExecutor(True)
         run_one(self.path, checked, operation, check_only=True)
-        self.assertEqual(checked.calls, [("label", "AI: Work Update", True)])
+        self.assertEqual(checked.calls, [("label", ["AI: Work Update"], True)])
         self.assertEqual(public_independent(self.agent.db, action["id"])["status"], "confirmed")
 
     def test_reply_archive_label_and_event_are_four_separate_decisions(self):
@@ -140,6 +140,28 @@ class IndependentLabelTests(unittest.TestCase):
         self.assertEqual(public_independent(self.agent.db, action["id"])["status"], "skipped")
         self.assertEqual(self.agent.db.execute("SELECT count(*) FROM independent_label_decisions WHERE action_id=?",
                                                (action["id"],)).fetchone()[0], 1)
+
+    def test_two_labels_can_be_confirmed_together(self):
+        action = self.ingest(7)
+        decide_independent(self.agent, action["id"], 1, "confirm", "AI: Work Update", "AI: Action")
+        operation = self.agent.db.execute("SELECT id FROM gmail_operations WHERE action_id=? AND operation='label-independent'",
+                                          (action["id"],)).fetchone()[0]
+        executor = VerifiedExecutor()
+        run_one(self.path, executor, operation)
+        self.assertEqual(executor.calls, [("label", ["AI: Work Update", "AI: Action"], False)])
+        self.assertEqual({r["label"] for r in self.agent.snapshot()["labels"]},
+                         {"AI: Action", "AI: Work Update"})
+
+    def test_restart_marks_only_interrupted_label_stream_uncertain(self):
+        action = self.ingest(8)
+        decide_independent(self.agent, action["id"], 1, "confirm")
+        before = self.agent.get(action["id"])["status"]
+        with self.agent.db:
+            self.agent.db.execute("""UPDATE gmail_operations SET status='processing'
+                WHERE action_id=? AND operation='label-independent'""", (action["id"],))
+        recover(self.path)
+        self.assertEqual(public_independent(self.agent.db, action["id"])["status"], "unknown")
+        self.assertEqual(self.agent.get(action["id"])["status"], before)
 
 
 if __name__ == "__main__":

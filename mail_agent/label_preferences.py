@@ -1,6 +1,7 @@
 """User-reviewed label names, separate from archive experience and mail permissions."""
 from dataclasses import replace
 from datetime import datetime, timezone
+import json
 
 
 LABEL_KINDS = {
@@ -51,35 +52,47 @@ def initialize_independent(db):
     db.execute("""CREATE TABLE IF NOT EXISTS independent_label_decisions (
         action_id INTEGER PRIMARY KEY REFERENCES actions(id),
         recommendation TEXT NOT NULL, current_label TEXT NOT NULL,
+        labels_json TEXT NOT NULL DEFAULT '[]',
         kind TEXT NOT NULL, basis TEXT NOT NULL,
         status TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1,
         error TEXT NOT NULL DEFAULT ''
     )""")
+    columns = {row["name"] for row in db.execute("PRAGMA table_info(independent_label_decisions)")}
+    if "labels_json" not in columns:
+        db.execute("ALTER TABLE independent_label_decisions ADD COLUMN labels_json TEXT NOT NULL DEFAULT '[]'")
 
 
 def register_independent(agent, action_id, proposal, preference, *, enabled):
     if not enabled:
         return
     label = normalize_label(proposal.label)
+    names = [normalize_label(name) for name in (preference or {}).get("labels", [label])][:2]
+    names = list(dict.fromkeys(names)) or [label]
     basis = ("Reviewed Label Skill" if preference and preference.get("id", 0) < 0 else
              "Saved label preference" if preference else "Model suggestion")
     agent.db.execute("""INSERT OR IGNORE INTO independent_label_decisions
-        (action_id,recommendation,current_label,kind,basis,status)
-        VALUES(?,?,?,?,?,'awaiting_confirmation')""",
-        (action_id, label, label, proposal.label_kind, basis))
+        (action_id,recommendation,current_label,labels_json,kind,basis,status)
+        VALUES(?,?,?,?,?,?,'awaiting_confirmation')""",
+        (action_id, label, label, json.dumps(names), proposal.label_kind, basis))
     if agent.db.execute("SELECT changes()").fetchone()[0]:
         agent.log(action_id, "independent_label_proposed", {"label": label, "basis": basis})
 
 
 def public_independent(db, action_id):
     row = db.execute("SELECT * FROM independent_label_decisions WHERE action_id=?", (action_id,)).fetchone()
-    return dict(row) if row else None
+    if not row:
+        return None
+    value = dict(row)
+    value["labels"] = json.loads(value.pop("labels_json")) or [value["current_label"]]
+    return value
 
 
-def decide_independent(agent, action_id, revision, choice, label=""):
+def decide_independent(agent, action_id, revision, choice, label="", second_label=""):
     """Confirm/change or skip this label without touching Reply, Archive or Event."""
     if choice not in {"confirm", "skip"}:
         raise ValueError("Choose Confirm label or No label")
+    if type(second_label) is not str:
+        raise ValueError("Enter a second label or leave it empty")
     with agent.db:
         agent.db.execute("BEGIN IMMEDIATE")
         action = agent.get(action_id)
@@ -95,13 +108,19 @@ def decide_independent(agent, action_id, revision, choice, label=""):
             agent.log(action_id, "independent_label_skipped", {"revision": revision})
             return public_independent(agent.db, action_id)
         target = normalize_label(label or row["current_label"])
-        if target != row["current_label"]:
+        names = [target]
+        if second_label.strip():
+            second = normalize_label(second_label)
+            if second == target:
+                raise ValueError("Choose two different AI labels")
+            names.append(second)
+        if names != row["labels"]:
             revision += 1
         # One durable external operation; never mutate the primary action's
         # status/revision, since a reply or event may be pending concurrently.
         agent.db.execute("""UPDATE independent_label_decisions
-            SET current_label=?,status='executing',revision=?,error='' WHERE action_id=?""",
-            (target, revision, action_id))
+            SET current_label=?,labels_json=?,status='executing',revision=?,error='' WHERE action_id=?""",
+            (target, json.dumps(names), revision, action_id))
         agent.db.execute("""INSERT INTO gmail_operations
             (action_id,revision,operation,status,approved,feedback_scope,automatic)
             VALUES(?,?,'label-independent','queued',1,'general',0)""", (action_id, revision))
@@ -112,7 +131,8 @@ def decide_independent(agent, action_id, revision, choice, label=""):
 def _finish_independent(agent, row):
     action = agent.get(row["action_id"])
     email = agent.email_for(action["id"])
-    agent.db.execute("INSERT OR IGNORE INTO labels VALUES(?,?)", (email.id, row["current_label"]))
+    agent.db.executemany("INSERT OR IGNORE INTO labels VALUES(?,?)",
+                         [(email.id, name) for name in row["labels"]])
     agent.db.execute("""UPDATE independent_label_decisions
         SET status='confirmed',error='' WHERE action_id=?""", (action["id"],))
     # Existing Label Skill collection consumes this verified feedback. Its
@@ -145,9 +165,9 @@ def run_independent(agent, executor, candidate, check_only):
                     or not binding or not binding["initial_unread"] or row["status"] not in
                     ({"unknown", "error"} if check_only else {"executing"})):
                 raise ScopeError("The label decision version or permission is invalid")
-            label = normalize_label(row["current_label"])
+            names = [normalize_label(name) for name in row["labels"]]
             agent.db.execute("UPDATE gmail_operations SET status='processing',error='' WHERE id=?", (operation["id"],))
-        result = executor.apply(dict(binding), "label", label, check_only=check_only)
+        result = executor.apply(dict(binding), "label", names, check_only=check_only)
         with agent.db:
             agent.db.execute("BEGIN IMMEDIATE")
             if result.get("conflict"):

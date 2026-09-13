@@ -35,6 +35,8 @@ const labelBlock=context.independentLabelBlock({proposal:{label:'AI: Work Update
 assert.equal(labelBlock.required,true);
 assert.ok(labelBlock.content.includes('Confirm label'));
 assert.ok(labelBlock.content.includes('Do not add label'));
+assert.ok(labelBlock.content.includes('Second Gmail label'));
+assert.ok(source.includes("second_label:values.get('second_label')"));
 assert.ok(source.includes("row.independent_label?.status==='awaiting_confirmation'"));
 assert.ok(source.includes('decision-required-badge'));
 assert.ok(source.includes('data-review-key="escalation"'));

@@ -603,7 +603,8 @@ class Application:
                     from .label_preferences import decide_independent
                     with agent.db:
                         result = decide_independent(agent, data["action_id"], data["revision"],
-                                                    data.get("choice"), data.get("label", ""))
+                                                    data.get("choice"), data.get("label", ""),
+                                                    data.get("second_label", ""))
                     self.wakeup.set()
                     return result
                 if route == "/api/attention":
