@@ -110,7 +110,7 @@ def local_data_counts(db):
 
 
 def clear_local_data(db):
-    """Clear Wajo's local mail-derived state. This never calls or mutates Gmail."""
+    """Clear Mailward's local mail-derived state. This never calls or mutates Gmail."""
     tables = (
         "notification_jobs", "event_skill_applications", "event_skill_feedback",
         "event_skill_revocations", "event_skills", "calendar_events", "event_proposals",
@@ -216,7 +216,7 @@ def refresh_before_analysis(token_path, app, email_id):
                        (binding["account"], binding["message_id"]))
         return False
     with app.connect() as db:
-        # Once observed as read before Wajo's decision, never promote it back to
+        # Once observed as read before Mailward's decision, never promote it back to
         # the proactive flow because a client later toggled it unread.
         if "UNREAD" not in ids:
             db.execute("UPDATE gmail_bindings SET initial_unread=0 WHERE email_id=?", (email_id,))
@@ -275,7 +275,7 @@ def _cache_incomplete(app, account, item, now=None, history_labels=()):
 def _cache_context(app, account, message, fields, role, unread):
     headers = {x.get("name", "").casefold(): x.get("value", "")
                for x in message.get("payload", {}).get("headers", [])}
-    wajo_key = headers.get("x-wajo-reply-key", "")
+    wajo_key = headers.get("x-mailward-reply-key") or headers.get("x-wajo-reply-key", "")
     with app.connect() as db:
         db.execute("""INSERT INTO gmail_message_cache(account,message_id,thread_id,role,state,unread,labels,
                       internal_date,sender,subject,body,error,retry_at,fetched_at,wajo_key) VALUES(?,?,?,?,?,?,?,?,?,?,?,'','',?,?)

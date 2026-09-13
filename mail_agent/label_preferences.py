@@ -291,7 +291,7 @@ def submit(agent, action_id, revision, label, scope, mode="replace"):
             return conflict(agent, action_id, [name], existing)
         if scope != "email" and (p.label_kind not in LABEL_KINDS or not p.pattern_evidence.strip()
                                   or p.pattern_evidence not in email.body):
-            raise ValueError("Wajo cannot identify a reliable matching context in this email. A preference for future emails was not created.")
+            raise ValueError("Mailward cannot identify a reliable matching context in this email. A preference for future emails was not created.")
         new_revision = revision + 1
         account = account_for(agent, email.id)
         key = "email" if scope == "email" else "*" if scope == "similar" else email.sender.casefold()
@@ -378,7 +378,7 @@ def run_review(agent, executor, candidate, check_only):
         verified = new_id in ids and (feedback["mode"] == "add" or old == new or old_id not in ids)
         if not verified and not check_only:
             if old_id not in ids:
-                raise ScopeError("The previous label changed in Gmail. Review the message there; Wajo will not overwrite it.")
+                raise ScopeError("The previous label changed in Gmail. Review the message there; Mailward will not overwrite it.")
             if new_id is None:
                 new_id = executor.api.users().labels().create(userId="me",body={"name":new,
                          "labelListVisibility":"labelShow","messageListVisibility":"show"}).execute()["id"]

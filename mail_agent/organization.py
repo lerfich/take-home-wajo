@@ -121,7 +121,7 @@ def submit(agent, action_id, topic, subtype, important, scope):
         proposal = Proposal(**action["proposal"])
         email = agent.email_for(action_id)
         if scope != "email" and not _eligible(proposal, email):
-            raise ValueError("Wajo cannot identify a reliable matching context in this email. A preference for future emails was not created.")
+            raise ValueError("Mailward cannot identify a reliable matching context in this email. A preference for future emails was not created.")
         account = account_for(agent, email.id)
         key = "email:" + email.id if scope == "email" else "*" if scope == "similar" else email.sender.casefold()
         cursor = agent.db.execute("""INSERT INTO organization_feedback

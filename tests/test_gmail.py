@@ -36,7 +36,7 @@ class GmailTests(unittest.TestCase):
                     self.assertEqual(module.InstalledAppFlow.from_client_config.call_args.args[1], [scope])
                     self.assertEqual(flow.run_local_server.call_args.kwargs["port"], 0)
                     self.assertEqual(token.stat().st_mode & 0o777, 0o600)
-                with patch.dict("os.environ", {"WAJO_CONTAINER": "1"}):
+                with patch.dict("os.environ", {"MAILWARD_CONTAINER": "1"}):
                     credentials.granted_scopes = [MANAGE_SCOPE]
                     authorize(client, token, "manage")
                     self.assertEqual(flow.run_local_server.call_args.kwargs["port"], 8766)

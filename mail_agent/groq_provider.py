@@ -127,7 +127,7 @@ class GroqProposer:
         req = Request("https://api.groq.com/openai/v1/" + route,
                       data=None if payload is None else json.dumps(payload).encode(),
                       headers={"Authorization": "Bearer " + self._key, "Content-Type": "application/json",
-                               "User-Agent": "wajo-email-agent/0.2"})
+                               "User-Agent": "mailward-email-agent/0.2"})
         waited = 0
         for attempt in range(self.max_retries + 1):
             start = time.monotonic()

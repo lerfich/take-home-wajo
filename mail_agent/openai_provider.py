@@ -1,4 +1,4 @@
-"""OpenAI adapter implementing Wajo's existing proposer contract.
+"""OpenAI adapter implementing Mailward's existing proposer contract.
 
 The adapter deliberately keeps credentials private and reuses the same prompts,
 schemas and response validation as the bundled Groq path.  Selecting this paid
@@ -86,7 +86,7 @@ class OpenAIProposer(GroqProposer):
             headers={
                 "Authorization": "Bearer " + self._key,
                 "Content-Type": "application/json",
-                "User-Agent": "wajo-email-agent/0.2",
+                "User-Agent": "mailward-email-agent/0.2",
             },
         )
         waited = 0.0

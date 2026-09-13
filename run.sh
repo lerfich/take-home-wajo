@@ -3,7 +3,7 @@ set -eu
 cd "$(dirname "$0")"
 if [ ! -x .venv/bin/python ]; then
   python_cmd=""
-  for candidate in "${WAJO_PYTHON:-}" python3.14 python3.13 python3.12 python3.11 python3; do
+  for candidate in "${MAILWARD_PYTHON:-}" python3.14 python3.13 python3.12 python3.11 python3; do
     [ -n "$candidate" ] || continue
     if command -v "$candidate" >/dev/null 2>&1 &&
        "$candidate" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null; then

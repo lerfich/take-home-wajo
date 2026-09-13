@@ -38,7 +38,7 @@ def stage(agent, action_id, recipient=None, subject=None, text=None):
     agent.db.execute("""INSERT INTO gmail_replies(action_id,revision,recipient,subject,text,message_key,draft_id)
                         VALUES(?,?,?,?,?,?,?)""",
                     (action_id, action["revision"], recipient, subject, text,
-                     uuid.uuid4().hex + "@wajo.local", previous["draft_id"] if previous else ""))
+                     uuid.uuid4().hex + "@mailward.local", previous["draft_id"] if previous else ""))
     agent.queue_gmail(action_id, "draft:" + str(action["revision"]))
 
 
@@ -92,7 +92,7 @@ def encode_message(reply, binding, original):
     msg["To"] = reply["recipient"]
     msg["Subject"] = reply["subject"]
     msg["Message-ID"] = "<" + reply["message_key"] + ">"
-    msg["X-Wajo-Reply-Key"] = reply["message_key"]
+    msg["X-Mailward-Reply-Key"] = reply["message_key"]
     msg["Date"] = format_datetime(datetime.now(timezone.utc))
     parent = headers.get("message-id", "")
     if re.fullmatch(r"<[^<>\s]+@[^<>\s]+>", parent):
@@ -116,7 +116,8 @@ def same_message(raw, expected, ignore_message_id=False):
     actual, wanted = parsed(raw), parsed(expected)
     if actual.defects or actual.is_multipart() or actual.get_content_type() != "text/plain":
         return False
-    for header in ("from", "to", "subject", "message-id", "in-reply-to", "references", "x-wajo-reply-key"):
+    for header in ("from", "to", "subject", "message-id", "in-reply-to", "references",
+                   "x-mailward-reply-key", "x-wajo-reply-key"):
         if header == "message-id" and ignore_message_id:
             continue
         if len(actual.get_all(header, [])) != len(wanted.get_all(header, [])):
@@ -130,9 +131,10 @@ def same_message(raw, expected, ignore_message_id=False):
 
 
 def find_sent(api, reply):
+    marker = any(parsed(reply["raw"]).get(name) for name in ("X-Mailward-Reply-Key", "X-Wajo-Reply-Key"))
     if reply.get("sent_id"):
         message = api.users().messages().get(userId="me", id=reply["sent_id"], format="raw").execute()
-        if "SENT" in message.get("labelIds", []) and same_message(message["raw"], reply["raw"], ignore_message_id=bool(parsed(reply["raw"]).get("X-Wajo-Reply-Key"))):
+        if "SENT" in message.get("labelIds", []) and same_message(message["raw"], reply["raw"], ignore_message_id=marker):
             return message["id"]
         return ""
     result = api.users().messages().list(userId="me", q="in:sent rfc822msgid:" + reply["message_key"],
@@ -140,9 +142,9 @@ def find_sent(api, reply):
     matches = []
     for item in result.get("messages", []):
         message = api.users().messages().get(userId="me", id=item["id"], format="raw").execute()
-        if "SENT" in message.get("labelIds", []) and same_message(message["raw"], reply["raw"], ignore_message_id=bool(parsed(reply["raw"]).get("X-Wajo-Reply-Key"))):
+        if "SENT" in message.get("labelIds", []) and same_message(message["raw"], reply["raw"], ignore_message_id=marker):
             matches.append(message)
-    if not matches and parsed(reply["raw"]).get("X-Wajo-Reply-Key"):
+    if not matches and marker:
         # Gmail may replace Message-ID. A bounded Sent scan checks our marker AND
         # every recipient/content field; an absent match remains unknown.
         recent = api.users().messages().list(userId="me", labelIds=["SENT"], maxResults=50).execute()
@@ -238,7 +240,7 @@ def run_operation(agent, executor, operation, check_only):
                                                  (action["id"], row["revision"])).fetchone()
                     current_draft = api.users().drafts().get(userId="me", id=reply["draft_id"], format="raw").execute()
                     if previous is None or not same_message(current_draft["message"]["raw"], previous["raw"], ignore_message_id=True):
-                        raise ScopeError("Gmail draft changed outside Wajo. Review it in Gmail; nothing was overwritten.")
+                        raise ScopeError("Gmail draft changed outside Mailward. Review it in Gmail; nothing was overwritten.")
                     draft = api.users().drafts().update(userId="me", id=reply["draft_id"], body={"message": message}).execute()
                 else:
                     draft = api.users().drafts().create(userId="me", body={"message": message}).execute()
@@ -264,7 +266,7 @@ def run_operation(agent, executor, operation, check_only):
                         agent.db.execute("UPDATE gmail_replies SET sent_id=? WHERE action_id=? AND revision=?",
                                          (sent["id"], action["id"], row["revision"]))
                     actual = api.users().messages().get(userId="me", id=sent["id"], format="raw").execute()
-                    if "SENT" not in actual.get("labelIds", []) or not same_message(actual["raw"], reply["raw"], ignore_message_id=bool(parsed(reply["raw"]).get("X-Wajo-Reply-Key"))):
+                    if "SENT" not in actual.get("labelIds", []) or not same_message(actual["raw"], reply["raw"], ignore_message_id=any(parsed(reply["raw"]).get(name) for name in ("X-Mailward-Reply-Key", "X-Wajo-Reply-Key"))):
                         raise RuntimeError("Sent readback differs")
                     found = sent["id"]
         with agent.db:

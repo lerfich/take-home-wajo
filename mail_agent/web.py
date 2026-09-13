@@ -224,7 +224,7 @@ class Application:
         if not self.demo and self.gmail_connection.token_path.is_file():
             self.gmail_connection.start("check", {})
         self.analysis_threads = [threading.Thread(target=self.analysis_work, args=(i,), daemon=True,
-                                                  name=f"wajo-analysis-{i + 1}")
+                                                  name=f"mailward-analysis-{i + 1}")
                                  for i in range(12)]
         for thread in self.analysis_threads:
             thread.start()
@@ -905,7 +905,7 @@ def main():
                                args.gmail_token, args.gmail_credentials, bind=args.bind)
     except OSError as exc:
         if exc.errno == errno.EADDRINUSE:
-            parser.exit(2, f"Port {args.port} is already in use. If Wajo is running, open "
+            parser.exit(2, f"Port {args.port} is already in use. If Mailward is running, open "
                         f"http://127.0.0.1:{args.port}/; a second launch is unnecessary. "
                         "To change the database or mode, stop the existing server with Ctrl+C first. Do not run two servers against the same database.\n")
         raise
@@ -914,7 +914,7 @@ def main():
         server.app.notifications.schedule_startup_mode(
             server.app._model_label(server.app.model_settings().mode))
         server.app.notifications.start()
-    print(f"Wajo local mailbox: http://127.0.0.1:{server.server_address[1]} "
+    print(f"Mailward local mailbox: http://127.0.0.1:{server.server_address[1]} "
           f"({'scripted demo' if args.demo else server.app._model_label(server.app.model_settings().mode)})", flush=True)
     def stop_on_sigterm(_signum, _frame):
         raise KeyboardInterrupt

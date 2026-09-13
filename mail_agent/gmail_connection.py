@@ -292,7 +292,7 @@ class GmailConnection:
             from .gmail_sync import defer_poll
             defer_poll(self.app, account)
             with self.lock:
-                self.info["error"] = "Automatic Gmail sync failed. Wajo will try again; no Gmail write was repeated."
+                self.info["error"] = "Automatic Gmail sync failed. Mailward will try again; no Gmail write was repeated."
         finally:
             with self.lock:
                 self.info["operation"] = None

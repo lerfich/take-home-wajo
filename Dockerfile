@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    WAJO_CONTAINER=1
+    MAILWARD_CONTAINER=1
 
 WORKDIR /app
 COPY requirements-gmail.lock.txt ./

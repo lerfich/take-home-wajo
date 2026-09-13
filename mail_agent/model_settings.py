@@ -119,12 +119,12 @@ class CredentialStore:
 
     def get_key(self, mode: str) -> str:
         if mode not in {USER_GROQ, USER_OPENAI}:
-            raise ValueError("Bundled credentials are managed by Wajo")
+            raise ValueError("Bundled credentials are managed by Mailward")
         return self._read().get(mode, "")
 
     def set_key(self, mode: str, api_key: str) -> None:
         if mode not in {USER_GROQ, USER_OPENAI}:
-            raise ValueError("Bundled credentials are managed by Wajo")
+            raise ValueError("Bundled credentials are managed by Mailward")
         if not api_key or any(character.isspace() for character in api_key):
             raise ValueError("Enter a valid API key")
         values = self._read()
@@ -150,7 +150,7 @@ class CredentialStore:
 
     def delete_key(self, mode: str) -> None:
         if mode not in {USER_GROQ, USER_OPENAI}:
-            raise ValueError("Bundled credentials are managed by Wajo")
+            raise ValueError("Bundled credentials are managed by Mailward")
         values = self._read()
         if mode not in values:
             return

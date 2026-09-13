@@ -517,5 +517,5 @@ def record_failed_auto(agent, action_id, status):
         changed = agent.db.execute("""UPDATE autosent_journal SET status=?,delivery_status=?,
             reason=? WHERE action_id=? AND status IN ('authorized','queued','processing')""",
             (status, status, "Automatic Gmail send failed" if status == "error" else
-             "Automatic Gmail send outcome is unknown; Wajo will not retry", action_id)).rowcount
+             "Automatic Gmail send outcome is unknown; Mailward will not retry", action_id)).rowcount
     return bool(changed)

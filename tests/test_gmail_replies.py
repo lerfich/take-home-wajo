@@ -210,7 +210,7 @@ class ReplyTests(unittest.TestCase):
         raw=base64.urlsafe_b64encode(msg.as_bytes()).decode()
         self.assertFalse(same_message(raw,reply["raw"]))
         self.assertTrue(same_message(raw,reply["raw"],ignore_message_id=True))
-        msg.replace_header("X-Wajo-Reply-Key","unrelated")
+        msg.replace_header("X-Mailward-Reply-Key","unrelated")
         self.assertFalse(same_message(base64.urlsafe_b64encode(msg.as_bytes()).decode(),reply["raw"],ignore_message_id=True))
 
     def test_timeout_and_rewritten_sent_id_reconcile_by_marker(self):

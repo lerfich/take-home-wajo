@@ -136,7 +136,7 @@ function renderPreferencesNavigation(){
     const actions=document.createElement('div');actions.className='preference-heading-actions';actions.append(glossary,$('#back-mail'));view.querySelector('.section-heading').append(actions);
     glossary.addEventListener('click',openPreferenceGlossary);
     grid.querySelectorAll('[data-preference-category]').forEach(button=>button.addEventListener('click',()=>selectPreferenceCategory(button.dataset.preferenceCategory)));
-    view.querySelector('.memory-intro').textContent='Choose a category to see and manage what Wajo has learned.';
+    view.querySelector('.memory-intro').textContent='Choose a category to see and manage what Mailward has learned.';
   }
   const count={skills:(state.skills||[]).length+(state.archive_skills||[]).length,attention:(state.attention_rules||[]).length,draft:(state.draft_style_rules||[]).filter(r=>r.active).length,organization:(state.organization_rules||[]).filter(r=>r.active).length,labels:(state.label_rules||[]).filter(r=>r.active).length,events:(state.event_skills||[]).filter(r=>r.status!=='deleted').length,whitelist:(state.archive_rules||[]).length};
   document.querySelectorAll('[data-preference-count]').forEach(node=>node.textContent=String(count[node.dataset.preferenceCount]||0));
@@ -146,28 +146,28 @@ function openPreferenceGlossary(){
   let dialog=$('#preference-glossary');
   if(!dialog){
     const terms=[
-      ['Topic','The main subject of an incoming email, such as Work or Account. Choose the broad group where you would look for it.','wajo'],
-      ['Subtype','A more specific kind inside a topic, such as Receipt or Security notice. Use it to tell similar-looking emails apart.','wajo'],
-      ['Organization','Topic, subtype and your Important marker together. Change these when an incoming email is filed in the wrong category.','wajo'],
-      ['Label','A tag saved on the email in Gmail. Wajo initially suggests one AI: label. During review you can confirm it, replace it or add a second one. An activated Label Skill can later apply the saved one- or two-label set to similar emails.','gmail'],
-      ['Important','Your marker for mail that matters to you. Use it when you want to distinguish an important email; it does not ask for an action or send an alert.','wajo'],
+      ['Topic','The main subject of an incoming email, such as Work or Account. Choose the broad group where you would look for it.','mailward'],
+      ['Subtype','A more specific kind inside a topic, such as Receipt or Security notice. Use it to tell similar-looking emails apart.','mailward'],
+      ['Organization','Topic, subtype and your Important marker together. Change these when an incoming email is filed in the wrong category.','mailward'],
+      ['Label','A tag saved on the email in Gmail. Mailward initially suggests one AI: label. During review you can confirm it, replace it or add a second one. An activated Label Skill can later apply the saved one- or two-label set to similar emails.','gmail'],
+      ['Important','Your marker for mail that matters to you. Use it when you want to distinguish an important email; it does not ask for an action or send an alert.','mailward'],
       ['Needs attention / Visibility','A place to keep mail in sight because you want to follow up. Use this when you do not want to overlook an email. It is separate from Important and does not approve any action.'],
-      ['Awaiting your decision','Wajo has a specific proposal for you to approve or reject, such as a reply or calendar date. Open the email and review the highlighted proposal.'],
-      ['Escalation','Wajo cannot safely decide on its own. Choose “I’ll handle this” after taking responsibility for it, or keep the email in Needs attention. Neither choice executes the risky request.'],
+      ['Awaiting your decision','Mailward has a specific proposal for you to approve or reject, such as a reply or calendar date. Open the email and review the highlighted proposal.'],
+      ['Escalation','Mailward cannot safely decide on its own. Choose “I’ll handle this” after taking responsibility for it, or keep the email in Needs attention. Neither choice executes the risky request.'],
       ['Notification','A brief alert about something new or time-sensitive. It only gets your attention; it never sends or approves a reply.'],
       ['Skill','A saved preference for future emails with similar meaning and context. Most Skills require example review before activation. Archive Skills activate automatically after three consecutive real confirmations. Pause any active Skill to stop using it temporarily.'],
-      ['Pattern','The kind of routine an email represents, such as a receipt acknowledgement or periodic digest. It helps Wajo learn whether similar routine mail can be archived.'],
-      ['Related themes','Signals Wajo found in the email, such as a deadline, sensitive content or a request for a reply. They explain the context and are not Gmail labels.','wajo'],
-      ['Archive / Whitelist','Archiving removes an email from your Gmail inbox without deleting it. Add an exact sender here to keep messages from that address in the inbox. Wajo will still analyze them and can learn other preferences from your feedback.'],
+      ['Pattern','The kind of routine an email represents, such as a receipt acknowledgement or periodic digest. It helps Mailward learn whether similar routine mail can be archived.'],
+      ['Related themes','Signals Mailward found in the email, such as a deadline, sensitive content or a request for a reply. They explain the context and are not Gmail labels.','mailward'],
+      ['Archive / Whitelist','Archiving removes an email from your Gmail inbox without deleting it. Add an exact sender here to keep messages from that address in the inbox. Mailward will still analyze them and can learn other preferences from your feedback.'],
       ['Archive Skill','Learns a separate Archive or Keep decision for one kind of similar mail. It activates automatically after three consecutive correct recommendations on safe Gmail messages. A wrong automatic decision removes the Skill and restarts learning.'],
       ['Draft / Pre-reply','A suggested reply you can edit, reject or approve and send. A Draft Skill changes the writing style of future similar replies. Editing a draft cancels any earlier approval of its text.'],
       ['Event Skill','Learns which dates from emails you want in your local calendar. Two consecutive confirmations allow similar events to be saved automatically, independently of Superpowers.'],
-      ['Periodic digest','A recurring summary email, such as a weekly newsletter. Here it is a pattern for inbox cleanup, not a calendar event or a new summary generated by Wajo.'],
+      ['Periodic digest','A recurring summary email, such as a weekly newsletter. Here it is a pattern for inbox cleanup, not a calendar event or a new summary generated by Mailward.'],
       ['Superpowers','An optional mode for qualified Draft Skills to send matching replies automatically. Each Skill needs two unchanged approved sends on the current account, and safety checks still apply.'],
     ];
     dialog=document.createElement('dialog');dialog.id='preference-glossary';dialog.setAttribute('aria-labelledby','preference-glossary-title');
-    const locationBadge=kind=>kind==='gmail'?'<span class="glossary-location gmail">Saved in Gmail</span>':kind==='wajo'?'<span class="glossary-location wajo">Wajo workspace only</span>':'';
-    dialog.innerHTML='<div class="dialog-heading"><div><div class="eyebrow">A QUICK GUIDE</div><h2 id="preference-glossary-title">Wajo glossary</h2></div><button type="button" class="icon-button" aria-label="Close glossary">×</button></div><div class="glossary-cards">'+terms.map(([term,description,location])=>`<article class="glossary-card"><div class="glossary-term"><h3>${esc(term)}</h3>${locationBadge(location)}</div><p>${esc(description)}</p></article>`).join('')+'</div>';
+    const locationBadge=kind=>kind==='gmail'?'<span class="glossary-location gmail">Saved in Gmail</span>':kind==='mailward'?'<span class="glossary-location mailward">Mailward workspace only</span>':'';
+    dialog.innerHTML='<div class="dialog-heading"><div><div class="eyebrow">A QUICK GUIDE</div><h2 id="preference-glossary-title">Mailward glossary</h2></div><button type="button" class="icon-button" aria-label="Close glossary">×</button></div><div class="glossary-cards">'+terms.map(([term,description,location])=>`<article class="glossary-card"><div class="glossary-term"><h3>${esc(term)}</h3>${locationBadge(location)}</div><p>${esc(description)}</p></article>`).join('')+'</div>';
     document.body.append(dialog);dialog.querySelector('button').onclick=()=>dialog.close();
     dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)dialog.close()});
   }

@@ -221,8 +221,7 @@ def outcome(record):
 
 
 def report():
-    cases, info, originals = g1.preflight()
-    verify_frozen_files(info)
+    cases, info, originals = g1.preflight(saved_only=True)
     attempts = attempt_records()
     attempt_manifests = [json.loads(path.read_text())
                          for path in sorted((g1.OUT / "attempts").glob("attempt-*/attempt.json"))]

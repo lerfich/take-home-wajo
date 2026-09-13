@@ -16,7 +16,7 @@ from .groq_provider import (DEFAULT_BUNDLED_GROQ_API_KEY, DEFAULT_MODEL,
 from . import attention, organization
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "reports" / "g1"
+OUT = ROOT / "reports" / "evaluation"
 DATASET = OUT / "dataset.json"
 RESULTS = OUT / "results"
 SOURCE = ROOT / "evaluation" / "g1_dataset.py"
@@ -179,15 +179,18 @@ def validate_saved(cases, records, current):
             raise ValueError(f"Saved expectation changed for {ident}")
 
 
-def preflight():
+def preflight(saved_only=False):
     cases = read_cases()
     if DEFAULT_MODEL != "qwen/qwen3.8-27b" or PROMPT_VERSION != "email-analysis-prompt-v9":
         raise ValueError("Wrong model or prompt version")
     if not DEFAULT_BUNDLED_GROQ_API_KEY:
         raise ValueError("Bundled key unavailable")
-    info = manifest()
     existing = OUT / "manifest.json"
-    if existing.exists() and json.loads(existing.read_text()) != info:
+    frozen = json.loads(existing.read_text()) if existing.exists() else None
+    info = frozen if saved_only and frozen is not None else manifest()
+    if digest(DATASET) != info["dataset_sha256"]:
+        raise ValueError("Saved evaluation dataset changed")
+    if not saved_only and frozen is not None and frozen != info:
         raise ValueError("Frozen manifest changed; keep the existing run and create a new version")
     records = saved()
     validate_saved(cases, records, hashlib.sha256((json.dumps(info, sort_keys=True)).encode()).hexdigest())
@@ -264,7 +267,7 @@ def run():
 
 
 def report():
-    cases, _, records = preflight()
+    cases, _, records = preflight(saved_only=True)
     counts = {"planned": len(cases), "saved": len(records), "ok": sum(r["status"] == "ok" for r in records.values()),
               "error": sum(r["status"] == "error" for r in records.values())}
     fields = ("level_correct", "action_correct", "archive_correct", "label_kind_correct",
@@ -300,7 +303,7 @@ def report():
               "- `manifest.json`: exact file hashes, prompt and model.",
               "- `results/*.json`: parsed structured model response, provider metadata, policy decision, per-email assessment and feedback links.",
               "- `checkpoint.json`: durable progress every 11 saved IDs.", ""]
-    report_path = OUT / "REPORT.md"
+    report_path = OUT / "INITIAL_REPORT.md"
     report_path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=OUT, prefix=".report-", delete=False) as handle:
         tmp = Path(handle.name)
@@ -316,7 +319,7 @@ def main():
     if args.command == "run": run()
     elif args.command == "report": print(report())
     else:
-        cases, info, records = preflight()
+        cases, info, records = preflight(saved_only=args.command == "validate")
         if args.command == "freeze" and not (OUT / "manifest.json").exists():
             atomic_json(OUT / "manifest.json", info)
         print(json.dumps({"planned": len(cases), "saved": len(records), "model": info["model"],

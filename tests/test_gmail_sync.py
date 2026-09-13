@@ -179,7 +179,7 @@ class GmailSyncTests(unittest.TestCase):
         self.assertEqual({x["role"] for x in self.app.state()["gmail_messages"]}, {"sent", "draft"})
         self.assertTrue(all(not x["managed"] for x in self.app.state()["gmail_messages"] if x["role"] == "draft"))
 
-    def test_wajo_draft_marker_is_distinguished_from_user_draft(self):
+    def test_current_and_legacy_draft_markers_are_distinguished_from_user_drafts(self):
         email = Email("gmail:owner@example.test:source", "sender@example.test", "Question", "Please answer")
         self.app.enqueue({"sender": email.sender, "subject": email.subject, "body": email.body}, email.id,
             {"account": "owner@example.test", "message_id": "source", "initial_inbox": 1,
@@ -192,12 +192,14 @@ class GmailSyncTests(unittest.TestCase):
                                    (action["id"],)).fetchone()[0]
         finally:
             agent.close()
-        draft = message("wajo-draft", ["DRAFT"], body="Answer", thread="shared")
-        draft["payload"]["headers"].append({"name": "X-Wajo-Reply-Key", "value": key})
-        self.users.messages.return_value.get.return_value.execute.return_value = draft
-        self.assertEqual(fetch_one(self.api, self.app, "owner@example.test", {"id": "wajo-draft"}), "context")
-        cached = next(x for x in self.app.state()["gmail_messages"] if x["message_id"] == "wajo-draft")
-        self.assertTrue(cached["managed"])
+        for ident, header in (("mailward-draft", "X-Mailward-Reply-Key"),
+                              ("legacy-draft", "X-Wajo-Reply-Key")):
+            draft = message(ident, ["DRAFT"], body="Answer", thread="shared")
+            draft["payload"]["headers"].append({"name": header, "value": key})
+            self.users.messages.return_value.get.return_value.execute.return_value = draft
+            self.assertEqual(fetch_one(self.api, self.app, "owner@example.test", {"id": ident}), "context")
+            cached = next(x for x in self.app.state()["gmail_messages"] if x["message_id"] == ident)
+            self.assertTrue(cached["managed"])
 
     def test_spam_and_trash_are_excluded_even_without_a_readable_body(self):
         self.users.messages.return_value.get.return_value.execute.return_value = {

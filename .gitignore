@@ -3,5 +3,5 @@ __pycache__/
 .venv/
 .env
 data/
-reports/g1/.run.lock
-reports/g1/.continue.lock
+reports/evaluation/.run.lock
+reports/evaluation/.continue.lock

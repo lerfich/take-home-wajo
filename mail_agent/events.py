@@ -51,9 +51,9 @@ def _write(db: sqlite3.Connection):
 
 def system_timezone() -> str:
     """Best-effort IANA timezone for model context and calendar rendering."""
-    configured = os.environ.get("WAJO_TIMEZONE", "").strip()
+    configured = os.environ.get("MAILWARD_TIMEZONE", "").strip()
     if configured:
-        _zone(configured, "WAJO_TIMEZONE")
+        _zone(configured, "MAILWARD_TIMEZONE")
         return configured
     for candidate in (Path("/etc/localtime"), Path("/var/db/timezone/localtime")):
         try:
@@ -69,7 +69,7 @@ def system_timezone() -> str:
             except ValueError:
                 pass
     # Abbreviations such as MSK are not stable IANA identifiers.  UTC is a
-    # deterministic safe fallback; deployments can set WAJO_TIMEZONE.
+    # deterministic safe fallback; deployments can set MAILWARD_TIMEZONE.
     return "UTC"
 
 
@@ -151,7 +151,7 @@ def register_analysis(db: sqlite3.Connection, email, proposal, context: dict, *,
             return None
     prior_id = prior["id"] if prior and change in {"reschedule", "cancel"} else None
     if change == "cancel" and prior_id is None:
-        return None  # Nothing in Wajo's current calendar can be cancelled.
+        return None  # Nothing in Mailward's current calendar can be cancelled.
     if change == "reschedule" and prior_id is None:
         change = "create"  # Preserve the newly stated date without inventing prior state.
     all_day = bool(proposal.event_all_day)

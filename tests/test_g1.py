@@ -104,7 +104,7 @@ class G1Tests(unittest.TestCase):
                 self.assertEqual((out / "results" / "D-SILENT-01.json").read_bytes(), first)
                 self.assertEqual(FakeProvider.attempts_total, 112)  # one interrupted, never saved
                 self.assertEqual(json.loads((out / "checkpoint.json").read_text())["count"], 111)
-                self.assertIn("Saved: 111", (out / "REPORT.md").read_text())
+                self.assertIn("Saved: 111", (out / "INITIAL_REPORT.md").read_text())
                 # Offline report rebuild cannot construct the fake provider either.
                 with patch.object(g1, "GroqProposer", side_effect=AssertionError("provider called")):
                     g1.report()
@@ -127,7 +127,7 @@ class G1Tests(unittest.TestCase):
                 with self.assertRaises(SystemExit): g1.run()
                 self.assertEqual(error_path.read_bytes(), original)
                 self.assertEqual(FakeProvider.attempts_total, 111)
-                self.assertIn("errors: 1", (out / "REPORT.md").read_text())
+                self.assertIn("errors: 1", (out / "INITIAL_REPORT.md").read_text())
 
 
 if __name__ == "__main__": unittest.main()

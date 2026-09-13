@@ -53,7 +53,7 @@ class NotificationTests(unittest.TestCase):
         self.assertEqual(self.scheduler.run_due().sent, 1)
         self.assertEqual(self.scheduler.run_due().sent, 0)
         self.assertEqual(self.recorder.calls,
-                         [("Wajo is running", "Active model: Groq · bundled free plan")])
+                         [("Mailward is running", "Active model: Groq · bundled free plan")])
 
     def test_new_launch_replaces_an_undelivered_startup_notification(self):
         self.scheduler.schedule_startup_mode("User Groq")

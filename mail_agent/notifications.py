@@ -205,7 +205,7 @@ class NotificationScheduler:
         return self._insert(
             kind="startup_mode",
             dedupe_key=f"startup-mode:{self.launch_id}",
-            title="Wajo is running",
+            title="Mailward is running",
             body=body,
             source_ref="server-launch",
             source_verified=True,
@@ -382,7 +382,7 @@ class NotificationScheduler:
                     # the mail server's other background services.
                     continue
 
-        self._thread = threading.Thread(target=loop, name="wajo-notifications", daemon=True)
+        self._thread = threading.Thread(target=loop, name="mailward-notifications", daemon=True)
         self._thread.start()
 
     def stop(self, *, timeout: float = 4.0) -> None:
