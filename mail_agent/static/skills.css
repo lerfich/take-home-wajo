@@ -40,7 +40,11 @@
 #preference-glossary{width:850px;max-height:85vh;padding:26px}
 .glossary-cards{display:grid;gap:12px;margin-top:22px}
 .glossary-card{border:1px solid #dce5ec;border-radius:10px;padding:20px;background:#f8fafc;display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,2fr);gap:20px;min-height:100px}
+.glossary-term{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;gap:18px;min-width:0}
 .glossary-card h3{font-size:18px;line-height:1.4;color:#24455d;margin:0;align-self:start}
 .glossary-card p{font-size:13px;line-height:1.8;margin:12px 0 0;color:#617585;align-self:end}
+.glossary-location{display:inline-flex;align-items:center;border:1px solid transparent;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:650;line-height:1.2;white-space:nowrap}
+.glossary-location.gmail{color:#39705f;background:#e8f5ef;border-color:#cce8dc}
+.glossary-location.wajo{color:#416986;background:#eaf2f8;border-color:#cfdfeb}
 @media(max-width:1100px){.preference-categories{gap:9px}.preference-whitelist .rule-form{flex-wrap:wrap}.preference-whitelist .rule-form input{flex-basis:100%}.preference-categories .preference-tile{min-height:130px}.preference-exceptions #rules{grid-template-columns:1fr}}
-@media(max-width:800px){.preference-categories{grid-template-columns:repeat(2,minmax(0,1fr))}.preference-categories .preference-tile{min-height:118px}.preference-whitelist .rule-form{flex-wrap:nowrap}.preference-whitelist .rule-form input{flex-basis:auto}.preference-heading-actions{flex-wrap:wrap;justify-content:flex-end}.glossary-card{grid-template-columns:1fr;gap:2px}.glossary-card h3{font-size:17px}}
+@media(max-width:800px){.preference-categories{grid-template-columns:repeat(2,minmax(0,1fr))}.preference-categories .preference-tile{min-height:118px}.preference-whitelist .rule-form{flex-wrap:nowrap}.preference-whitelist .rule-form input{flex-basis:auto}.preference-heading-actions{flex-wrap:wrap;justify-content:flex-end}.glossary-card{grid-template-columns:1fr;gap:8px}.glossary-term{flex-direction:row;align-items:center;gap:10px}.glossary-card h3{font-size:17px}}

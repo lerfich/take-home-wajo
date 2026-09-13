@@ -34,6 +34,11 @@ class Proposal:
     label_kind: str = "unknown"
     attention_cue: str = ""  # Missing legacy field; explicit none/unknown stay authoritative.
     attention_evidence: str = ""
+    # Inbox placement is an independent learned decision, like calendar events.
+    # Legacy fixtures omit it and retain the old single-action path.
+    archive_recommendation: str = "none"
+    archive_reason: str = ""
+    archive_evidence: str = ""
     # A calendar suggestion is independent from the mail action above.  Both
     # are returned by one model call, then reviewed and persisted separately.
     event_change: str = "none"
@@ -86,7 +91,8 @@ def validate(proposal: Proposal) -> None:
     if type(proposal) is not Proposal:
         raise ValueError("Invalid proposal type")
     for name in ("action", "reason", "label", "text", "recipient", "pattern", "pattern_evidence", "label_kind",
-                 "attention_cue", "attention_evidence", "event_change", "event_kind",
+                 "attention_cue", "attention_evidence", "archive_recommendation", "archive_reason",
+                 "archive_evidence", "event_change", "event_kind",
                  "event_semantic_kind", "event_title", "event_original_text", "event_start",
                  "event_end", "event_timezone", "event_confidence", "event_ambiguity_reason",
                  "event_evidence"):
@@ -104,6 +110,15 @@ def validate(proposal: Proposal) -> None:
     from .attention import ATTENTION_CUES
     if proposal.attention_cue not in set(ATTENTION_CUES) | {"unknown", ""}:
         raise ValueError("Invalid attention cue")
+    if proposal.archive_recommendation not in {"none", "archive", "keep"}:
+        raise ValueError("Invalid archive recommendation")
+    if proposal.archive_recommendation == "none" and (proposal.archive_reason or proposal.archive_evidence):
+        raise ValueError("Unused archive fields must be empty")
+    if proposal.archive_recommendation != "none" and (not proposal.archive_reason.strip()
+                                                        or not proposal.archive_evidence.strip()):
+        raise ValueError("Archive recommendations require a reason and exact evidence")
+    if proposal.archive_recommendation != "none" and proposal.action == "archive":
+        raise ValueError("Archive placement must be independent from the primary action")
     if proposal.event_change not in {"none", "create", "reschedule", "cancel"}:
         raise ValueError("Invalid event change")
     if proposal.event_kind not in {"none", "calendar_event", "response_deadline"}:
@@ -220,6 +235,8 @@ class Agent:
         initialize_events(self.db)
         from .event_skills import initialize as initialize_event_skills
         initialize_event_skills(self.db)
+        from .archive_skills import initialize as initialize_archive_skills
+        initialize_archive_skills(self.db)
 
     def queue_gmail(self, action_id, operation, approved=False, scope="general", automatic=False):
         if scope not in {"general", "sender"}:
@@ -366,6 +383,10 @@ class Agent:
             else:
                 proposal = self.proposer.propose(email)
             validate(proposal)
+            if proposal.archive_recommendation != "none":
+                from .archive_skills import evidence_is_exact
+                if not evidence_is_exact(email.body, proposal.archive_evidence):
+                    raise ValueError("Archive recommendation requires exact evidence from the email body")
             event_safety_blocked = bool(proposal.suspicious or proposal.needs_human)
             if read_before_wajo:
                 suppressed_action = proposal.action if proposal.action != "label" else ""
@@ -402,7 +423,7 @@ class Agent:
         with self.db:
             if existing:
                 action_id = existing["id"]
-                for table in ("attention_items", "label_reviews", "email_organization", "draft_style_applications", "drafts"):
+                for table in ("attention_items", "label_reviews", "email_organization", "draft_style_applications", "archive_decisions", "drafts"):
                     self.db.execute(f"DELETE FROM {table} WHERE action_id=?", (action_id,))
                 self.db.execute("""UPDATE actions SET proposal=?,autonomy=?,safety=?,status=?,reason=?,revision=revision+1
                                    WHERE id=?""", (json.dumps(asdict(proposal), ensure_ascii=False), decision.autonomy,
@@ -446,6 +467,8 @@ class Agent:
                         decision = Decision("escalate", "review_required", "escalated", "Reply needs a valid recipient, subject and body")
                     self.db.execute("UPDATE actions SET autonomy=?,safety=?,status=?,reason=? WHERE id=?",
                                     (decision.autonomy, decision.safety, decision.status, decision.reason, action_id))
+            from .archive_skills import register as register_archive_decision
+            register_archive_decision(self, action_id, email, proposal, read_before_wajo=read_before_wajo)
             if suppressed_action:
                 self.log(action_id, "read_mail_action_suppressed", {"proposed_action": suppressed_action})
             self.log(action_id, "decision", asdict(decision))
@@ -561,4 +584,4 @@ class Agent:
 
     def snapshot(self) -> dict:
         return {table: [dict(row) for row in self.db.execute(f"SELECT * FROM {table}")]
-                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items", "attention_feedback", "organization_feedback", "organization_rules", "email_organization", "draft_style_feedback", "draft_style_rules", "draft_style_applications", "draft_edit_versions", "skills", "skill_examples", "skill_legacy_links", "skill_feedback_seen", "skill_draft_seen", "label_targets", "label_conflicts")}
+                for table in ("emails", "actions", "labels", "drafts", "sent", "audit", "preference_feedback", "archive_rules", "archive_decisions", "archive_skill_feedback", "archive_skills", "gmail_operations", "label_reviews", "label_feedback", "label_rules", "attention_rules", "attention_items", "attention_feedback", "organization_feedback", "organization_rules", "email_organization", "draft_style_feedback", "draft_style_rules", "draft_style_applications", "draft_edit_versions", "skills", "skill_examples", "skill_legacy_links", "skill_feedback_seen", "skill_draft_seen", "label_targets", "label_conflicts")}

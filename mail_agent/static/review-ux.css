@@ -9,11 +9,23 @@
 .reply-pane:has(#reply-editor:not(.hidden)) #approve{order:0}.reply-pane:has(#reply-editor:not(.hidden)) #edit-reply{order:1}.reply-pane:has(#reply-editor:not(.hidden)) #reject{order:2}
 @media(prefers-reduced-motion:reduce){.review-pulse{animation:none}}
 .requires-review{position:relative;border:2px solid #b8cbd9;box-shadow:0 0 0 3px #244e7509}
+.decision-required-badge,.section-optional-badge{position:absolute;top:-9px;right:10px;z-index:3;display:inline-flex;align-items:center;padding:2px 7px;border:1px solid #aeb7bd;border-radius:999px;background:#fafbfb;color:#7f8a91;font-size:8px;font-weight:550;line-height:1.35;letter-spacing:.02em;opacity:.62;pointer-events:none;white-space:nowrap}
+.optional-section{position:relative}
 .review-slot{min-width:0;border-radius:9px;background:#fff}
 .review-slot>.review-section{border:0}
 .review-orbit{position:absolute;inset:-3px;width:calc(100% + 6px);height:calc(100% + 6px);pointer-events:none;overflow:visible}
-.review-orbit rect{width:calc(100% - 4px);height:calc(100% - 4px);fill:none;stroke:#204a78;stroke-width:2.5;stroke-dasharray:5 2;animation:review-orbit-clockwise 1.25s linear infinite}
+.review-orbit rect{width:calc(100% - 4px);height:calc(100% - 4px);fill:none;stroke:#204a78;stroke-width:2.5;stroke-dasharray:10 4;animation:review-orbit-clockwise 1.25s linear infinite}
 .review-orbit.counterclockwise rect{animation-name:review-orbit-counterclockwise}
 @keyframes review-orbit-clockwise{to{stroke-dashoffset:-28}}
 @keyframes review-orbit-counterclockwise{to{stroke-dashoffset:28}}
+.decision-approve{position:relative!important;overflow:visible!important;color:#245b47!important;background:#dff3e7!important;border-color:#86bda7!important;transition:background-color .2s,color .2s,box-shadow .35s!important;animation:decision-button-pulse 2.2s ease-in-out infinite!important;isolation:isolate}
+.decision-approve:hover{background:#caead8!important;color:#174a37!important}
+.decision-approve:disabled{animation:none!important;box-shadow:none!important;opacity:.55}
+.decision-button-orbit{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);pointer-events:none;overflow:visible;z-index:2}
+.decision-button-orbit rect{width:calc(100% - 4px);height:calc(100% - 4px);fill:none;stroke:#348665;stroke-width:2;stroke-dasharray:19 4;animation:decision-orbit-clockwise 1.65s linear infinite}
+.decision-button-orbit.counterclockwise rect{animation-name:decision-orbit-counterclockwise}
+@keyframes decision-orbit-clockwise{to{stroke-dashoffset:-46}}
+@keyframes decision-orbit-counterclockwise{to{stroke-dashoffset:46}}
+@keyframes decision-button-pulse{0%,100%{box-shadow:0 0 4px 1px #67b69424}50%{box-shadow:0 0 12px 4px #4ca67d52}}
 @media(prefers-reduced-motion:reduce){.review-orbit rect{animation:none}}
+@media(prefers-reduced-motion:reduce){.decision-approve,.decision-button-orbit rect{animation:none!important}}

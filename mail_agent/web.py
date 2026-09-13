@@ -337,7 +337,9 @@ class Application:
             state = agent.snapshot()
             state["jobs"] = [dict(row) for row in agent.db.execute(
                 "SELECT * FROM incoming_jobs ORDER BY created_at")]
-            state['skills'] = listing(agent)
+            # Archive Skills have their own automatic three-confirmation lifecycle.
+            # Do not expose the older suggested/archive family beside them.
+            state['skills'] = [skill for skill in listing(agent) if skill['family'] != 'archive']
             state['label_conflicts'] = [dict(r) for r in agent.db.execute("SELECT * FROM label_conflicts WHERE status='open'")]
             bindings = {r["email_id"]: dict(r) for r in agent.db.execute("SELECT * FROM gmail_bindings")}
             state["event_proposals"] = [dict(r) for r in agent.db.execute(
@@ -365,6 +367,8 @@ class Application:
                 action["reply"] = agent.get(action["id"])["reply"]
                 p = Proposal(**json.loads(action["proposal"]))
                 action["proposal"] = asdict(p)
+                from .archive_skills import public as public_archive_decision
+                action["archive_decision"] = public_archive_decision(agent.db, action["id"])
                 from .label_preferences import account_for
                 from .attention import cue_for, effective_rule
                 email = email_map[action["email_id"]]
@@ -410,6 +414,8 @@ class Application:
             connection = self.gmail_connection.snapshot()
             from .superpowers import state as superpower_state
             verified_account = connection.get("account") if connection.get("status") == "connected" else None
+            from .archive_skills import list_skills as list_archive_skills
+            state["archive_skills"] = list_archive_skills(agent.db, verified_account) if verified_account else []
             state["superpowers"] = superpower_state(agent, verified_account)
             from .events import list_events
             state["events"] = list_events(agent.db, local_timezone=system_timezone())
@@ -585,6 +591,57 @@ class Application:
                 if route == '/api/skills/manage':
                     from .skills import manage
                     return manage(agent, data)
+                if route == "/api/archive-decision":
+                    if type(data.get("action_id")) is not int or type(data.get("revision")) is not int:
+                        raise ValueError("The displayed archive decision and version are required")
+                    from .archive_skills import decide as decide_archive
+                    with agent.db:
+                        result = decide_archive(
+                            agent, data["action_id"], data["revision"], data.get("choice")
+                        )
+                    self.wakeup.set()
+                    return result
+                if route == "/api/archive-mistake":
+                    if type(data.get("action_id")) is not int:
+                        raise ValueError("Choose an automatically archived email")
+                    from .archive_skills import correct_automatic_archive
+                    with agent.db:
+                        result = correct_automatic_archive(agent, data["action_id"])
+                    self.wakeup.set()
+                    return result
+                if route == "/api/archive-skills/manage":
+                    if type(data.get("skill_id")) is not int or type(data.get("revision")) is not int:
+                        raise ValueError("Choose a current Archive Skill")
+                    from .archive_skills import manage as manage_archive_skill
+                    connection = self.gmail_connection.snapshot()
+                    account = connection.get("account") if connection.get("status") == "connected" else None
+                    if not account:
+                        raise ValueError("Connect and verify Gmail before changing Archive Skills")
+                    with agent.db:
+                        return manage_archive_skill(
+                            agent.db, data["skill_id"], data["revision"],
+                            data.get("operation"), account,
+                        )
+                if route == "/api/escalation-review":
+                    if (type(data.get("action_id")) is not int
+                            or type(data.get("revision")) is not int
+                            or data.get("choice") not in {"handled", "attention"}):
+                        raise ValueError("Choose how to handle the current escalation")
+                    row = agent.get(data["action_id"])
+                    if row["revision"] != data["revision"] or row["status"] not in {"escalated", "blocked"}:
+                        raise ValueError("This escalation changed. Refresh and review it again.")
+                    with agent.db:
+                        if data["choice"] == "attention":
+                            from .attention import set_rule
+                            set_rule(agent, row["id"], True, "email")
+                        agent.db.execute(
+                            "UPDATE actions SET status='reviewed',revision=revision+1 WHERE id=?",
+                            (row["id"],),
+                        )
+                        agent.log(row["id"], "escalation_reviewed", {
+                            "choice": data["choice"], "email_action_executed": False,
+                        })
+                    return {"reviewed": True, "choice": data["choice"], "email_action_executed": False}
                 if route in {"/api/events/approve", "/api/events/reject", "/api/events/clarify",
                              "/api/events/mistake", "/api/event-skills/manage"}:
                     from . import event_skills, events

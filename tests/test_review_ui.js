@@ -25,6 +25,14 @@ assert.ok(collapsed.includes('Read full email'));
 vm.runInContext("expandedBodies.add('one')", context);
 assert.ok(context.emailBody({email:{id:'one', body}}).includes(body));
 assert.ok(!context.emailBody({email:{id:'short', body:'Short email'}}).includes('Read full email'));
+vm.runInContext('const patterns={periodic_digest:"Periodic digest"};' + extract('function archiveDecisionBlock(', 'async function saveAndSendEditedReply('), context);
+const archiveBlock=context.archiveDecisionBlock({email:{archived:false},status:'executed',proposal:{action:'label'},archive_decision:{recommendation:'keep',reason:'Useful update',evidence:'Evidence',status:'awaiting_confirmation',revision:2}});
+assert.equal(archiveBlock.required,true);
+assert.ok(archiveBlock.content.includes('Confirm keep in inbox'));
+assert.ok(archiveBlock.content.includes('Archive instead'));
+assert.ok(source.includes("event-proposal ${['awaiting_confirmation','needs_clarification'].includes(item.status)?'requires-review':''}"));
+assert.ok(source.includes('data-event-approve'));
+assert.ok(source.includes('data-escalation-choice="handled"'));
 console.log('Review UI guards passed: exact edit approval and whole-word previews.');
 async function testEditedApproval(status, mutate, accountChanged=false) {
   const calls=[],errors=[];

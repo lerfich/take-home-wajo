@@ -240,6 +240,24 @@ class WebTests(unittest.TestCase):
             self.post("/api/approve", args)
         self.assertEqual(self.get()["sent"], [])
 
+    def test_escalation_can_be_marked_reviewed_without_executing_email_action(self):
+        class Fixed:
+            def propose(self, email):
+                return Proposal("none", "A contract choice needs human judgment", needs_human=True)
+        agent = Agent(self.server.app.db_path, Fixed())
+        try:
+            action = agent.ingest(Email("escalation-web", "legal@example.test", "Contract", "Choose terms"))
+        finally:
+            agent.close()
+        self.assertEqual(action["status"], "escalated")
+        result = self.post("/api/escalation-review", {
+            "action_id": action["id"], "revision": action["revision"], "choice": "handled",
+        })
+        self.assertFalse(result["email_action_executed"])
+        current = next(row for row in self.get()["actions"] if row["id"] == action["id"])
+        self.assertEqual(current["status"], "reviewed")
+        self.assertEqual(self.get()["gmail_operations"], [])
+
     def test_explicit_rule_blocks_existing_pending_archive(self):
         rows = self.post("/api/demo", {})
         archive = next(r for r in rows if r["proposal"]["action"] == "archive")

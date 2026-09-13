@@ -4,7 +4,7 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;',
 const patterns = {acknowledgement_only:'Receipt acknowledgement',periodic_digest:'Periodic digest',routine_success:'Routine success report',informational_reference:'Informational reference',unknown:'Unknown pattern'};
 const autonomies = {silent:'No notification',notify:'Notify',ask:'Ask for approval',escalate:'Escalate'};
 const actions = {archive:'Archive email',label:'Apply label',draft:'Save draft',send:'Send reply',none:'No mail action',pay:'Payment request',delete:'Deletion request'};
-const statuses = {executing:'Gmail action queued',restoring:'Gmail restore queued',unknown:'Verification needed',pending:'Approval needed',executed:'Completed',blocked:'Blocked',escalated:'Needs your review',error:'Processing error',skipped:'Kept in inbox',rejected:'Rejected',corrected:'Restored to inbox'};
+const statuses = {executing:'Gmail action queued',restoring:'Gmail restore queued',unknown:'Verification needed',pending:'Approval needed',executed:'Completed',blocked:'Blocked',escalated:'Needs your review',reviewed:'Reviewed by you',error:'Processing error',skipped:'Kept in inbox',rejected:'Rejected',corrected:'Restored to inbox'};
 const events = {gmail_draft_saved:'Gmail draft saved',gmail_queued:'Gmail operation queued',gmail_started:'Gmail verification started',gmail_unknown:'Verification needed',gmail_error:'Gmail operation stopped',gmail_unverified:'Gmail state not confirmed',decision:'Agent decision',approved:'You approved the action',rejected:'You rejected the action',executed:'Action completed',notification:'Notification',preference_feedback:'Feedback saved',learned_permission:'Learned preference applied',archive_corrected:'Archive corrected',revised:'Reply revised',organization_reviewed:'Organization reviewed',organization_preference_applied:'Organization preference applied',organization_rule_paused:'Organization preference paused',draft_style_saved:'Draft style saved',draft_style_applied:'Draft style applied',draft_style_fallback:'Draft style rewrite unavailable',draft_style_rule_paused:'Draft style paused'};
 let state, selected, selectedAutosent, filter='all', page='mail', signature='', busy=false, detailOpen=false;
 let replyEditing=false,detailDirty=false;
@@ -12,6 +12,7 @@ let approvalInProgress=false;
 const expandedBodies=new Set();
 let renderedDetailAction=null;
 const reviewOrbitDirections=new Map();
+const decisionOrbitDirections=new Map();
 let calendarCursor=new Date(new Date().getFullYear(),new Date().getMonth(),1),modelValidation={mode:null,key:null,valid:false,token:null,expires:0},modelValidationTimer,modelValidationRequest=0,modelsInitialized=false;
 function notify(text){$('#toast').textContent=text;$('#toast').classList.remove('hidden');setTimeout(()=>$('#toast').classList.add('hidden'),5000)}
 function error(text){$('#error').textContent=text;$('#error').classList.toggle('hidden',!text)}
@@ -48,9 +49,9 @@ function newestFirst(a,b){return b.timestamp-a.timestamp||String(a.email.id).loc
 function currentRows(){return state.actions.map(a=>({...a,email:state.emails.find(e=>e.id===a.email_id),timestamp:mailTime(a.email_id),labelReview:(state.label_reviews||[]).find(r=>r.action_id===a.id),threadId:a.thread_id||a.email_id})).filter(a=>a.email).sort(newestFirst)}
 function waitingRows(actions){const processed=new Set(actions.map(a=>a.email_id));return (state.jobs||[]).filter(j=>j.status!=='done'&&!processed.has(j.id)).map(job=>{const email=JSON.parse(job.email),message=(state.gmail_messages||[]).find(m=>`gmail:${m.account}:${m.message_id}`===job.id);return {id:'job:'+job.id,email,job,status:job.status,account:message?.account||'local',threadId:message?.thread_id||job.id,timestamp:mailTime(job.id)}})}
 function jobStatus(row){return row.status==='error'?'Analysis failed':row.status==='processing'?'Reading email…':'Queued for analysis'}
-function needsDecision(row){return row.status==='pending'||Boolean(row.awaiting_event_decision)}
+function needsDecision(row){return row.status==='pending'||Boolean(row.awaiting_event_decision)||row.archive_decision?.status==='awaiting_confirmation'}
 function groupThreads(rows){const groups=[];for(const row of rows){const key=`${row.account||'local'}:${row.threadId}`;let group=groups.find(x=>x.key===key);if(!group){group={key,threadId:row.threadId,representative:row,members:[]};groups.push(group)}group.members.push(row)}return groups}
-function badge(row){const replyState=row.reply?(row.status==='executing'?'Saving or sending Gmail reply':row.status==='pending'?'Gmail draft · approval needed':row.status==='executed'?'Sent via Gmail':null):null;const eventState=row.awaiting_event_decision?'Awaiting event decision':null,both=eventState&&replyState&&row.status==='pending'?'Awaiting decisions':null;const style=['blocked','error','unknown'].includes(row.status)?row.status:row.autonomy;return `<span class="badge ${esc(style)}">${esc(both||eventState||replyState||statuses[row.status]||autonomies[row.autonomy])}</span>`}
+function badge(row){const archiveState=row.archive_decision?.status==='awaiting_confirmation'?'Awaiting archive decision':null;const replyState=row.reply?(row.status==='executing'?'Saving or sending Gmail reply':row.status==='pending'?'Gmail draft · approval needed':row.status==='executed'?'Sent via Gmail':null):null;const eventState=row.awaiting_event_decision?'Awaiting event decision':null,pending=[archiveState,eventState,replyState].filter(Boolean);const style=['blocked','error','unknown'].includes(row.status)?row.status:row.autonomy;return `<span class="badge ${esc(style)}">${esc(pending.length>1?'Awaiting decisions':pending[0]||statuses[row.status]||autonomies[row.autonomy])}</span>`}
 function render(){
   const demo=state.mode==='scripted',provider=modelConfig().label||'Bundled free Groq';$('#mode').textContent=demo?'Sample cases · no AI':`${provider}${state.gmail_enabled?' · Gmail live':' · local'}`;
   $('#new-email').classList.toggle('hidden',demo);$('#load-demo').classList.toggle('hidden',!demo);
@@ -137,10 +138,24 @@ function emailBody(row){
   return `<div class="body-preview ${text.length>100&&!expanded?'is-collapsed':''}"><p class="email-body">${esc(text.length>100&&!expanded?(cut||text.split(/\s/)[0])+'…':text)}</p></div>${text.length>100?`<button class="body-toggle" id="toggle-email-body" aria-expanded="${expanded}">${expanded?'Collapse email':'Read full email'} ${expanded?'↑':'↓'}</button>`:''}`;
 }
 function bindEmailBody(row){$('#toggle-email-body')?.addEventListener('click',()=>{expandedBodies.has(row.email.id)?expandedBodies.delete(row.email.id):expandedBodies.add(row.email.id);const old=$('#detail .body-preview'),button=$('#toggle-email-body');const holder=document.createElement('div');holder.innerHTML=emailBody(row);old.replaceWith(...holder.childNodes);button.remove();bindEmailBody(row)})}
-function reviewSection(title,content,required=false){
+function reviewSection(title,content,required=false,optional=false){
   const key=title.toLowerCase();
-  const section=`<details class="review-section" data-review-key="${key}" ${required?'open':''}><summary id="review-summary-${key}">${esc(title)}${required?'<span>Review needed</span>':''}</summary>${content}</details>`;
+  const section=`<details class="review-section ${optional?'optional-section':''}" data-review-key="${key}" ${required?'open':''}><summary id="review-summary-${key}">${esc(title)}</summary>${optional?'<span class="section-optional-badge">Optional</span>':''}${content}</details>`;
   return required?`<div class="review-slot requires-review" data-review-key="${key}">${section}</div>`:section;
+}
+function decorateDecisionButtons(root=document,context=''){
+  root.querySelectorAll('button.primary:not([disabled]):not(.hidden)').forEach((button,index)=>{
+    if(button.querySelector('.decision-button-orbit'))return;
+    button.classList.add('decision-approve');
+    const key=`${context}:${button.id||button.dataset.eventApprove||button.getAttribute('aria-label')||button.textContent}:${index}`;
+    if(!decisionOrbitDirections.has(key))decisionOrbitDirections.set(key,Math.random()<.5?'clockwise':'counterclockwise');
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class',`decision-button-orbit ${decisionOrbitDirections.get(key)}`);
+    svg.setAttribute('aria-hidden','true');
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x','2');rect.setAttribute('y','2');rect.setAttribute('rx','7');
+    svg.append(rect);button.append(svg);
+  });
 }
 function captureReviewView(actionId){
   if(renderedDetailAction!==actionId)return null;
@@ -155,12 +170,15 @@ function restoreReviewView(view,actionId){
   detail.querySelectorAll('.requires-review').forEach((section,index)=>{
     const key=`${actionId}:${section.dataset.reviewKey||section.className}:${index}`;
     if(!reviewOrbitDirections.has(key))reviewOrbitDirections.set(key,Math.random()<.5?'clockwise':'counterclockwise');
+    const cue=document.createElement('span');cue.className='decision-required-badge';cue.textContent='Review needed';
+    section.append(cue);
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
     svg.setAttribute('class',`review-orbit ${reviewOrbitDirections.get(key)}`);
     svg.setAttribute('aria-hidden','true');
     const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
     rect.setAttribute('x','2');rect.setAttribute('y','2');rect.setAttribute('rx','9');
     svg.append(rect);section.append(svg);
+    decorateDecisionButtons(section,`${actionId}:${index}`);
   });
   if(view?.focused){const focus=document.getElementById(view.focused);if(detail.contains(focus))focus.focus({preventScroll:true})}
   renderedDetailAction=actionId;
@@ -169,6 +187,27 @@ function exactEditedReply(action,expected,revision){
   if(!action||action.id!==expected.action_id||action.revision!==revision)return false;
   const reply=action.reply;
   return Boolean(reply&&reply.sender===expected.sender&&reply.recipient===expected.recipient&&reply.subject===expected.subject&&reply.text===expected.text);
+}
+function archiveDecisionBlock(row){
+  const d=row.archive_decision;
+  if(!d){
+    const legacy=row.status==='pending'&&row.proposal.action==='archive';
+    const content=legacy?`<div class="decision-buttons"><button class="primary" id="approve">Approve archive</button><button class="secondary reject-button" id="reject">Reject</button></div>`:`<p>${row.email.archived?'This email is archived.':'This email stays in the inbox.'}</p><button class="secondary" id="keep-sender">Always keep this sender in inbox</button>`;
+    return {content,required:legacy};
+  }
+  const recommendation=d.recommendation==='archive'?'Archive':'Keep in inbox';
+  const explanation=`<p><strong>Wajo recommends: ${recommendation}</strong></p><p>${esc(d.reason||'Based on this email’s meaning and context.')}</p>${d.evidence?`<blockquote>${esc(d.evidence)}</blockquote>`:''}`;
+  if(d.status==='awaiting_confirmation'){
+    const primary=d.recommendation==='archive'?['archive','Confirm archive']:['keep','Confirm keep in inbox'];
+    const secondary=d.recommendation==='archive'?['keep','Keep in inbox instead']:['archive','Archive instead'];
+    return {required:true,content:`${explanation}<small>Your choice counts toward an Archive Skill for similar mail. Three consecutive correct recommendations activate it automatically.</small><div class="decision-buttons"><button class="primary" data-archive-choice="${primary[0]}" data-revision="${d.revision}">${primary[1]}</button><button class="secondary reject-button" data-archive-choice="${secondary[0]}" data-revision="${d.revision}">${secondary[1]}</button></div>`};
+  }
+  if(['executing','correcting'].includes(d.status))return {required:false,content:`${explanation}<p>Updating Gmail and checking the result…</p>`};
+  if(['unknown','error'].includes(d.status))return {required:true,content:`${explanation}<p>${esc(d.error||'Gmail did not confirm this change.')}</p><button class="secondary" id="archive-retry">Check Gmail status</button>`};
+  if(d.status==='automatic'&&d.chosen==='archive')return {required:false,content:`<p><strong>Archived automatically by Archive Skill.</strong></p><p>${esc(d.reason)}</p><button class="secondary reject-button" id="archive-mistake">This shouldn’t have been archived</button>`};
+  if(d.status==='automatic')return {required:false,content:`<p><strong>Kept in inbox automatically by Archive Skill.</strong></p><p>${esc(d.reason)}</p><button class="secondary reject-button" id="archive-mistake">This should have been archived</button>`};
+  if(d.status==='corrected')return {required:false,content:'<p>Restored to the inbox. The Archive Skill was removed and learning for this kind of mail restarted.</p>'};
+  return {required:false,content:`<p><strong>${d.chosen==='archive'?'Archived':'Kept in inbox'} after your confirmation.</strong></p><p>${esc(d.reason)}</p>`};
 }
 async function saveAndSendEditedReply(row,draft,payload){
   const expected={...payload,sender:draft.sender},account=state.gmail_connection?.account;
@@ -200,13 +239,13 @@ function renderDetail(row){
   const p=row.proposal,reply=row.reply,canEdit=row.status==='pending'&&(reply||p.action==='send');
   const gmailOps=(state.gmail_operations||[]).filter(o=>o.action_id===row.id),operation=gmailOps.find(o=>['unknown','error'].includes(o.status));
   const flags=[['requires_action','Reply or action required'],['has_deadline','Deadline'],['significant_change','Significant change'],['sensitive','Sensitive content'],['suspicious','Suspicious content']].filter(([key])=>p[key]).map(([,label])=>label);
-  const controls=row.status==='pending'&&!reply&&p.action!=='send'?`<div class="decision-buttons"><button class="primary" id="approve">Approve ${esc(actions[p.action]||'action')}</button><button class="secondary reject-button" id="reject">Reject</button></div>`:row.status==='executed'&&p.action==='archive'&&row.email.archived?'<button class="secondary" id="correct">Restore to inbox</button>':'';
+  const archiveBlock=archiveDecisionBlock(row);
   const errorDescription=operation?.error||row.reason||'Processing could not finish. Retry checks the failed step.';
   const issue=['error','unknown'].includes(row.status)?`<div class="processing-issue"><span class="badge error" tabindex="0" title="${esc(errorDescription)}">${row.status==='unknown'?'Verification needed':'Processing error'}</span><button class="secondary" id="retry-operation" title="Check an uncertain Gmail result before retrying">Retry</button><small role="status" id="retry-result"></small></div>`:badge(row);
   const summary=reply||['send','draft'].includes(p.action)?'':`<div class="compact-summary"><div class="summary-traits"><div><small>Label</small><span class="badge label-chip">${esc(p.label||'-')}</span></div><div><small>Pattern</small><span class="badge">${esc(p.pattern==='unknown'?'-':patterns[p.pattern]||p.pattern||'-')}</span></div><div><small title="Detected characteristics, including risk signals; these are not Gmail labels.">Related themes</small>${flags.length?flags.map(x=>`<span class="badge">${esc(x)}</span>`).join(''):'<span>-</span>'}</div></div><p class="short-description"><small>short description</small> ${esc(p.reason||'-')}</p></div>`;
   const labelContent=labelReviewForm(row)||'<p>No label decision is waiting.</p>',hasConflict=(state.label_conflicts||[]).some(x=>x.action_id===row.id);
-  const sections=`<div class="preference-grid">${reviewSection('Archive',controls||`<p>${row.email.archived?'This email is archived.':'This email stays in the inbox.'}</p><button class="secondary" id="keep-sender">Always keep this sender in inbox</button>`,row.status==='pending'&&p.action==='archive')}${reviewSection('Label',`<div class="decision label-decision">${labelContent}</div>`,hasConflict||row.labelReview?.status==='needs_review')}${organizationForm(row)}${reviewSection('Visibility',attentionForm(row))}</div>`;
-  const escalation=row.status==='escalated'||row.status==='blocked'?`<div class="human-review requires-review"><strong>${row.status==='blocked'?'Action blocked':'Your judgment is needed'}</strong><p>${esc(row.reason||p.reason)}</p><small>Check the received email and handle this situation yourself. Changing its organization does not resolve this request.</small></div>`:'';
+  const sections=`<div class="preference-grid">${reviewSection('Archive',archiveBlock.content,archiveBlock.required)}${reviewSection('Label',`<div class="decision label-decision">${labelContent}</div>`,hasConflict||row.labelReview?.status==='needs_review')}${organizationForm(row)}${reviewSection('Visibility',attentionForm(row),false,true)}</div>`;
+  const escalation=row.status==='escalated'||row.status==='blocked'?`<div class="human-review requires-review" data-review-key="escalation"><strong>${row.status==='blocked'?'Action blocked':'Your judgment is needed'}</strong><p>${esc(row.reason||p.reason)}</p><small>Wajo has no safe action to approve. Choose how you want to track the situation; neither option executes the request in the email.</small><div class="decision-buttons"><button class="primary" data-escalation-choice="handled">I’ll handle this</button><button class="secondary" data-escalation-choice="attention">Keep in Needs attention</button></div></div>`:row.status==='reviewed'?'<div class="human-review"><strong>Reviewed by you</strong><p>You chose to handle this outside Wajo. No email action was approved or executed.</p></div>':'';
   const received=`<section class="received-pane"><div class="eyebrow">RECEIVED EMAIL</div><h2>${esc(row.email.subject)}</h2><div class="sender-row"><span class="avatar">${esc(row.email.sender[0]?.toUpperCase()||'?')}</span><div>${esc(row.email.sender)}</div></div>${emailBody(row)}${summary}${escalation}${eventProposalBlocks(row)}${sections}</section>`;
   const draft=reply||['send','draft'].includes(p.action)?{sender:reply?.sender||row.account||'',recipient:reply?.recipient||p.recipient||'',subject:reply?.subject||row.email.subject,text:reply?.text||p.text||''}:null;
   const replyPanel=draft?`<section class="reply-pane ${canEdit?'requires-review':''}"><div class="reply-heading"><strong class="${canEdit?'review-pulse':''}">Draft prepared by Wajo</strong><div class="reply-actions">${canEdit?'<button class="secondary reject-button" id="reject">Reject</button><button class="primary review-pulse" id="approve">Approve and send</button><button class="secondary review-pulse" id="edit-reply">Edit</button>':''}</div></div><div id="reply-preview" class="send-preview"><div class="reply-address"><small>From</small> ${esc(draft.sender)}</div><div class="reply-address"><small>To</small> ${esc(draft.recipient)}</div><div class="reply-address"><small>Subject</small> ${esc(draft.subject)}</div><p>${esc(draft.text)}</p></div>${canEdit?'<div id="reply-editor" class="hidden"><label>From<input id="edit-from" disabled></label><label>To<input id="edit-recipient" disabled></label><label>Subject<input id="edit-subject" maxlength="300"></label><textarea id="edit-text" aria-label="Reply text" rows="5"></textarea></div>':''}${row.status==='rejected'?'<p>The reply was rejected. Its unsent Gmail draft is retained.</p>':''}${draftStyleForm(row)}</section>`:'';
@@ -217,6 +256,10 @@ function renderDetail(row){
   bindEmailBody(row);bindEventProposals();bindDraftStyle(row);bindOrganization(row);bindLabelReview(row);bindAttention(row);renderLabelConflict(row);
   $('#detail').querySelectorAll('input,textarea,select').forEach(input=>input.addEventListener('input',()=>{detailDirty=true}));
   $('#retry-operation')?.addEventListener('click',async()=>{const result=await post('/api/retry',{action_id:row.id,revision:row.revision});if(result)notify(result.message||'The failed step was checked. Review its updated status.')});
+  $('#archive-retry')?.addEventListener('click',async()=>{const result=await post('/api/retry',{action_id:row.id,revision:row.revision});if(result)notify(result.message||'Gmail status checked.')});
+  $('#detail').querySelectorAll('[data-archive-choice]').forEach(button=>button.addEventListener('click',async()=>{const choice=button.dataset.archiveChoice;if(await post('/api/archive-decision',{action_id:row.id,revision:Number(button.dataset.revision),choice}))notify(choice==='archive'?'Archiving this email.':'This email will stay in the inbox.')}));
+  $('#archive-mistake')?.addEventListener('click',async()=>{const wasArchived=row.archive_decision?.chosen==='archive';if(await post('/api/archive-mistake',{action_id:row.id}))notify(`${wasArchived?'Restoring':'Archiving'} this email. The Archive Skill was removed and will learn again from zero.`)} );
+  $('#detail').querySelectorAll('[data-escalation-choice]').forEach(button=>button.addEventListener('click',async()=>{const choice=button.dataset.escalationChoice;if(await post('/api/escalation-review',{action_id:row.id,revision:row.revision,choice}))notify(choice==='attention'?'Saved in Needs attention. No email action was executed.':'Marked as reviewed. You will handle the situation outside Wajo.')}));
   for(const [id,route,message] of [['reject','reject','Action rejected'],['correct','correct','Email restored']])$('#'+id)?.addEventListener('click',async()=>{replyEditing=false;detailDirty=false;if(await post('/api/'+route,{action_id:row.id,revision:row.revision,scope:'general'}))notify(message)});
   $('#keep-sender')?.addEventListener('click',async()=>{if(await post('/api/rule',{sender:row.email.sender,keep:true}))notify('This sender will not be archived automatically. Other skills still apply.')});
   $('#approve')?.addEventListener('click',async()=>{
@@ -258,7 +301,7 @@ function bindDraftStyle(row){
 
 function organizationForm(row){
   const known=Boolean(state.label_kinds[row.proposal.label_kind]);
-  return `<details class="organization-editor review-section"><summary>Organization</summary><form id="organization-form" class="compact-form"><div class="field-pair"><label>Topic<input id="organization-topic" maxlength="60" required></label><label>Subtype<input id="organization-subtype" maxlength="60" required></label></div><label class="attention-toggle"><input type="checkbox" id="organization-important"> Mark as important</label><small>Importance is your separate marker. It does not approve an action or turn on attention alerts.</small><small>For future emails with similar meaning and context.</small><button class="secondary">Save organization</button></form></details>`;
+  return `<details class="organization-editor review-section optional-section"><summary>Organization</summary><span class="section-optional-badge">Optional</span><form id="organization-form" class="compact-form"><div class="field-pair"><label>Topic<input id="organization-topic" maxlength="60" required></label><label>Subtype<input id="organization-subtype" maxlength="60" required></label></div><label class="attention-toggle"><input type="checkbox" id="organization-important"> Mark as important</label><small>Importance is your separate marker. It does not approve an action or turn on attention alerts.</small><small>For future emails with similar meaning and context.</small><button class="secondary">Save organization</button></form></details>`;
 }
 function bindOrganization(row){
   if(!$('#organization-form'))return;

@@ -30,6 +30,9 @@ FIELDS["label_kind"] = {"type": "string", "enum": sorted(set(LABEL_KINDS) | {"un
 from .attention import ATTENTION_CUES
 FIELDS["attention_cue"] = {"type": "string", "enum": sorted(set(ATTENTION_CUES) | {"unknown"})}
 FIELDS["attention_evidence"] = {"type": "string"}
+FIELDS["archive_recommendation"] = {"type": "string", "enum": ["archive", "keep"]}
+FIELDS["archive_reason"] = {"type": "string"}
+FIELDS["archive_evidence"] = {"type": "string"}
 FIELDS.update({name: {"type": "string"} for name in (
     "event_semantic_kind", "event_title", "event_original_text", "event_start", "event_end",
     "event_timezone", "event_ambiguity_reason", "event_evidence")})

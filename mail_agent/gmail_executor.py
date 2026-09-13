@@ -88,8 +88,15 @@ def recover(db_path):
             for row in rows:
                 agent.db.execute("UPDATE gmail_operations SET status='unknown',error=? WHERE id=?",
                                  ("Server stopped during Gmail operation. Check Gmail status.", row["id"]))
-                agent.db.execute("UPDATE actions SET status='unknown' WHERE id=?", (row["action_id"],))
-                if row["automatic"]:
+                independent = row["operation"] in {"archive-independent", "restore-independent"}
+                if independent:
+                    agent.db.execute(
+                        "UPDATE archive_decisions SET status='unknown',error=?,updated_at=datetime('now') WHERE action_id=?",
+                        ("Server stopped during Gmail operation. Check Gmail status.", row["action_id"]),
+                    )
+                else:
+                    agent.db.execute("UPDATE actions SET status='unknown' WHERE id=?", (row["action_id"],))
+                if row["automatic"] and not independent:
                     from .superpowers import record_failed_auto
                     record_failed_auto(agent, row["action_id"], "unknown")
                 agent.log(row["action_id"], "gmail_unknown", {"operation": row["operation"], "reason": "Interrupted operation"})
@@ -114,6 +121,26 @@ def run_one(db_path, executor, operation_id=None, check_only=False):
         if candidate is not None and candidate["operation"].split(":")[0] in {"draft", "send"}:
             from .gmail_replies import run_operation
             return run_operation(agent, executor, candidate, check_only)
+        if candidate is not None and candidate["operation"] in {"archive-independent", "restore-independent"}:
+            from .archive_skills import run_gmail
+            try:
+                return run_gmail(agent, executor, candidate, check_only)
+            except ScopeError as exc:
+                reason = str(exc)
+                with agent.db:
+                    agent.db.execute(
+                        "UPDATE gmail_operations SET status='error',error=? WHERE id=?",
+                        (reason, candidate["id"]),
+                    )
+                    agent.db.execute(
+                        "UPDATE archive_decisions SET status='error',error=?,updated_at=datetime('now') WHERE action_id=?",
+                        (reason, candidate["action_id"]),
+                    )
+                    agent.log(candidate["action_id"], "gmail_error", {
+                        "operation": candidate["operation"], "reason": reason,
+                        "archive_decision": True,
+                    })
+                return True
         with agent.db:
             agent.db.execute("BEGIN IMMEDIATE")
             if operation_id is None:
